@@ -1,7 +1,6 @@
 <?php
 session_start();
-$conn = new mysqli("localhost", "svh_b14f1q", "xrb23va4gs", "svh_b14f1q");
-$conn->set_charset("utf8mb4");
+require_once __DIR__ . '/../config.php';
 
 if (!isset($_SESSION['user_id'])) {
     die("请先登录。");
@@ -20,24 +19,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $phone = $conn->real_escape_string($_POST['phone']);
     $birthday = $conn->real_escape_string($_POST['birthday']);
     $signature = $conn->real_escape_string($_POST['signature']);
-    
+
     // 头像处理
-    $avatar_name = $user['avatar']; 
+    $avatar_name = $user['avatar'];
     if (!empty($_FILES['avatar']['name'])) {
-        $target_dir = "uploads/avatars/";
+        $target_dir = __DIR__ . "/../uploads/avatars/";
         $file_ext = pathinfo($_FILES["avatar"]["name"], PATHINFO_EXTENSION);
         $avatar_name = "u_" . $my_id . "_" . time() . "." . $file_ext;
         move_uploaded_file($_FILES["avatar"]["tmp_name"], $target_dir . $avatar_name);
     }
 
     // 更新数据库
-    $update_sql = "UPDATE users SET 
-                    username = '$username', 
-                    gender = '$gender', 
-                    phone = '$phone', 
-                    birthday = '$birthday', 
-                    signature = '$signature', 
-                    avatar = '$avatar_name' 
+    $update_sql = "UPDATE users SET
+                    username = '$username',
+                    gender = '$gender',
+                    phone = '$phone',
+                    birthday = '$birthday',
+                    signature = '$signature',
+                    avatar = '$avatar_name'
                   WHERE id = $my_id";
 
     if ($conn->query($update_sql)) {
@@ -61,15 +60,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .edit-container { max-width: 600px; margin: 30px auto; background: white; padding: 40px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
         .form-group { margin-bottom: 20px; }
         .form-group label { display: block; margin-bottom: 8px; font-weight: bold; color: #444; }
-        
+
         input[type="text"], input[type="date"], select, textarea {
             width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px;
         }
         textarea { height: 80px; resize: vertical; }
-        
+
         .avatar-section { text-align: center; margin-bottom: 30px; }
         .current-avatar { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #eee; cursor: pointer; }
-        
+
         .btn-group { display: flex; gap: 10px; margin-top: 30px; }
         .btn-save { flex: 2; background: #28a745; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 16px; }
         .btn-cancel { flex: 1; background: #eee; color: #666; text-align: center; padding: 12px; border-radius: 8px; text-decoration: none; }
@@ -78,15 +77,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
 
-<?php include 'header.php'; ?>
+<?php include __DIR__ . '/../includes/header.php'; ?>
 
 <div class="edit-container">
     <h2 style="text-align: center; margin-bottom: 30px; color: #333;">编辑个人资料</h2>
-    
+
     <form action="" method="POST" enctype="multipart/form-data">
         <div class="avatar-section">
             <label for="avatar-input">
-                <img src="uploads/avatars/<?php echo $user['avatar'] ?: 'default.png'; ?>" class="current-avatar" id="preview">
+                <img src="../uploads/avatars/<?php echo $user['avatar'] ?: 'default.png'; ?>" class="current-avatar" id="preview">
             </label>
             <p style="font-size: 12px; color: #999;">点击图片更换头像</p>
             <input type="file" name="avatar" id="avatar-input" accept="image/*" style="display: none;" onchange="showPreview(this)">

@@ -55,13 +55,13 @@ if (isset($_SESSION['user_id'])) {
         <?php if(isset($_SESSION['user_id'])): ?>
             <span style="font-size: 14px;">你好，<strong><?php echo htmlspecialchars($_SESSION['username']); ?></strong></span>
             <?php if(isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
-                <a href="admin.php" class="admin-link">⚙️ 管理后台</a>
+                <a href="pages/admin.php" class="admin-link">⚙️ 管理后台</a>
             <?php endif; ?>
-            <a href="profile.php" style="color: #007bff;">个人中心</a>
-            <a href="logout.php" style="color: #dc3545;">退出</a>
+            <a href="pages/profile.php" style="color: #007bff;">个人中心</a>
+            <a href="pages/logout.php" style="color: #dc3545;">退出</a>
         <?php else: ?>
-            <a href="login.php" style="color: #007bff;">登录</a>
-            <a href="register.php" class="btn-reg">注册账号</a>
+            <a href="pages/login.php" style="color: #007bff;">登录</a>
+            <a href="pages/register.php" class="btn-reg">注册账号</a>
         <?php endif; ?>
     </div>
 </nav>
@@ -69,7 +69,7 @@ if (isset($_SESSION['user_id'])) {
 <div class="main-content">
     <div class="pub-section">
         <h2>🌈 分享你的见解</h2>
-        <a href="publish.php" class="goto-pub-btn">+ 发布图文帖子</a>
+        <a href="pages/publish.php" class="goto-pub-btn">+ 发布图文帖子</a>
     </div>
     
     <hr style="margin-bottom: 30px; border: 0; border-top: 1px solid #eee;">
@@ -91,7 +91,7 @@ if (isset($_SESSION['user_id'])) {
                 $clean_text = strip_tags($row['content']);
                 $excerpt = mb_substr($clean_text, 0, 100) . (mb_strlen($clean_text) > 100 ? '...' : '');
                 
-                echo '<div class="post-card" onclick="location.href=\'post.php?id=' . $row['id'] . '\'">';
+                echo '<div class="post-card" onclick="location.href=\'pages/post.php?id=' . $row['id'] . '\'">';
                 // 使用统一后的 username 展示
                 echo '    <div class="post-title">' . htmlspecialchars($row['username']) . ' 的分享</div>';
                 echo '    <div class="post-excerpt">' . $excerpt . '</div>';

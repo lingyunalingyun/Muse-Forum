@@ -90,20 +90,20 @@ $is_logged_in = isset($_SESSION['user_id']);
 </style>
 
 <nav class="main-navbar">
-    <a href="index.php" class="nav-logo">
+    <a href="../index.php" class="nav-logo">
         <span style="margin-right:8px;">🌟</span> 社区论坛
     </a>
 
     <div class="nav-links">
-        
-        <form action="search.php" method="GET" class="nav-search">
+
+        <form action="../search.php" method="GET" class="nav-search">
             <input type="text" name="keyword" placeholder="搜索帖子...">
             <button type="submit" style="border:none; background:none; cursor:pointer;">🔍</button>
         </form>
 
-        <a href="chat.php" class="nav-item">💬 聊天</a>
+        <a href="../chat.php" class="nav-item">💬 聊天</a>
 
-        <a href="inventory.php" class="nav-item">🎒 背包</a>
+        <a href="../inventory.php" class="nav-item">🎒 背包</a>
 
         <?php if ($current_role === 'admin'): ?>
             <a href="admin.php" class="nav-item admin-tag">🛠️ 帖子管理</a>
@@ -111,8 +111,8 @@ $is_logged_in = isset($_SESSION['user_id']);
 
         <?php if ($is_logged_in): ?>
             <a href="profile.php" class="nav-item" style="font-weight: bold;">
-                <img src="uploads/avatars/<?php echo $_SESSION['avatar'] ?? 'default.png'; ?>" 
-                     class="user-avatar-small" 
+                <img src="../uploads/avatars/<?php echo $_SESSION['avatar'] ?? 'default.png'; ?>"
+                     class="user-avatar-small"
                      onerror="this.src='https://via.placeholder.com/28'">
                 <?php echo htmlspecialchars($_SESSION['username']); ?>
             </a>

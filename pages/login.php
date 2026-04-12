@@ -17,7 +17,7 @@
 <body>
     <div class="login-card">
         <h2>用户登录</h2>
-        <form action="auth.php" method="POST">
+        <form action="../actions/auth.php" method="POST">
             <input type="hidden" name="action" value="login">
             <input type="text" name="identity" placeholder="邮箱 / 系统ID / 用户名" required>
             <input type="password" name="password" placeholder="请输入密码" required>

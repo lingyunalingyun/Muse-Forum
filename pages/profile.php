@@ -1,18 +1,13 @@
 <?php
 session_start();
-
-$conn = new mysqli("localhost", "svh_b14f1q", "xrb23va4gs", "svh_b14f1q");
-$conn->set_charset("utf8mb4");
+require_once __DIR__ . '/../config.php';
 
 // --- 核心修复：动态获取要查看的用户 ID ---
 if (isset($_GET['id']) && intval($_GET['id']) > 0) {
-    // 如果 URL 传了 id (例如 profile.php?id=17)，则查看该用户
     $view_uid = intval($_GET['id']);
 } elseif (isset($_SESSION['user_id'])) {
-    // 如果没传 id，但用户登录了，则查看“我自己”
     $view_uid = $_SESSION['user_id'];
 } else {
-    // 既没传 id 也没登录，跳转到登录页
     header("Location: login.php");
     exit;
 }
@@ -23,7 +18,7 @@ $user = $user_res->fetch_assoc();
 $user_posts_res = $conn->query("SELECT id, title, content, created_at FROM posts WHERE user_id = $view_uid ORDER BY created_at DESC LIMIT 10");
 
 if (!$user) {
-    die("该用户不存在或已被注销。 <a href='index.php'>返回首页</a>");
+    die("该用户不存在或已被注销。 <a href='../index.php'>返回首页</a>");
 }
 
 // 2. 获取该用户的背包物品数据
@@ -45,10 +40,9 @@ $is_following = false;
 $my_id = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : 0;
 
 if ($my_id > 0 && $my_id != $view_uid) {
-    // 注意这里字段名要和你数据库图片一致：follower_id 和 followed_id
     $check_f = $conn->query("SELECT id FROM follows WHERE follower_id = $my_id AND followed_id = $view_uid");
     if ($check_f && $check_f->num_rows > 0) {
-        $is_following = true; // 数据库里有记录，说明是真的关注了
+        $is_following = true;
     }
 }
 ?>
@@ -61,38 +55,38 @@ if ($my_id > 0 && $my_id != $view_uid) {
     <style>
         body { background: #f0f2f5; font-family: "Microsoft YaHei", sans-serif; margin: 0; padding-bottom: 40px; }
         .profile-container { max-width: 800px; margin: 20px auto; }
-        
+
         /* 顶部资料卡 */
         .user-card { background: white; padding: 30px; border-radius: 15px; display: flex; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        
+
         /* 头像样式修复 */
-        .avatar { 
-            width: 100px; 
-            height: 100px; 
-            border-radius: 50%; 
-            margin-right: 25px; 
-            border: 4px solid #fff; 
-            box-shadow: 0 0 10px rgba(0,0,0,0.1); 
-            object-fit: cover; /* 重要：防止图片拉伸 */
+        .avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin-right: 25px;
+            border: 4px solid #fff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            object-fit: cover;
             display: block;
         }
 
         .user-info h2 { margin: 0 0 10px 0; display: flex; align-items: center; gap: 10px; }
         .role-badge { font-size: 12px; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
-        
+
         /* 数据统计栏 */
         .stats-bar { display: flex; background: white; margin-top: 15px; padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
         .stat-item { flex: 1; border-right: 1px solid #eee; }
         .stat-item:last-child { border: none; }
         .stat-item strong { font-size: 18px; color: #333; }
         .stat-item small { color: #999; }
-        
+
         /* 背包区域 */
         .inventory-section { background: white; margin-top: 15px; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
         .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 15px; }
         .item-slot { aspect-ratio: 1; background: #f8f9fa; border: 1px solid #eee; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; transition: 0.3s; }
         .item-slot:hover { border-color: #28a745; background: #fff; }
-        
+
         /* 按钮美化 */
         .btn-edit { font-size: 12px; color: #28a745; text-decoration: none; border: 1px solid #28a745; padding: 4px 12px; border-radius: 20px; transition: 0.3s; }
         .btn-edit:hover { background: #28a745; color: #fff; }
@@ -118,20 +112,20 @@ if ($my_id > 0 && $my_id != $view_uid) {
 </head>
 <body>
 
-<?php include 'header.php'; ?>
+<?php include __DIR__ . '/../includes/header.php'; ?>
 
 <div class="profile-container">
     <div class="user-card">
-        <img src="uploads/avatars/<?php echo $user['avatar'] ?: 'default.png'; ?>" 
-            class="avatar" 
-            style="cursor: pointer;" 
-            onclick="showFullImage(this.src)" 
+        <img src="../uploads/avatars/<?php echo $user['avatar'] ?: 'default.png'; ?>"
+            class="avatar"
+            style="cursor: pointer;"
+            onclick="showFullImage(this.src)"
             title="查看大图"
-            onerror="this.src='uploads/avatars/default.png'">
-        
+            onerror="this.src='../uploads/avatars/default.png'">
+
         <div class="user-info">
             <h2>
-                <?php echo htmlspecialchars($user['username']); ?> 
+                <?php echo htmlspecialchars($user['username']); ?>
                 <?php if(isset($user['role']) && $user['role'] === 'admin'): ?>
                     <span class="role-badge" style="background: #fff0f0; color: #d63031; border: 1px solid #ff7675;">管理员</span>
                 <?php else: ?>
@@ -147,7 +141,7 @@ if ($my_id > 0 && $my_id != $view_uid) {
             <?php if($is_mine): ?>
                 <a href="edit_profile.php" class="btn-edit">编辑个人资料</a>
             <?php else: ?>
-                <button class="btn-edit <?php echo $is_following ? 'following' : ''; ?>" 
+                <button class="btn-edit <?php echo $is_following ? 'following' : ''; ?>"
                         onclick="toggleFollow(<?php echo $user['id']; ?>)"
                         style="cursor: pointer; border: none; font-family: inherit;">
                     <?php echo $is_following ? '已关注' : '+ 关注'; ?>
@@ -178,7 +172,7 @@ if ($my_id > 0 && $my_id != $view_uid) {
     <div class="post-section">
     <h3 style="margin:0;">📝 <?php echo $is_mine ? '我的帖子' : 'TA的帖子'; ?></h3>
     <p style="font-size: 13px; color: #999; margin-top: 5px;">共发布了 <?php echo $post_count; ?> 篇内容</p>
-    
+
     <div class="post-list">
         <?php if($user_posts_res && $user_posts_res->num_rows > 0): ?>
             <?php while($p = $user_posts_res->fetch_assoc()): ?>
@@ -211,11 +205,11 @@ function toggleFollow(authorId) {
     if(myId === 0) return alert("请先登录");
     if(myId === authorId) return alert("不能关注自己");
 
-    let btn = event.currentTarget; 
+    let btn = event.currentTarget;
     let formData = new FormData();
     formData.append('following_id', authorId);
 
-    fetch('follow_toggle.php', { method: 'POST', body: formData })
+    fetch('../actions/follow_toggle.php', { method: 'POST', body: formData })
     .then(res => res.json())
     .then(data => {
         if(data.status === 'followed') {
@@ -227,14 +221,14 @@ function toggleFollow(authorId) {
         }
     })
     .catch(err => console.error('Error:', err));
-} // <--- 确保这个括号在这里闭合！
+}
 
 function showFullImage(src) {
     const overlay = document.getElementById('image-overlay');
     const fullImg = document.getElementById('full-image');
-    
-    fullImg.src = src; 
-    overlay.style.display = 'flex'; 
+
+    fullImg.src = src;
+    overlay.style.display = 'flex';
 }
 
 // 点击遮罩层关闭
@@ -251,6 +245,6 @@ document.addEventListener('keydown', function(e) {
 </script>
 </body>
 </html>
-<?php 
-$conn->close(); 
+<?php
+$conn->close();
 ?>

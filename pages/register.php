@@ -13,7 +13,7 @@
 <body>
     <div class="reg-card">
         <h2>创建新账号</h2>
-        <form action="auth.php" method="POST">
+        <form action="../actions/auth.php" method="POST">
             <input type="hidden" name="action" value="register">
             <input type="email" name="email" placeholder="注册邮箱" required>
             <input type="text" name="nickname" placeholder="显示昵称" required>

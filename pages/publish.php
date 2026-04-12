@@ -1,12 +1,12 @@
-<?php 
+<?php
 // 1. 开启 session 以获取登录状态
-session_start(); 
+session_start();
 
 // 2. 权限检查：确保用户已登录
-if(!isset($_SESSION['user_id'])) { 
-    header("Location: login.php"); 
-    exit; 
-} 
+if(!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -30,7 +30,7 @@ if(!isset($_SESSION['user_id'])) {
 <div class="editor-container">
     <h2>✍️ 创作你的帖子</h2>
     <div class="user-tip">当前身份：<strong><?php echo htmlspecialchars($_SESSION['username']); ?></strong></div>
-    
+
     <div id="editor-toolbar"></div>
     <div id="editor-text-area"></div>
     <button class="pub-btn" onclick="submitPost()">发布帖子</button>
@@ -42,15 +42,15 @@ if(!isset($_SESSION['user_id'])) {
 
     const editorConfig = {
         placeholder: '在此输入内容并支持拖拽上传图片...',
-        onChange(editor) { 
-            const html = editor.getHtml(); 
+        onChange(editor) {
+            const html = editor.getHtml();
         }
     };
 
     const editor = createEditor({
         selector: '#editor-text-area',
         config: editorConfig,
-        mode: 'simple' // 或 'default'
+        mode: 'simple'
     });
 
     const toolbar = createToolbar({
@@ -60,21 +60,18 @@ if(!isset($_SESSION['user_id'])) {
     });
 
     function submitPost() {
-        // 获取带图片标签的 HTML 内容
-        const content = editor.getHtml(); 
+        const content = editor.getHtml();
         if(editor.isEmpty()) return alert("内容不能为空");
 
         let formData = new FormData();
         formData.append('content', content);
 
-        // 提交至 save.php 处理
-        fetch('save.php', { method: 'POST', body: formData })
+        fetch('../actions/save.php', { method: 'POST', body: formData })
         .then(res => res.text())
         .then(data => {
             alert(data);
-            // 如果返回内容包含“成功”，则跳转回首页同步更新
             if(data.includes("成功")) {
-                window.location.href = 'index.php';
+                window.location.href = '../index.php';
             }
         })
         .catch(err => {

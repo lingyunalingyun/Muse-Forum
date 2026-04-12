@@ -1,35 +1,35 @@
 <?php
 session_start();
 // --- 1. 数据库连接与配置 ---
-require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/../config.php';
 
 // --- 2. 获取参数与身份 ---
 $my_id = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : 0;
 $pid = isset($_GET['id']) ? intval($_GET['id']) : 0;
 $my_role = $_SESSION['role'] ?? 'user';
-$sort = $_GET['sort'] ?? 'new'; 
+$sort = $_GET['sort'] ?? 'new';
 
-// --- 3. 获取帖子主体及作者详细信息 (修复了 author_id) ---
-$post_query = "SELECT p.*, 
+// --- 3. 获取帖子主体及作者详细信息 ---
+$post_query = "SELECT p.*,
                 u.id as author_id, u.username, u.avatar, u.role, u.level,
                 (SELECT COUNT(*) FROM posts WHERE user_id = u.id) as post_count,
                 (SELECT COUNT(*) FROM follows WHERE followed_id = u.id) as fans_count,
-                (CASE WHEN $my_id = 0 THEN 0 
-                      ELSE (SELECT COUNT(*) FROM follows WHERE follower_id = $my_id AND followed_id = u.id) 
+                (CASE WHEN $my_id = 0 THEN 0
+                      ELSE (SELECT COUNT(*) FROM follows WHERE follower_id = $my_id AND followed_id = u.id)
                  END) as is_following,
                 (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) as likes_count,
                 (SELECT COUNT(*) FROM post_favs WHERE post_id = p.id) as favs_count,
                 (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id AND user_id = $my_id) as my_like,
                 (SELECT COUNT(*) FROM post_favs WHERE post_id = p.id AND user_id = $my_id) as my_fav
-                FROM posts p 
-                JOIN users u ON p.user_id = u.id 
+                FROM posts p
+                JOIN users u ON p.user_id = u.id
                 WHERE p.id = $pid";
 $post_res = $conn->query($post_query);
 $post = ($post_res && $post_res->num_rows > 0) ? $post_res->fetch_assoc() : null;
 
 if (!$post) {
     $conn->close();
-    die("帖子不存在或已被删除。 <a href='index.php'>返回首页</a>");
+    die("帖子不存在或已被删除。 <a href='../index.php'>返回首页</a>");
 }
 
 // --- 4. 楼层逻辑准备 ---
@@ -42,16 +42,16 @@ if ($floor_res) {
     }
 }
 
-// --- 5. 获取评论列表 (增加 c.user_id 用于跳转) ---
+// --- 5. 获取评论列表 ---
 $order_sql = ($sort === 'hot') ? "c.likes DESC, c.id DESC" : "c.id DESC";
 $comment_sql = "SELECT c.*, u.username as author_name, u.avatar,
                 u2.username as target_name,
                 (SELECT COUNT(*) FROM comment_likes WHERE comment_id = c.id AND user_id = $my_id) as my_like
-                FROM comments c 
-                JOIN users u ON c.user_id = u.id 
+                FROM comments c
+                JOIN users u ON c.user_id = u.id
                 LEFT JOIN comments c2 ON c.parent_id = c2.id
                 LEFT JOIN users u2 ON c2.user_id = u2.id
-                WHERE c.post_id = $pid 
+                WHERE c.post_id = $pid
                 ORDER BY c.is_top DESC, $order_sql";
 $c_res = $conn->query($comment_sql);
 $total_comments = $c_res ? $c_res->num_rows : 0;
@@ -91,7 +91,6 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
         .filter-bar a.active { color: #28a745; font-weight: bold; border-bottom: 2px solid #28a745; }
         textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; resize: none; font-family: inherit; }
         .comment-item { display: flex; gap: 12px; padding: 20px 15px; border-bottom: 1px solid #f2f2f2; }
-        /* 修复：置顶特殊背景色 */
         .is-top-style { background: #fffdf5; border-left: 4px solid #f1c40f; }
         .top-badge { background: #f1c40f; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 5px; }
         .reply-target { color: #1976d2; margin-left: 5px; font-size: 13px; font-weight: normal; }
@@ -106,12 +105,12 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
         .like-btn.active { color: #ff7675; font-weight: bold; }
         .action-item { font-size: 16px; color: #666; transition: 0.3s; }
         .action-item.active { color: #ff7675; font-weight: bold; }
-        .action-item.active #fav-icon { color: #f1c40f; } /* 收藏亮黄色 */
+        .action-item.active #fav-icon { color: #f1c40f; }
     </style>
 </head>
 <body>
 
-<?php include 'header.php'; ?>
+<?php include __DIR__ . '/../includes/header.php'; ?>
 
 <div class="container">
     <main class="post-main">
@@ -126,18 +125,18 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
                 <button class="btn-post-del" onclick="deletePost(<?php echo $pid; ?>)">删除帖子</button>
             <?php endif; ?>
         </div>
-        
+
         <div class="post-content">
             <?php echo $post['content']; ?>
         </div>
 
         <div class="post-actions" style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; display: flex; gap: 20px;">
-            <div class="action-item <?php echo $post['my_like'] ? 'active' : ''; ?>" 
+            <div class="action-item <?php echo $post['my_like'] ? 'active' : ''; ?>"
                 onclick="togglePostAction('like')" style="cursor:pointer;">
                 <span id="like-icon"><?php echo $post['my_like'] ? '❤️' : '🤍'; ?></span> 赞 (<span id="like-count"><?php echo $post['likes_count']; ?></span>)
             </div>
-    
-            <div class="action-item <?php echo $post['my_fav'] ? 'active' : ''; ?>" 
+
+            <div class="action-item <?php echo $post['my_fav'] ? 'active' : ''; ?>"
                 onclick="togglePostAction('fav')" style="cursor:pointer;">
                 <span id="fav-icon"><?php echo $post['my_fav'] ? '⭐' : '☆'; ?></span> 收藏 (<span id="fav-count"><?php echo $post['favs_count']; ?></span>)
             </div>
@@ -161,7 +160,7 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
                 <?php while($c = $c_res->fetch_assoc()): ?>
                 <div class="comment-item <?php echo $c['is_top'] ? 'is-top-style' : ''; ?>" id="comment-<?php echo $c['id']; ?>">
                     <a href="profile.php?id=<?php echo $c['user_id']; ?>">
-                        <img src="uploads/avatars/<?php echo $c['avatar']; ?>" class="c-avatar" onerror="this.src='https://via.placeholder.com/42'">
+                        <img src="../uploads/avatars/<?php echo $c['avatar']; ?>" class="c-avatar" onerror="this.src='https://via.placeholder.com/42'">
                     </a>
                     <div class="c-body">
                         <div class="c-header">
@@ -205,7 +204,7 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
     <aside class="post-sidebar">
         <div class="author-card">
             <a href="profile.php?id=<?php echo $post['author_id']; ?>">
-                <img src="uploads/avatars/<?php echo $post['avatar'] ?: 'default.png'; ?>" class="author-avatar">
+                <img src="../uploads/avatars/<?php echo $post['avatar'] ?: 'default.png'; ?>" class="author-avatar">
             </a>
             <a href="profile.php?id=<?php echo $post['author_id']; ?>" class="author-name">
                 <?php echo htmlspecialchars($post['username']); ?>
@@ -232,8 +231,8 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
             </div>
 
             <?php if($post['author_id'] != $my_id): ?>
-                <button id="follow-btn" 
-                        class="btn-follow <?php echo $post['is_following'] ? 'follow-yet' : 'follow-add'; ?>" 
+                <button id="follow-btn"
+                        class="btn-follow <?php echo $post['is_following'] ? 'follow-yet' : 'follow-add'; ?>"
                         onclick="toggleFollow(<?php echo $post['author_id']; ?>)">
                     <?php echo $post['is_following'] ? '已关注' : '+ 关注作者'; ?>
                 </button>
@@ -253,7 +252,7 @@ function toggleFollow(authorId) {
     let btn = document.getElementById('follow-btn');
     let formData = new FormData();
     formData.append('following_id', authorId);
-    fetch('follow_toggle.php', { method: 'POST', body: formData })
+    fetch('../actions/follow_toggle.php', { method: 'POST', body: formData })
     .then(res => res.json())
     .then(data => {
         btn.innerText = (data.status === 'followed') ? '已关注' : '+ 关注作者';
@@ -270,7 +269,7 @@ function submitComment(parentId) {
     formData.append('post_id', pid);
     formData.append('parent_id', parentId);
     formData.append('content', val);
-    fetch('comment_save.php', { method: 'POST', body: formData }).then(() => location.reload());
+    fetch('../actions/comment_save.php', { method: 'POST', body: formData }).then(() => location.reload());
 }
 
 function toggleReplyBox(id) {
@@ -281,22 +280,22 @@ function toggleReplyBox(id) {
 function likeComment(id) {
     let formData = new FormData();
     formData.append('cid', id);
-    fetch('comment_like.php', { method: 'POST', body: formData }).then(() => location.reload());
+    fetch('../actions/comment_like.php', { method: 'POST', body: formData }).then(() => location.reload());
 }
 
 function setTop(cid) {
-    fetch('comment_top.php?cid=' + cid + '&pid=' + pid).then(() => location.reload());
+    fetch('../actions/comment_top.php?cid=' + cid + '&pid=' + pid).then(() => location.reload());
 }
 
 function deletePost(id) {
     if(confirm("确定彻底删除该帖子吗？")) {
-        fetch('post_delete.php?id=' + id).then(() => location.href='index.php');
+        fetch('../actions/post_delete.php?id=' + id).then(() => location.href='../index.php');
     }
 }
 
 function deleteComment(id) {
     if(confirm("确定删除该评论吗？")) {
-        fetch('comment_delete.php?id=' + id).then(() => location.reload());
+        fetch('../actions/comment_delete.php?id=' + id).then(() => location.reload());
     }
 }
 
@@ -305,10 +304,9 @@ function togglePostAction(type) {
 
     let formData = new FormData();
     formData.append('pid', pid);
-    formData.append('type', type); // 'like' 或 'fav'
+    formData.append('type', type);
 
-    // 假设你有一个 post_action.php 处理点赞和收藏
-    fetch('post_action.php', { method: 'POST', body: formData })
+    fetch('../actions/post_action.php', { method: 'POST', body: formData })
     .then(res => res.json())
     .then(data => {
         if(data.status === 'success') {
@@ -325,7 +323,7 @@ function togglePostAction(type) {
 </script>
 </body>
 </html>
-<?php 
+<?php
 if ($c_res) $c_res->free();
-$conn->close(); 
+$conn->close();
 ?>

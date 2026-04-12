@@ -4,11 +4,11 @@ session_start();
 // 核心安全检查：如果没登录，或者登录了但不是 admin，直接踢出去
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     header("Content-Type: text/html; charset=utf-8");
-    die("<h3>🚫 权限不足</h3>你不是管理员，无法进入后台。 <a href='index.php'>返回主页</a>");
+    die("<h3>🚫 权限不足</h3>你不是管理员，无法进入后台。 <a href='../index.php'>返回主页</a>");
 }
 
 // 1. 数据库配置
-require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/../config.php';
 
 // --- 【核心逻辑：处理管理操作】 ---
 if (isset($_GET['action']) && isset($_GET['id'])) {
@@ -16,7 +16,7 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
     $action = $_GET['action'];
 
     if ($action == 'approve') {
-        // 审核通过：将状态改为“已发布”
+        // 审核通过：将状态改为"已发布"
         $conn->query("UPDATE posts SET status = '已发布' WHERE id = $id");
     } elseif ($action == 'delete') {
         // 删除：直接从数据库抹除
@@ -43,19 +43,19 @@ $result = $conn->query($sql);
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { border: 1px solid #eee; padding: 12px; text-align: left; vertical-align: top; }
         th { background-color: #f8f9fa; color: #666; }
-        
-        .content-preview { 
-            max-height: 200px; 
-            overflow-y: auto; 
-            font-size: 14px; 
+
+        .content-preview {
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 14px;
             line-height: 1.6;
             background: #fdfdfd;
             padding: 10px;
             border-radius: 4px;
         }
-        .content-preview img { 
-            max-width: 150px; 
-            height: auto; 
+        .content-preview img {
+            max-width: 150px;
+            height: auto;
             border: 1px solid #eee;
             margin: 5px;
         }
@@ -73,8 +73,8 @@ $result = $conn->query($sql);
 <body>
     <div class="container">
         <h2>网站内容管理中心</h2>
-        <p>管理员：<strong><?php echo htmlspecialchars($_SESSION['username']); ?></strong> | <a href="index.php">返回主页</a></p>
-        
+        <p>管理员：<strong><?php echo htmlspecialchars($_SESSION['username']); ?></strong> | <a href="../index.php">返回主页</a></p>
+
         <table>
             <thead>
                 <tr>
