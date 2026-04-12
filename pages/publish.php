@@ -31,6 +31,9 @@ if(!isset($_SESSION['user_id'])) {
     <h2>✍️ 创作你的帖子</h2>
     <div class="user-tip">当前身份：<strong><?php echo htmlspecialchars($_SESSION['username']); ?></strong></div>
 
+    <input type="text" id="post-title" placeholder="请输入帖子标题（必填）"
+           style="width:100%; padding:12px; font-size:16px; border:1px solid #ddd; border-radius:6px; box-sizing:border-box; margin-bottom:15px; outline:none;"
+           onfocus="this.style.borderColor='#28a745'" onblur="this.style.borderColor='#ddd'">
     <div id="editor-toolbar"></div>
     <div id="editor-text-area"></div>
     <button class="pub-btn" onclick="submitPost()">发布帖子</button>
@@ -60,10 +63,13 @@ if(!isset($_SESSION['user_id'])) {
     });
 
     function submitPost() {
+        const title = document.getElementById('post-title').value.trim();
+        if(!title) return alert("标题不能为空");
         const content = editor.getHtml();
         if(editor.isEmpty()) return alert("内容不能为空");
 
         let formData = new FormData();
+        formData.append('title', title);
         formData.append('content', content);
 
         fetch('../actions/save.php', { method: 'POST', body: formData })

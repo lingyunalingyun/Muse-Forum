@@ -60,7 +60,7 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title><?php echo htmlspecialchars($post['username']); ?> 的动态</title>
+    <title><?php echo htmlspecialchars(!empty($post['title']) ? $post['title'] : $post['username'] . ' 的动态'); ?></title>
     <style>
         body { background: #f4f7f6; font-family: "Microsoft YaHei", sans-serif; margin: 0; color: #333; }
         .container { max-width: 1100px; margin: 20px auto; display: flex; gap: 20px; padding: 0 15px; align-items: flex-start; }
@@ -116,10 +116,18 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
     <main class="post-main">
         <div class="post-header">
             <div>
-                <h2 style="margin:0;"><?php echo htmlspecialchars($post['username']); ?> 的动态</h2>
-                <div style="font-size: 13px; color: #999; margin-top: 8px;">
-                    发布于：<?php echo date('Y-m-d H:i', strtotime($post['created_at'])); ?>
-                </div>
+                <?php if(!empty($post['title'])): ?>
+                    <h2 style="margin:0;"><?php echo htmlspecialchars($post['title']); ?></h2>
+                    <div style="font-size: 13px; color: #999; margin-top: 6px;">
+                        <a href="profile.php?id=<?php echo $post['author_id']; ?>" style="color:#28a745; text-decoration:none;"><?php echo htmlspecialchars($post['username']); ?></a>
+                        · 发布于：<?php echo date('Y-m-d H:i', strtotime($post['created_at'])); ?>
+                    </div>
+                <?php else: ?>
+                    <h2 style="margin:0;"><?php echo htmlspecialchars($post['username']); ?> 的动态</h2>
+                    <div style="font-size: 13px; color: #999; margin-top: 8px;">
+                        发布于：<?php echo date('Y-m-d H:i', strtotime($post['created_at'])); ?>
+                    </div>
+                <?php endif; ?>
             </div>
             <?php if($post['user_id'] == $my_id || $my_role == 'admin'): ?>
                 <button class="btn-post-del" onclick="deletePost(<?php echo $pid; ?>)">删除帖子</button>

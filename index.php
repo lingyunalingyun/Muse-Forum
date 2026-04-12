@@ -77,11 +77,10 @@ if (isset($_SESSION['user_id'])) {
     <h3>✨ 精选内容</h3>
     <div id="feed">
         <?php
-        // 4. 查询已发布内容 - 已将 u.nickname 统一修改为 u.username
-        $sql = "SELECT p.id, p.content, p.created_at, u.username 
-                FROM posts p 
-                LEFT JOIN users u ON p.user_id = u.id 
-                WHERE p.status = '已发布' 
+        $sql = "SELECT p.id, p.title, p.content, p.created_at, u.username
+                FROM posts p
+                LEFT JOIN users u ON p.user_id = u.id
+                WHERE p.status = '已发布'
                 ORDER BY p.id DESC";
         $result = $conn->query($sql);
 
@@ -90,10 +89,10 @@ if (isset($_SESSION['user_id'])) {
                 // 生成摘要
                 $clean_text = strip_tags($row['content']);
                 $excerpt = mb_substr($clean_text, 0, 100) . (mb_strlen($clean_text) > 100 ? '...' : '');
-                
+                $display_title = !empty($row['title']) ? $row['title'] : $row['username'] . ' 的分享';
+
                 echo '<div class="post-card" onclick="location.href=\'pages/post.php?id=' . $row['id'] . '\'">';
-                // 使用统一后的 username 展示
-                echo '    <div class="post-title">' . htmlspecialchars($row['username']) . ' 的分享</div>';
+                echo '    <div class="post-title">' . htmlspecialchars($display_title) . '</div>';
                 echo '    <div class="post-excerpt">' . $excerpt . '</div>';
                 echo '    <div class="post-meta">';
                 echo '        <span>作者：<span class="author-info">' . htmlspecialchars($row['username']) . '</span></span>';
