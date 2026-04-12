@@ -7,9 +7,9 @@ require_once __DIR__ . '/config.php';
 
 // 3. 实时身份同步逻辑 - 已将 nickname 统一修改为 username
 if (isset($_SESSION['user_id'])) {
-    $uid = $_SESSION['user_id'];
+    $uid = intval($_SESSION['user_id']);
     // 修正了之前代码中 u'username 的语法错误
-    $user_check = $conn->query("SELECT role, username FROM users WHERE id = '$uid'");
+    $user_check = $conn->query("SELECT role, username FROM users WHERE id = $uid");
     if ($user_data = $user_check->fetch_assoc()) {
         $_SESSION['role'] = $user_data['role']; 
         $_SESSION['username'] = $user_data['username']; 

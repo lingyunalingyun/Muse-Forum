@@ -97,7 +97,7 @@ $result = $conn->query($sql);
                     </td>
                     <td>
                         <div class="content-preview">
-                            <?php echo $row['content']; ?>
+                            <?php echo htmlspecialchars($row['content']); ?>
                         </div>
                     </td>
                     <td>

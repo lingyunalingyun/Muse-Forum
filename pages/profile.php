@@ -6,7 +6,7 @@ require_once __DIR__ . '/../config.php';
 if (isset($_GET['id']) && intval($_GET['id']) > 0) {
     $view_uid = intval($_GET['id']);
 } elseif (isset($_SESSION['user_id'])) {
-    $view_uid = $_SESSION['user_id'];
+    $view_uid = intval($_SESSION['user_id']);
 } else {
     header("Location: login.php");
     exit;
@@ -136,7 +136,7 @@ if ($my_id > 0 && $my_id != $view_uid) {
             <div style="margin-bottom: 12px;">
                 <small style="color: #999;">🎂 生日：<?php echo $user['birthday'] ?: "未设置"; ?></small>
                 <small style="color: #999; margin-left: 15px;">💰 积分：<?php echo $user['points']; ?></small>
-                <small style="color: #999; margin-left: 15px;">👶 性别：<?php echo $user['gender'] ?: "未设置" ?><small>
+                <small style="color: #999; margin-left: 15px;">👶 性别：<?php echo $user['gender'] ?: "未设置" ?></small>
             </div>
             <?php if($is_mine): ?>
                 <a href="edit_profile.php" class="btn-edit">编辑个人资料</a>

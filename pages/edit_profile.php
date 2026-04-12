@@ -24,7 +24,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $avatar_name = $user['avatar'];
     if (!empty($_FILES['avatar']['name'])) {
         $target_dir = __DIR__ . "/../uploads/avatars/";
-        $file_ext = pathinfo($_FILES["avatar"]["name"], PATHINFO_EXTENSION);
+        $file_ext = strtolower(pathinfo($_FILES["avatar"]["name"], PATHINFO_EXTENSION));
+        $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        if (!in_array($file_ext, $allowed_exts)) {
+            die("不支持的文件格式，仅允许上传 jpg/jpeg/png/gif/webp 格式的图片。");
+        }
         $avatar_name = "u_" . $my_id . "_" . time() . "." . $file_ext;
         move_uploaded_file($_FILES["avatar"]["tmp_name"], $target_dir . $avatar_name);
     }

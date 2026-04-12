@@ -2,7 +2,7 @@
 session_start();
 require_once __DIR__ . '/../config.php';
 
-$my_id = $_SESSION['user_id'] ?? 0;
+$my_id = intval($_SESSION['user_id'] ?? 0);
 $pid = intval($_POST['pid'] ?? 0);
 $type = $_POST['type'] ?? '';
 
@@ -20,7 +20,7 @@ if ($my_id && $pid && ($type == 'like' || $type == 'fav')) {
     }
 
     $res = $conn->query("SELECT COUNT(*) as count FROM $table WHERE post_id = $pid");
-    $new_count = $res->fetch_assoc()['count'];
+    $new_count = $res ? $res->fetch_assoc()['count'] : 0;
 
     echo json_encode(['status' => 'success', 'active' => $active, 'new_count' => $new_count]);
 }
