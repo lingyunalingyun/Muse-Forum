@@ -5,9 +5,17 @@ if (session_status() === PHP_SESSION_NONE) {
 $current_role = $_SESSION['role'] ?? 'user';
 $is_logged_in = isset($_SESSION['user_id']);
 
-// 自动识别路径深度，pages/ 子目录用 '../'，根目录用 ''
+// 自动识别路径深度
 $in_subdir = (strpos($_SERVER['PHP_SELF'], '/pages/') !== false);
 $base = $in_subdir ? '../' : '';
+
+// 未读消息数（只在有数据库连接时查询）
+$unread_count = 0;
+if ($is_logged_in && isset($conn)) {
+    $uid_h = intval($_SESSION['user_id']);
+    $n_res = $conn->query("SELECT COUNT(*) as cnt FROM notifications WHERE user_id = $uid_h AND is_read = 0");
+    if ($n_res) $unread_count = (int)$n_res->fetch_assoc()['cnt'];
+}
 ?>
 <style>
     .main-navbar {
@@ -44,6 +52,7 @@ $base = $in_subdir ? '../' : '';
         display: flex;
         align-items: center;
         gap: 5px;
+        position: relative;
     }
     .nav-item:hover { color: #28a745; }
     .admin-tag {
@@ -74,6 +83,24 @@ $base = $in_subdir ? '../' : '';
         object-fit: cover;
         background: #eee;
     }
+    .notif-badge {
+        position: absolute;
+        top: -7px;
+        right: -10px;
+        background: #e74c3c;
+        color: white;
+        border-radius: 10px;
+        min-width: 18px;
+        height: 18px;
+        font-size: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        padding: 0 4px;
+        box-sizing: border-box;
+        line-height: 1;
+    }
 </style>
 
 <nav class="main-navbar">
@@ -93,6 +120,12 @@ $base = $in_subdir ? '../' : '';
         <?php endif; ?>
 
         <?php if ($is_logged_in): ?>
+            <a href="<?= $base ?>pages/notifications.php" class="nav-item" title="消息通知" style="font-size:20px;">
+                🔔
+                <?php if ($unread_count > 0): ?>
+                    <span class="notif-badge"><?= $unread_count > 99 ? '99+' : $unread_count ?></span>
+                <?php endif; ?>
+            </a>
             <a href="<?= $base ?>pages/profile.php" class="nav-item" style="font-weight:bold;">
                 <img src="<?= $base ?>uploads/avatars/<?= htmlspecialchars($_SESSION['avatar'] ?? 'default.png') ?>"
                      class="user-avatar-small"

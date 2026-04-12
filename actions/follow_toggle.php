@@ -13,6 +13,8 @@ if ($my_id && $author_id && $my_id != $author_id) {
         $status = 'unfollowed';
     } else {
         $conn->query("INSERT INTO follows (follower_id, followed_id) VALUES ($my_id, $author_id)");
+        $conn->query("INSERT INTO notifications (user_id, from_user_id, type)
+                      VALUES ($author_id, $my_id, 'follow')");
         $status = 'followed';
     }
 

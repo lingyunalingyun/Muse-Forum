@@ -17,6 +17,15 @@ if ($my_id && $pid && ($type == 'like' || $type == 'fav')) {
     } else {
         $conn->query("INSERT INTO $table (post_id, user_id) VALUES ($pid, $my_id)");
         $active = true;
+
+        // 通知帖子作者
+        $pr = $conn->query("SELECT user_id FROM posts WHERE id = $pid");
+        $p_author = $pr ? (int)$pr->fetch_assoc()['user_id'] : 0;
+        if ($p_author && $p_author !== $my_id) {
+            $n_type = ($type === 'like') ? 'like_post' : 'fav_post';
+            $conn->query("INSERT INTO notifications (user_id, from_user_id, type, post_id)
+                          VALUES ($p_author, $my_id, '$n_type', $pid)");
+        }
     }
 
     $res = $conn->query("SELECT COUNT(*) as count FROM $table WHERE post_id = $pid");
