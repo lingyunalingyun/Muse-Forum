@@ -27,6 +27,8 @@ if(!isset($_SESSION['user_id'])) {
 </head>
 <body>
 
+<?php include __DIR__ . '/../includes/header.php'; ?>
+
 <div class="editor-container">
     <h2>✍️ 创作你的帖子</h2>
     <div class="user-tip">当前身份：<strong><?php echo htmlspecialchars($_SESSION['username']); ?></strong></div>

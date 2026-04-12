@@ -24,15 +24,6 @@ if (isset($_SESSION['user_id'])) {
     <style>
         body { background: #f4f7f6; font-family: "Microsoft YaHei", sans-serif; margin: 0; padding-bottom: 20px; }
         
-        /* 顶部导航栏样式 */
-        .navbar { background: #fff; padding: 10px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
-        .nav-logo { font-weight: bold; font-size: 18px; color: #28a745; text-decoration: none; }
-        .nav-user { display: flex; align-items: center; }
-        .nav-user a { text-decoration: none; font-size: 14px; margin-left: 15px; }
-        
-        .admin-link { color: #e67e22 !important; font-weight: bold; border: 1px solid #e67e22; padding: 3px 8px; border-radius: 4px; }
-        .btn-reg { background: #28a745; color: white !important; padding: 5px 12px; border-radius: 4px; }
-
         .main-content { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); max-width: 800px; margin: 30px auto; }
         
         /* 帖子卡片样式 */
@@ -49,22 +40,7 @@ if (isset($_SESSION['user_id'])) {
 </head>
 <body>
 
-<nav class="navbar">
-    <a href="index.php" class="nav-logo">🌟 社区展示墙</a>
-    <div class="nav-user">
-        <?php if(isset($_SESSION['user_id'])): ?>
-            <span style="font-size: 14px;">你好，<strong><?php echo htmlspecialchars($_SESSION['username']); ?></strong></span>
-            <?php if(isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
-                <a href="pages/admin.php" class="admin-link">⚙️ 管理后台</a>
-            <?php endif; ?>
-            <a href="pages/profile.php" style="color: #007bff;">个人中心</a>
-            <a href="pages/logout.php" style="color: #dc3545;">退出</a>
-        <?php else: ?>
-            <a href="pages/login.php" style="color: #007bff;">登录</a>
-            <a href="pages/register.php" class="btn-reg">注册账号</a>
-        <?php endif; ?>
-    </div>
-</nav>
+<?php include __DIR__ . '/includes/header.php'; ?>
 
 <div class="main-content">
     <div class="pub-section">
