@@ -1,8 +1,7 @@
 <?php
 // auth.php
 session_start();
-$conn = new mysqli("localhost", "svh_b14f1q", "xrb23va4gs", "svh_b14f1q");
-$conn->set_charset("utf8mb4");
+require_once __DIR__ . '/config.php';
 
 $action = $_POST['action'] ?? '';
 
