@@ -16,7 +16,7 @@
         <form action="../actions/auth.php" method="POST">
             <input type="hidden" name="action" value="register">
             <input type="email" name="email" placeholder="注册邮箱" required>
-            <input type="text" name="nickname" placeholder="显示昵称" required>
+            <input type="text" name="username" placeholder="显示昵称" required>
             <input type="password" name="password" placeholder="设置密码" required>
             <button type="submit">立即注册</button>
         </form>

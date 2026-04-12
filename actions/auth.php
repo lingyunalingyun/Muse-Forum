@@ -8,7 +8,7 @@ $action = $_POST['action'] ?? '';
 // --- 注册逻辑 ---
 if ($action == 'register') {
     $email = trim($conn->real_escape_string($_POST['email'] ?? ''));
-    $username = trim($conn->real_escape_string($_POST['nickname'] ?? ''));
+    $username = trim($conn->real_escape_string($_POST['username'] ?? ''));
     $password_raw = $_POST['password'] ?? '';
 
     if (empty($email) || empty($username) || empty($password_raw)) {
