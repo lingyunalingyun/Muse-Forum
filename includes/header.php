@@ -142,7 +142,7 @@ if ($is_logged_in && isset($conn)) {
             <a href="<?= $base ?>pages/profile.php" class="nav-item" style="font-weight:bold;">
                 <img src="<?= $base ?>uploads/avatars/<?= htmlspecialchars($_SESSION['avatar'] ?? 'default.png') ?>"
                      class="user-avatar-small"
-                     onerror="this.src='https://via.placeholder.com/28'">
+                     onerror="this.onerror=null;this.src='uploads/avatars/default.png'">
                 <?= htmlspecialchars($_SESSION['username']) ?>
             </a>
             <a href="<?= $base ?>pages/logout.php" class="nav-item" style="color:#999;">退出</a>

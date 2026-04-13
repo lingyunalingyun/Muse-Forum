@@ -116,7 +116,7 @@ $type_config = [
             <?php if ($n['from_avatar']): ?>
                 <img src="../uploads/avatars/<?= htmlspecialchars($n['from_avatar']) ?>"
                      class="notif-avatar"
-                     onerror="this.src='https://via.placeholder.com/44'">
+                     onerror="this.onerror=null;this.src='../uploads/avatars/default.png'">
             <?php else: ?>
                 <div class="notif-icon"><?= $cfg['icon'] ?></div>
             <?php endif; ?>

@@ -168,7 +168,7 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
                 <?php while($c = $c_res->fetch_assoc()): ?>
                 <div class="comment-item <?php echo $c['is_top'] ? 'is-top-style' : ''; ?>" id="comment-<?php echo $c['id']; ?>">
                     <a href="profile.php?id=<?php echo $c['user_id']; ?>">
-                        <img src="../uploads/avatars/<?php echo $c['avatar']; ?>" class="c-avatar" onerror="this.src='https://via.placeholder.com/42'">
+                        <img src="../uploads/avatars/<?php echo $c['avatar']; ?>" class="c-avatar" onerror="this.onerror=null;this.src='../uploads/avatars/default.png'">
                     </a>
                     <div class="c-body">
                         <div class="c-header">

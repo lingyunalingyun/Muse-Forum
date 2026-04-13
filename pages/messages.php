@@ -126,7 +126,7 @@ if ($other_id > 0) {
                    class="inbox-item <?= $item['id'] == $other_id ? 'active' : '' ?>">
                     <img src="../uploads/avatars/<?= htmlspecialchars($item['avatar'] ?: 'default.png') ?>"
                          class="inbox-avatar"
-                         onerror="this.src='https://via.placeholder.com/42'">
+                         onerror="this.onerror=null;this.src='../uploads/avatars/default.png'">
                     <div class="inbox-info">
                         <div class="inbox-name">
                             <span><?= htmlspecialchars($item['username']) ?></span>
@@ -147,7 +147,7 @@ if ($other_id > 0) {
             <div class="chat-header">
                 <a href="profile.php?id=<?= $other_user['id'] ?>">
                     <img src="../uploads/avatars/<?= htmlspecialchars($other_user['avatar'] ?: 'default.png') ?>"
-                         onerror="this.src='https://via.placeholder.com/36'">
+                         onerror="this.onerror=null;this.src='../uploads/avatars/default.png'">
                 </a>
                 <strong><?= htmlspecialchars($other_user['username']) ?></strong>
             </div>
@@ -161,7 +161,7 @@ if ($other_id > 0) {
                 <div class="msg-row <?= $is_sent ? 'sent' : 'received' ?>" id="msg-<?= $m['id'] ?>">
                     <?php if (!$is_sent): ?>
                         <img src="../uploads/avatars/<?= htmlspecialchars($m['avatar'] ?: 'default.png') ?>"
-                             class="msg-avatar" onerror="this.src='https://via.placeholder.com/32'">
+                             class="msg-avatar" onerror="this.onerror=null;this.src='../uploads/avatars/default.png'">
                     <?php endif; ?>
                     <div>
                         <div class="msg-bubble"><?= htmlspecialchars($m['content']) ?></div>
