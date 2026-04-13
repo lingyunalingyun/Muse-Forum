@@ -35,6 +35,9 @@ if (isset($_SESSION['user_id'])) {
             height: 100%;
             object-fit: cover;
             display: block;
+            transform: scale(1.08);
+            transition: transform 0.1s ease-out;
+            will-change: transform;
         }
         .hero-placeholder {
             color: #aaa;
@@ -165,6 +168,29 @@ if (isset($_SESSION['user_id'])) {
     }
     ?>
 </div>
+
+<script>
+(function() {
+    const hero = document.querySelector('.hero');
+    const img  = hero && hero.querySelector('img');
+    if (!img) return;
+
+    hero.addEventListener('mousemove', function(e) {
+        const rect   = hero.getBoundingClientRect();
+        const cx     = rect.width  / 2;
+        const cy     = rect.height / 2;
+        const dx     = (e.clientX - rect.left - cx) / cx; // -1 ~ 1
+        const dy     = (e.clientY - rect.top  - cy) / cy;
+        const moveX  = dx * 12; // 最大偏移 12px
+        const moveY  = dy * 6;
+        img.style.transform = `scale(1.08) translate(${moveX}px, ${moveY}px)`;
+    });
+
+    hero.addEventListener('mouseleave', function() {
+        img.style.transform = 'scale(1.08) translate(0, 0)';
+    });
+})();
+</script>
 
 <!-- 悬浮发布按钮 -->
 <?php if (isset($_SESSION['user_id'])): ?>
