@@ -40,6 +40,21 @@ if ($post_id > 0 && !empty($content)) {
             }
         }
 
+        // @mention 检测
+        preg_match_all('/@([^\s@]{1,20})/u', $content, $matches);
+        $mentioned_users = array_unique($matches[1]);
+        foreach ($mentioned_users as $mentioned_name) {
+            $safe_name = $conn->real_escape_string($mentioned_name);
+            $mr = $conn->query("SELECT id FROM users WHERE username = '$safe_name'");
+            if ($mr && $mr->num_rows > 0) {
+                $mentioned_id = (int)$mr->fetch_assoc()['id'];
+                if ($mentioned_id !== $user_id) {
+                    $conn->query("INSERT INTO notifications (user_id, from_user_id, type, post_id, comment_id)
+                                  VALUES ($mentioned_id, $user_id, 'mention', $post_id, $new_cid)");
+                }
+            }
+        }
+
         echo "success";
     } else {
         echo "错误: " . $conn->error;

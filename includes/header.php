@@ -120,20 +120,7 @@ if ($is_logged_in && isset($conn)) {
         <?php endif; ?>
 
         <?php if ($is_logged_in): ?>
-            <?php
-            $unread_msg = 0;
-            if (isset($conn)) {
-                $msg_res = $conn->query("SELECT COUNT(*) as cnt FROM messages WHERE to_user_id = $uid_h AND is_read = 0");
-                if ($msg_res) $unread_msg = (int)$msg_res->fetch_assoc()['cnt'];
-            }
-            ?>
-            <a href="<?= $base ?>pages/messages.php" class="nav-item" title="私信" style="font-size:20px;">
-                💬
-                <?php if ($unread_msg > 0): ?>
-                    <span class="notif-badge"><?= $unread_msg > 99 ? '99+' : $unread_msg ?></span>
-                <?php endif; ?>
-            </a>
-            <a href="<?= $base ?>pages/notifications.php" class="nav-item" title="消息通知" style="font-size:20px;">
+            <a href="<?= $base ?>pages/notifications.php" class="nav-item" title="消息中心" style="font-size:20px;">
                 🔔
                 <?php if ($unread_count > 0): ?>
                     <span class="notif-badge"><?= $unread_count > 99 ? '99+' : $unread_count ?></span>
