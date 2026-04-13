@@ -71,6 +71,7 @@ $result = $conn->query($sql);
     </style>
 </head>
 <body>
+<?php include __DIR__ . '/../includes/header.php'; ?>
     <div class="container">
         <h2>网站内容管理中心</h2>
         <p>管理员：<strong><?php echo htmlspecialchars($_SESSION['username']); ?></strong> | <a href="../index.php">返回主页</a></p>

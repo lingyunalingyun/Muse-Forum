@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <title>欢迎回来 - 登录</title>
     <style>
-        body { background: #f4f7f6; font-family: "Microsoft YaHei", sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        body { background: #f4f7f6; font-family: "Microsoft YaHei", sans-serif; margin: 0; }
+        .login-wrap { display: flex; justify-content: center; align-items: center; min-height: calc(100vh - 60px); }
         .login-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); width: 350px; text-align: center; }
         h2 { color: #333; margin-bottom: 25px; }
         input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
@@ -15,6 +16,8 @@
     </style>
 </head>
 <body>
+<?php include __DIR__ . '/../includes/header.php'; ?>
+<div class="login-wrap">
     <div class="login-card">
         <h2>用户登录</h2>
         <form action="../actions/auth.php" method="POST">
@@ -27,5 +30,6 @@
             还没有账号？ <a href="register.php">立即注册</a>
         </div>
     </div>
+</div>
 </body>
 </html>

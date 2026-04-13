@@ -11,6 +11,7 @@ if ($conn->connect_error) {
 
 $conn->set_charset("utf8mb4");
 
+$title = $conn->real_escape_string(trim($_POST['title'] ?? ''));
 $content = $_POST['content'] ?? '';
 $safe_content = $conn->real_escape_string($content);
 
@@ -18,10 +19,14 @@ if (!isset($_SESSION['user_id'])) {
     die("【发布失败】请先登录账号后再操作！");
 }
 
+if (empty($title)) {
+    die("【发布失败】标题不能为空！");
+}
+
 $user_id = $_SESSION['user_id'];
 
 if (!empty($safe_content)) {
-    $sql = "INSERT INTO posts (user_id, content, status) VALUES ('$user_id', '$safe_content', '待审核')";
+    $sql = "INSERT INTO posts (user_id, title, content, status) VALUES ('$user_id', '$title', '$safe_content', '待审核')";
 
     if ($conn->query($sql) === TRUE) {
         echo "【发布成功】" . $_SESSION['username'] . "，您的内容已提交，请等待审核！";

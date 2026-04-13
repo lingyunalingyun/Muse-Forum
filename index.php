@@ -23,7 +23,6 @@ if (isset($_SESSION['user_id'])) {
     <title>网友分享展示墙</title>
     <style>
         body { background: #f4f7f6; font-family: "Microsoft YaHei", sans-serif; margin: 0; padding-bottom: 20px; }
-
         .main-content { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); max-width: 800px; margin: 30px auto; }
 
         /* 帖子卡片样式 */

@@ -17,6 +17,17 @@ if ($cid > 0) {
     } else {
         $conn->query("INSERT INTO comment_likes (user_id, comment_id) VALUES ($uid, $cid)");
         $conn->query("UPDATE comments SET likes = likes + 1 WHERE id = $cid");
+
+        // 通知评论作者
+        $cr = $conn->query("SELECT user_id, post_id FROM comments WHERE id = $cid");
+        $c_info = $cr ? $cr->fetch_assoc() : null;
+        if ($c_info && (int)$c_info['user_id'] !== $uid) {
+            $c_author  = (int)$c_info['user_id'];
+            $c_post_id = (int)$c_info['post_id'];
+            $conn->query("INSERT INTO notifications (user_id, from_user_id, type, post_id, comment_id)
+                          VALUES ($c_author, $uid, 'like_comment', $c_post_id, $cid)");
+        }
+
         echo "liked";
     }
 }
