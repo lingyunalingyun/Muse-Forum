@@ -83,14 +83,16 @@ $unread_msg      = (int)$conn->query("SELECT COUNT(*) as c FROM notifications WH
 $unread_interact = (int)$conn->query("SELECT COUNT(*) as c FROM notifications WHERE user_id=$my_id AND type!='message' AND is_read=0")->fetch_assoc()['c'];
 
 $type_config = [
-    'comment'      => ['icon' => '💬', 'text' => '评论了你的帖子'],
-    'reply'        => ['icon' => '↩️',  'text' => '回复了你的评论'],
-    'mention'      => ['icon' => '@',   'text' => '在评论中 @ 了你'],
-    'like_post'    => ['icon' => '❤️',  'text' => '赞了你的帖子'],
-    'fav_post'     => ['icon' => '⭐',  'text' => '收藏了你的帖子'],
-    'like_comment' => ['icon' => '👍',  'text' => '赞了你的评论'],
-    'follow'       => ['icon' => '👤',  'text' => '关注了你'],
-    'message'      => ['icon' => '✉️',  'text' => '给你发了一条私信'],
+    'comment'       => ['icon' => '💬', 'text' => '评论了你的帖子'],
+    'reply'         => ['icon' => '↩️',  'text' => '回复了你的评论'],
+    'mention'       => ['icon' => '@',   'text' => '在评论中 @ 了你'],
+    'like_post'     => ['icon' => '❤️',  'text' => '赞了你的帖子'],
+    'fav_post'      => ['icon' => '⭐',  'text' => '收藏了你的帖子'],
+    'like_comment'  => ['icon' => '👍',  'text' => '赞了你的评论'],
+    'follow'        => ['icon' => '👤',  'text' => '关注了你'],
+    'message'       => ['icon' => '✉️',  'text' => '给你发了一条私信'],
+    'post_review'   => ['icon' => '📋',  'text' => '提交了帖子，等待审核'],
+    'post_approved' => ['icon' => '✅',  'text' => '的帖子已通过审核'],
 ];
 ?>
 <!DOCTYPE html>

@@ -11,10 +11,15 @@ $base = $in_subdir ? '../' : '';
 
 // 未读消息数（只在有数据库连接时查询）
 $unread_count = 0;
+$pending_posts = 0;
 if ($is_logged_in && isset($conn)) {
     $uid_h = intval($_SESSION['user_id']);
     $n_res = $conn->query("SELECT COUNT(*) as cnt FROM notifications WHERE user_id = $uid_h AND is_read = 0");
     if ($n_res) $unread_count = (int)$n_res->fetch_assoc()['cnt'];
+    if ($current_role === 'admin') {
+        $p_res = $conn->query("SELECT COUNT(*) as cnt FROM posts WHERE status='待审核'");
+        if ($p_res) $pending_posts = (int)$p_res->fetch_assoc()['cnt'];
+    }
 }
 ?>
 <style>
@@ -116,7 +121,11 @@ if ($is_logged_in && isset($conn)) {
         </form>
 
         <?php if ($current_role === 'admin'): ?>
-            <a href="<?= $base ?>pages/admin.php" class="nav-item admin-tag">🛠️ 管理</a>
+            <a href="<?= $base ?>pages/admin.php" class="nav-item admin-tag">🛠️ 管理
+                <?php if ($pending_posts > 0): ?>
+                    <span class="notif-badge"><?= $pending_posts > 99 ? '99+' : $pending_posts ?></span>
+                <?php endif; ?>
+            </a>
         <?php endif; ?>
 
         <?php if ($is_logged_in): ?>

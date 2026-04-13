@@ -75,6 +75,24 @@ if ($draft_id > 0) {
             VALUES ($user_id, '$safe_title', '$safe_content', '$status', $is_notice, '$safe_attachments')";
     $insert_ok = $conn->query($sql);
     $new_id = $conn->insert_id ?: ($insert_ok ? -1 : 0);
+
+    // 新帖子待审核时，通知所有管理员
+    if ($status === '待审核' && $new_id) {
+        $post_id_for_notif = ($new_id === -1)
+            ? (int)$conn->query("SELECT MAX(id) c FROM posts WHERE user_id=$user_id")->fetch_assoc()['c']
+            : $new_id;
+        $admin_res = $conn->query("SELECT id FROM users WHERE role='admin'");
+        if ($admin_res) {
+            $now_n = date('Y-m-d H:i:s');
+            while ($ar = $admin_res->fetch_assoc()) {
+                $aid = intval($ar['id']);
+                if ($aid !== $user_id) {
+                    $conn->query("INSERT INTO notifications (user_id, from_user_id, type, post_id, created_at)
+                                  VALUES ($aid, $user_id, 'post_review', $post_id_for_notif, '$now_n')");
+                }
+            }
+        }
+    }
 }
 
 if ($new_id) {
