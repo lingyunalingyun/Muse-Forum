@@ -129,13 +129,7 @@ if (isset($_SESSION['user_id'])) {
 
 <!-- Hero 横幅 -->
 <div class="hero">
-    <?php if (file_exists(__DIR__ . '/uploads/banner/banner.jpg')): ?>
-        <img src="uploads/banner/banner.jpg" alt="banner">
-    <?php elseif (file_exists(__DIR__ . '/uploads/banner/banner.png')): ?>
-        <img src="uploads/banner/banner.png" alt="banner">
-    <?php else: ?>
-        <div class="hero-placeholder">📷 横幅图片占位 — 将图片放入 uploads/banner/ 并命名为 banner.jpg</div>
-    <?php endif; ?>
+    <img src="uploads/banner/banner.jpg" alt="banner">
 </div>
 
 <!-- 帖子列表 -->
@@ -181,13 +175,12 @@ if (isset($_SESSION['user_id'])) {
         const cy     = rect.height / 2;
         const dx     = (e.clientX - rect.left - cx) / cx; // -1 ~ 1
         const dy     = (e.clientY - rect.top  - cy) / cy;
-        const moveX  = dx * 12; // 最大偏移 12px
-        const moveY  = dy * 6;
-        img.style.transform = `scale(1.08) translate(${moveX}px, ${moveY}px)`;
+        const moveX  = dx * 12;
+        img.style.transform = `scale(1.08) translateX(${moveX}px)`;
     });
 
     hero.addEventListener('mouseleave', function() {
-        img.style.transform = 'scale(1.08) translate(0, 0)';
+        img.style.transform = 'scale(1.08) translateX(0)';
     });
 })();
 </script>
