@@ -105,7 +105,7 @@ $type_config = [
         .notif-wrap { max-width: 700px; margin: 30px auto; padding: 0 15px; }
 
         /* ── 私信布局 ── */
-        .msg-layout { max-width: 1000px; margin: 0 auto; padding: 0 15px; display: flex; gap: 15px; height: calc(100vh - 240px); }
+        .msg-layout { max-width: 1000px; margin: 0 auto; padding: 0 15px; display: flex; gap: 15px; height: calc(100vh - 270px); }
         .inbox { width: 280px; background: white; border-radius: 12px; overflow-y: auto; box-shadow: 0 2px 10px rgba(0,0,0,0.05); flex-shrink: 0; }
         .inbox-title { padding: 16px 20px; font-weight: bold; font-size: 15px; border-bottom: 1px solid #f0f0f0; }
         .inbox-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid #f9f9f9; text-decoration: none; color: #333; }
