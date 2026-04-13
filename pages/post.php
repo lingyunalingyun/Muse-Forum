@@ -155,6 +155,10 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
             animation: lbIn 0.2s ease-out;
         }
         @keyframes lbIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .btn-edit-post { background: white; color: #28a745; border: 1px solid #28a745; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 13px; transition: 0.2s; }
+        .btn-edit-post:hover { background: #f0fff4; }
+        .btn-edit-post:disabled { color: #bbb; border-color: #ddd; cursor: not-allowed; background: white; }
+        .edited-at-tag { font-size: 12px; color: #bbb; margin-top: 3px; font-style: italic; }
         .post-sidebar { width: 280px; position: sticky; top: 80px; }
         .author-card { background: white; padding: 25px 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); text-align: center; }
         .author-avatar { width: 85px; height: 85px; border-radius: 50%; object-fit: cover; border: 3px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.1); cursor: pointer; transition: 0.3s; }
@@ -234,6 +238,9 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
                         发布于：<?php echo date('Y-m-d H:i', strtotime($post['created_at'])); ?>
                     </div>
                 <?php endif; ?>
+                <?php if (!empty($post['edited_at'])): ?>
+                    <div class="edited-at-tag">已编辑 · <?= date('Y-m-d H:i', strtotime($post['edited_at'])) ?></div>
+                <?php endif; ?>
             </div>
             <div class="admin-actions">
                 <?php if($my_role == 'admin'): ?>
@@ -243,15 +250,31 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
                         <?= $post['is_recommend'] ? '⭐ 已推荐' : '☆ 推荐帖子' ?>
                     </button>
                 <?php endif; ?>
+                <?php if($post['user_id'] == $my_id): ?>
+                    <button id="edit-btn" class="btn-edit-post" onclick="toggleEditMode()">✏️ 编辑</button>
+                <?php endif; ?>
                 <?php if($post['user_id'] == $my_id || $my_role == 'admin'): ?>
                     <button class="btn-post-del" onclick="deletePost(<?php echo $pid; ?>)">删除帖子</button>
                 <?php endif; ?>
             </div>
         </div>
 
-        <div class="post-content">
+        <div class="post-content" id="post-content-view">
             <?php echo $post['content']; ?>
         </div>
+
+        <?php if($post['user_id'] == $my_id): ?>
+        <div id="edit-container" style="display:none; margin-top:16px; border:1px solid #eee; border-radius:8px; overflow:hidden;">
+            <input type="text" id="edit-title" value="<?= htmlspecialchars($post['title'] ?? '') ?>"
+                   style="width:100%; border:none; outline:none; font-size:20px; font-weight:bold; color:#222; padding:18px 20px 14px; font-family:inherit; border-bottom:1px solid #f0f0f0; box-sizing:border-box;">
+            <div id="edit-toolbar" style="border-bottom:1px solid #f0f0f0; padding:0 8px;"></div>
+            <div id="edit-text-area" style="min-height:280px; padding:4px 12px;"></div>
+            <div style="display:flex; gap:10px; padding:14px 20px; justify-content:flex-end; border-top:1px solid #f0f0f0; background:#fafafa;">
+                <button onclick="cancelEdit()" style="background:#eee;color:#666;border:none;padding:8px 22px;border-radius:6px;cursor:pointer;font-size:14px;">取消</button>
+                <button onclick="saveEdit()" style="background:#28a745;color:white;border:none;padding:8px 22px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:bold;">保存修改</button>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <?php
         // 附件展示
@@ -400,6 +423,9 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
     </aside>
 </div>
 
+<?php if($post['user_id'] == $my_id): ?>
+<script src="https://unpkg.com/@wangeditor/editor@latest/dist/index.js"></script>
+<?php endif; ?>
 <script>
 const pid = <?php echo $pid; ?>;
 const myId = <?php echo $my_id; ?>;
@@ -489,6 +515,82 @@ function togglePostAction(type) {
         }
     });
 }
+
+<?php if($post['user_id'] == $my_id):
+    $remaining_cooldown = 0;
+    if (!empty($post['edited_at'])) {
+        $remaining_cooldown = max(0, 600 - (time() - strtotime($post['edited_at'])));
+    }
+?>
+// ── 编辑模式 ──
+const postOriginalContent = <?= json_encode($post['content']) ?>;
+let remainingCooldown = <?= $remaining_cooldown ?>;
+let editEditor = null;
+
+(function countdown() {
+    const btn = document.getElementById('edit-btn');
+    if (!btn) return;
+    if (remainingCooldown > 0) {
+        const m = Math.floor(remainingCooldown / 60);
+        const s = remainingCooldown % 60;
+        btn.textContent = `冷却 ${m}:${s.toString().padStart(2,'0')}`;
+        btn.disabled = true;
+        remainingCooldown--;
+        setTimeout(countdown, 1000);
+    } else {
+        btn.textContent = '✏️ 编辑';
+        btn.disabled = false;
+    }
+})();
+
+function toggleEditMode() {
+    const container = document.getElementById('edit-container');
+    const view      = document.getElementById('post-content-view');
+    if (container.style.display === 'block') {
+        cancelEdit();
+    } else {
+        if (!editEditor) {
+            const { createEditor, createToolbar } = window.wangEditor;
+            editEditor = createEditor({
+                selector: '#edit-text-area',
+                html: postOriginalContent,
+                config: { placeholder: '编辑内容…' },
+                mode: 'default'
+            });
+            createToolbar({ editor: editEditor, selector: '#edit-toolbar', mode: 'default' });
+        }
+        container.style.display = 'block';
+        view.style.display = 'none';
+        document.getElementById('edit-btn').textContent = '← 取消编辑';
+    }
+}
+
+function cancelEdit() {
+    document.getElementById('edit-container').style.display = 'none';
+    document.getElementById('post-content-view').style.display = '';
+    document.getElementById('edit-btn').textContent = '✏️ 编辑';
+}
+
+async function saveEdit() {
+    const title   = document.getElementById('edit-title').value.trim();
+    const content = editEditor ? editEditor.getHtml() : '';
+    if (!title)                              { alert('标题不能为空'); return; }
+    if (!editEditor || editEditor.isEmpty()) { alert('内容不能为空'); return; }
+
+    const fd = new FormData();
+    fd.append('pid', pid);
+    fd.append('title', title);
+    fd.append('content', content);
+
+    try {
+        const res  = await fetch('../actions/post_edit.php', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.status === 'ok')       { location.reload(); }
+        else if (data.status === 'cooldown') { alert(data.msg); cancelEdit(); }
+        else                            { alert('保存失败：' + (data.msg || '未知错误')); }
+    } catch(e) { alert('网络错误，请重试'); }
+}
+<?php endif; ?>
 
 // 图片灯箱
 (function() {
