@@ -142,10 +142,15 @@ if ($my_id > 0 && $my_id != $view_uid) {
                 <a href="edit_profile.php" class="btn-edit">编辑个人资料</a>
             <?php else: ?>
                 <button class="btn-edit <?php echo $is_following ? 'following' : ''; ?>"
+                        id="follow-btn-profile"
                         onclick="toggleFollow(<?php echo $user['id']; ?>)"
                         style="cursor: pointer; border: none; font-family: inherit;">
                     <?php echo $is_following ? '已关注' : '+ 关注'; ?>
                 </button>
+                <?php if($my_id > 0): ?>
+                    <a href="messages.php?user_id=<?php echo $user['id']; ?>" class="btn-edit"
+                       style="margin-left: 8px; text-decoration: none;">✉️ 私信</a>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
     </div>
