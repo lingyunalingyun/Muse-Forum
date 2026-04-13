@@ -50,12 +50,10 @@ $draft   = (int)$conn->query("SELECT COUNT(*) c FROM posts WHERE status='草稿'
 
 // ── 过滤 ──
 $tab = $_GET['tab'] ?? 'all';
-$where = match($tab) {
-    'pending'   => "WHERE p.status='待审核'",
-    'published' => "WHERE p.status='已发布'",
-    'draft'     => "WHERE p.status='草稿'",
-    default     => ''
-};
+if ($tab === 'pending')        $where = "WHERE p.status='待审核'";
+elseif ($tab === 'published')  $where = "WHERE p.status='已发布'";
+elseif ($tab === 'draft')      $where = "WHERE p.status='草稿'";
+else                           $where = '';
 
 $sql = "SELECT p.id, p.title, p.content, p.status, p.created_at, p.approved_at,
                u.username AS author_name, u.userid AS author_uid,
@@ -194,12 +192,9 @@ if ($result) while ($r = $result->fetch_assoc()) $posts[] = $r;
         </div>
     <?php else: ?>
         <?php foreach ($posts as $p):
-            $status_cls = match($p['status']) {
-                '待审核' => 'status-pending',
-                '已发布' => 'status-ok',
-                '草稿'   => 'status-draft',
-                default  => 'status-draft'
-            };
+            if ($p['status'] === '待审核')     $status_cls = 'status-pending';
+            elseif ($p['status'] === '已发布') $status_cls = 'status-ok';
+            else                               $status_cls = 'status-draft';
             $plain_preview = mb_substr(strip_tags($p['content']), 0, 120);
             $ts = strtotime($p['created_at']);
             $diff = time() - $ts;
