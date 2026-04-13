@@ -148,7 +148,7 @@ if ($my_id > 0 && $my_id != $view_uid) {
                     <?php echo $is_following ? '已关注' : '+ 关注'; ?>
                 </button>
                 <?php if($my_id > 0): ?>
-                    <a href="messages.php?user_id=<?php echo $user['id']; ?>" class="btn-edit"
+                    <a href="notifications.php?tab=message&user_id=<?php echo $user['id']; ?>" class="btn-edit"
                        style="margin-left: 8px; text-decoration: none;">✉️ 私信</a>
                 <?php endif; ?>
             <?php endif; ?>
