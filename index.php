@@ -1,17 +1,12 @@
 <?php
-// 1. 必须在任何 HTML 输出之前开启 session
 session_start();
-
-// 2. 连接数据库
 require_once __DIR__ . '/config.php';
 
-// 3. 实时身份同步逻辑 - 已将 nickname 统一修改为 username
 if (isset($_SESSION['user_id'])) {
     $uid = intval($_SESSION['user_id']);
-    // 修正了之前代码中 u'username 的语法错误
     $user_check = $conn->query("SELECT role, username FROM users WHERE id = $uid");
     if ($user_data = $user_check->fetch_assoc()) {
-        $_SESSION['role'] = $user_data['role'];
+        $_SESSION['role']     = $user_data['role'];
         $_SESSION['username'] = $user_data['username'];
     }
 }
@@ -20,67 +15,180 @@ if (isset($_SESSION['user_id'])) {
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>网友分享展示墙</title>
+    <title>社区论坛</title>
     <style>
-        body { background: #f4f7f6; font-family: "Microsoft YaHei", sans-serif; margin: 0; padding-bottom: 20px; }
-        .main-content { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); max-width: 800px; margin: 30px auto; }
+        * { box-sizing: border-box; }
+        body { background: #f4f7f6; font-family: "Microsoft YaHei", sans-serif; margin: 0; padding-bottom: 80px; }
 
-        /* 帖子卡片样式 */
-        .post-card { background: #fff; margin-bottom: 20px; padding: 20px; border-radius: 8px; border: 1px solid #eee; cursor: pointer; transition: all 0.3s; }
-        .post-card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); border-color: #28a745; }
-        .post-title { font-size: 18px; font-weight: bold; color: #333; margin-bottom: 10px; }
-        .post-excerpt { color: #666; line-height: 1.6; margin-bottom: 15px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
-        .post-meta { font-size: 12px; color: #999; display: flex; justify-content: space-between; align-items: center; }
-        .author-info { color: #28a745; font-weight: bold; }
+        /* ── Hero 横幅 ── */
+        .hero {
+            background: linear-gradient(135deg, #1a7a3f 0%, #28a745 50%, #4fc878 100%);
+            color: white;
+            text-align: center;
+            padding: 60px 20px 50px;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: radial-gradient(circle at 60% 40%, rgba(255,255,255,0.08) 0%, transparent 60%);
+            pointer-events: none;
+        }
+        .hero h1 { font-size: 36px; margin: 0 0 12px; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+        .hero p  { font-size: 16px; margin: 0; opacity: 0.88; letter-spacing: 1px; }
+        .hero-stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 30px;
+        }
+        .hero-stat { text-align: center; }
+        .hero-stat strong { display: block; font-size: 24px; font-weight: bold; }
+        .hero-stat span   { font-size: 13px; opacity: 0.8; }
 
-        .pub-section { margin-bottom: 40px; text-align: center; }
-        .goto-pub-btn { background: #28a745; color: white; border: none; padding: 12px 40px; border-radius: 30px; cursor: pointer; font-weight: bold; font-size: 16px; text-decoration: none; display: inline-block; }
+        /* ── 内容区 ── */
+        .main-content {
+            max-width: 800px;
+            margin: 30px auto;
+            padding: 0 15px;
+        }
+        .section-title {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #eee;
+        }
+
+        /* ── 帖子卡片 ── */
+        .post-card {
+            background: white;
+            margin-bottom: 15px;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #eee;
+            cursor: pointer;
+            transition: all 0.25s;
+        }
+        .post-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.08); border-color: #28a745; }
+        .post-title   { font-size: 17px; font-weight: bold; color: #222; margin-bottom: 8px; }
+        .post-excerpt { color: #666; font-size: 14px; line-height: 1.6; margin-bottom: 12px;
+                        overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .post-meta    { font-size: 12px; color: #999; display: flex; justify-content: space-between; align-items: center; }
+        .author-info  { color: #28a745; font-weight: bold; }
+
+        /* ── 悬浮发布按钮 ── */
+        .fab {
+            position: fixed;
+            right: 32px;
+            bottom: 36px;
+            width: 54px;
+            height: 54px;
+            background: #28a745;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            text-decoration: none;
+            box-shadow: 0 4px 16px rgba(40,167,69,0.45);
+            transition: 0.25s;
+            z-index: 999;
+        }
+        .fab:hover { background: #218838; transform: scale(1.1); box-shadow: 0 6px 20px rgba(40,167,69,0.55); }
+        .fab-tip {
+            position: fixed;
+            right: 94px;
+            bottom: 47px;
+            background: rgba(0,0,0,0.65);
+            color: white;
+            font-size: 13px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            white-space: nowrap;
+            z-index: 999;
+        }
+        .fab:hover + .fab-tip,
+        .fab-wrap:hover .fab-tip { opacity: 1; }
+        .fab-wrap { position: fixed; right: 32px; bottom: 36px; z-index: 999; }
     </style>
 </head>
 <body>
 
 <?php include __DIR__ . '/includes/header.php'; ?>
 
-<div class="main-content">
-    <div class="pub-section">
-        <h2>🌈 分享你的见解</h2>
-        <a href="pages/publish.php" class="goto-pub-btn">+ 发布图文帖子</a>
-    </div>
-
-    <hr style="margin-bottom: 30px; border: 0; border-top: 1px solid #eee;">
-
-    <h3>✨ 精选内容</h3>
-    <div id="feed">
-        <?php
-        $sql = "SELECT p.id, p.title, p.content, p.created_at, u.username
-                FROM posts p
-                LEFT JOIN users u ON p.user_id = u.id
-                WHERE p.status = '已发布'
-                ORDER BY p.id DESC";
-        $result = $conn->query($sql);
-
-        if ($result && $result->num_rows > 0) {
-            while($row = $result->fetch_assoc()) {
-                // 生成摘要
-                $clean_text = strip_tags($row['content']);
-                $excerpt = mb_substr($clean_text, 0, 100) . (mb_strlen($clean_text) > 100 ? '...' : '');
-                $display_title = !empty($row['title']) ? $row['title'] : $row['username'] . ' 的分享';
-
-                echo '<div class="post-card" onclick="location.href=\'pages/post.php?id=' . $row['id'] . '\'">';
-                echo '    <div class="post-title">' . htmlspecialchars($display_title) . '</div>';
-                echo '    <div class="post-excerpt">' . $excerpt . '</div>';
-                echo '    <div class="post-meta">';
-                echo '        <span>作者：<span class="author-info">' . htmlspecialchars($row['username']) . '</span></span>';
-                echo '        <span>' . $row['created_at'] . '</span>';
-                echo '    </div>';
-                echo '</div>';
-            }
-        } else {
-            echo '<p style="text-align:center; color:#999; margin-top:20px;">暂无精选内容</p>';
-        }
-        ?>
+<!-- Hero 横幅 -->
+<div class="hero">
+    <h1>🌟 社区论坛</h1>
+    <p>分享见解 · 交流思想 · 结识朋友</p>
+    <?php
+    $stat_posts = (int)$conn->query("SELECT COUNT(*) as c FROM posts WHERE status='已发布'")->fetch_assoc()['c'];
+    $stat_users = (int)$conn->query("SELECT COUNT(*) as c FROM users")->fetch_assoc()['c'];
+    ?>
+    <div class="hero-stats">
+        <div class="hero-stat">
+            <strong><?= $stat_posts ?></strong>
+            <span>篇帖子</span>
+        </div>
+        <div class="hero-stat">
+            <strong><?= $stat_users ?></strong>
+            <span>位成员</span>
+        </div>
     </div>
 </div>
+
+<!-- 帖子列表 -->
+<div class="main-content">
+    <div class="section-title">✨ 精选内容</div>
+    <?php
+    $sql = "SELECT p.id, p.title, p.content, p.created_at, u.username
+            FROM posts p
+            LEFT JOIN users u ON p.user_id = u.id
+            WHERE p.status = '已发布'
+            ORDER BY p.id DESC";
+    $result = $conn->query($sql);
+
+    if ($result && $result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            $clean_text    = strip_tags($row['content']);
+            $excerpt       = mb_substr($clean_text, 0, 100) . (mb_strlen($clean_text) > 100 ? '...' : '');
+            $display_title = !empty($row['title']) ? $row['title'] : $row['username'] . ' 的分享';
+            echo '<div class="post-card" onclick="location.href=\'pages/post.php?id=' . $row['id'] . '\'">';
+            echo '  <div class="post-title">'   . htmlspecialchars($display_title) . '</div>';
+            echo '  <div class="post-excerpt">' . htmlspecialchars($excerpt) . '</div>';
+            echo '  <div class="post-meta">';
+            echo '    <span>作者：<span class="author-info">' . htmlspecialchars($row['username']) . '</span></span>';
+            echo '    <span>' . date('Y-m-d H:i', strtotime($row['created_at'])) . '</span>';
+            echo '  </div>';
+            echo '</div>';
+        }
+    } else {
+        echo '<p style="text-align:center;color:#bbb;padding:40px 0;">暂无内容，快来发第一篇吧～</p>';
+    }
+    ?>
+</div>
+
+<!-- 悬浮发布按钮 -->
+<?php if (isset($_SESSION['user_id'])): ?>
+<div class="fab-wrap">
+    <a href="pages/publish.php" class="fab" title="发布帖子">✍️</a>
+    <div class="fab-tip">发布帖子</div>
+</div>
+<?php endif; ?>
 
 </body>
 </html>
