@@ -123,6 +123,38 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
         .btn-recommend.active { background: #f6c90e; color: white; border-color: #f6c90e; }
         .btn-post-del { background: #ff7675; color: white; border: none; padding: 6px 15px; border-radius: 4px; cursor: pointer; }
         .post-content { font-size: 16px; line-height: 1.8; margin: 25px 0; min-height: 100px; }
+        .post-content img {
+            max-width: 240px;
+            max-height: 180px;
+            object-fit: cover;
+            border-radius: 6px;
+            cursor: zoom-in;
+            border: 1px solid #eee;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: inline-block;
+            vertical-align: middle;
+            margin: 4px;
+        }
+        .post-content img:hover { transform: scale(1.03); box-shadow: 0 4px 14px rgba(0,0,0,0.15); }
+        .img-lightbox {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.82);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            cursor: zoom-out;
+        }
+        .img-lightbox.open { display: flex; }
+        .img-lightbox img {
+            max-width: 92vw;
+            max-height: 90vh;
+            object-fit: contain;
+            border-radius: 6px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+            animation: lbIn 0.2s ease-out;
+        }
+        @keyframes lbIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         .post-sidebar { width: 280px; position: sticky; top: 80px; }
         .author-card { background: white; padding: 25px 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); text-align: center; }
         .author-avatar { width: 85px; height: 85px; border-radius: 50%; object-fit: cover; border: 3px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.1); cursor: pointer; transition: 0.3s; }
@@ -457,6 +489,24 @@ function togglePostAction(type) {
         }
     });
 }
+
+// 图片灯箱
+(function() {
+    const lb = document.createElement('div');
+    lb.className = 'img-lightbox';
+    lb.innerHTML = '<img id="lb-img" src="">';
+    document.body.appendChild(lb);
+
+    document.querySelector('.post-content').addEventListener('click', function(e) {
+        if (e.target.tagName === 'IMG') {
+            document.getElementById('lb-img').src = e.target.src;
+            lb.classList.add('open');
+        }
+    });
+
+    lb.addEventListener('click', function() { lb.classList.remove('open'); });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') lb.classList.remove('open'); });
+})();
 </script>
 </body>
 </html>
