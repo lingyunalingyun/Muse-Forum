@@ -63,6 +63,28 @@ if ($action == 'login') {
             $_SESSION['role'] = $user['role'];
             $_SESSION['avatar'] = $user['avatar'];
 
+            // ── 每日登录奖励 ──
+            $uid_db = (int)$user['id'];
+            $today  = date('Y-m-d');
+            $last   = $user['last_login_date'] ?? null;
+
+            if ($last !== $today) {
+                $yesterday   = date('Y-m-d', strtotime('-1 day'));
+                $cur_streak  = (int)($user['login_streak'] ?? 0);
+                $new_streak  = ($last === $yesterday) ? $cur_streak + 1 : 1;
+
+                $conn->query("UPDATE users
+                              SET points = points + 50,
+                                  last_login_date = '$today',
+                                  login_streak = $new_streak
+                              WHERE id = $uid_db");
+
+                $_SESSION['login_reward'] = [
+                    'points' => 50,
+                    'streak' => $new_streak
+                ];
+            }
+
             header("Location: ../index.php");
             exit;
         } else {

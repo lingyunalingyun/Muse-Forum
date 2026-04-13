@@ -66,6 +66,61 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
         .container { max-width: 1100px; margin: 20px auto; display: flex; gap: 20px; padding: 0 15px; align-items: flex-start; }
         .post-main { flex: 1; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); overflow: hidden; }
         .post-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+
+        /* ── 公告帖特殊样式 ── */
+        .post-main.is-notice {
+            border-top: 4px solid #f6a623;
+            box-shadow: 0 2px 16px rgba(246,166,35,0.18);
+        }
+        .notice-top-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, #fff8ee, #fff3e0);
+            border: 1px solid #fde8c4;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #a0621a;
+            font-weight: bold;
+        }
+        .notice-top-bar .top-badge {
+            color: white;
+            font-size: 12px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            flex-shrink: 0;
+        }
+        .notice-top-bar .top-badge.orange { background: linear-gradient(135deg, #f6a623, #e8821a); }
+        .notice-top-bar .top-badge.gold   { background: linear-gradient(135deg, #f6c90e, #e6a817); }
+        .post-main.is-notice .post-header { border-bottom-color: #fde8c4; }
+        .post-main.is-notice h2           { color: #c47010; }
+
+        /* ── 推荐帖特殊样式 ── */
+        .post-main.is-recommend {
+            border-top: 4px solid #f6c90e;
+            box-shadow: 0 2px 16px rgba(246,201,14,0.2);
+        }
+        .post-main.is-recommend .post-header { border-bottom-color: #ffe69c; }
+        .post-main.is-recommend h2           { color: #8a6d00; }
+
+        /* ── 管理员操作按钮 ── */
+        .admin-actions { display: flex; gap: 10px; align-items: center; }
+        .btn-recommend {
+            background: white;
+            color: #b8860b;
+            border: 1px solid #f6c90e;
+            padding: 6px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: 0.2s;
+        }
+        .btn-recommend:hover { background: #fffbea; }
+        .btn-recommend.active { background: #f6c90e; color: white; border-color: #f6c90e; }
         .btn-post-del { background: #ff7675; color: white; border: none; padding: 6px 15px; border-radius: 4px; cursor: pointer; }
         .post-content { font-size: 16px; line-height: 1.8; margin: 25px 0; min-height: 100px; }
         .post-sidebar { width: 280px; position: sticky; top: 80px; }
@@ -113,7 +168,26 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
 <?php include __DIR__ . '/../includes/header.php'; ?>
 
 <div class="container">
-    <main class="post-main">
+    <?php
+        $main_class = 'post-main';
+        if ($post['is_notice'])    $main_class .= ' is-notice';
+        if ($post['is_recommend']) $main_class .= ' is-recommend';
+    ?>
+    <main class="<?= $main_class ?>">
+
+        <?php if ($post['is_notice'] || $post['is_recommend']): ?>
+        <div class="notice-top-bar">
+            <?php if ($post['is_notice']): ?>
+                <span class="top-badge orange">📢 公告</span>
+                <span><?= $post['is_recommend'] ? '编辑推荐的重要公告' : '这是一条来自管理员的重要公告，请认真阅读' ?></span>
+                <a href="notices.php" style="margin-left:auto; color:#f6a623; text-decoration:none; font-size:12px; font-weight:normal; white-space:nowrap;">查看全部公告 →</a>
+            <?php else: ?>
+                <span class="top-badge gold">⭐ 编辑推荐</span>
+                <span>这篇内容经管理员审核推荐，值得一读</span>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
+
         <div class="post-header">
             <div>
                 <?php if(!empty($post['title'])): ?>
@@ -129,14 +203,57 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
                     </div>
                 <?php endif; ?>
             </div>
-            <?php if($post['user_id'] == $my_id || $my_role == 'admin'): ?>
-                <button class="btn-post-del" onclick="deletePost(<?php echo $pid; ?>)">删除帖子</button>
-            <?php endif; ?>
+            <div class="admin-actions">
+                <?php if($my_role == 'admin'): ?>
+                    <button id="rec-btn"
+                            class="btn-recommend <?= $post['is_recommend'] ? 'active' : '' ?>"
+                            onclick="toggleRecommend(<?= $pid ?>)">
+                        <?= $post['is_recommend'] ? '⭐ 已推荐' : '☆ 推荐帖子' ?>
+                    </button>
+                <?php endif; ?>
+                <?php if($post['user_id'] == $my_id || $my_role == 'admin'): ?>
+                    <button class="btn-post-del" onclick="deletePost(<?php echo $pid; ?>)">删除帖子</button>
+                <?php endif; ?>
+            </div>
         </div>
 
         <div class="post-content">
             <?php echo $post['content']; ?>
         </div>
+
+        <?php
+        // 附件展示
+        $att_data = [];
+        if (!empty($post['attachments'])) {
+            $att_data = json_decode($post['attachments'], true) ?: [];
+        }
+        if (!empty($att_data)):
+        $att_icons = ['pdf'=>'📄','doc'=>'📝','docx'=>'📝','xls'=>'📊','xlsx'=>'📊',
+                      'ppt'=>'📊','pptx'=>'📊','zip'=>'🗜️','rar'=>'🗜️','7z'=>'🗜️',
+                      'mp4'=>'🎬','mp3'=>'🎵','txt'=>'📃','png'=>'🖼️','jpg'=>'🖼️',
+                      'jpeg'=>'🖼️','gif'=>'🖼️','webp'=>'🖼️'];
+        ?>
+        <div style="margin-top:24px; padding:16px 20px; background:#fafafa; border-radius:8px; border:1px solid #eee;">
+            <div style="font-size:13px; color:#888; font-weight:bold; margin-bottom:12px;">📎 附件 (<?= count($att_data) ?>)</div>
+            <?php foreach ($att_data as $att):
+                $ext  = strtolower($att['ext'] ?? pathinfo($att['original'] ?? '', PATHINFO_EXTENSION));
+                $icon = $att_icons[$ext] ?? '📎';
+                $bytes = (int)($att['size'] ?? 0);
+                $size_str = $bytes < 1024*1024 ? round($bytes/1024,1).' KB' : round($bytes/1024/1024,1).' MB';
+            ?>
+            <a href="<?= htmlspecialchars($att['url'] ?? '#') ?>"
+               download="<?= htmlspecialchars($att['original'] ?? '') ?>"
+               style="display:flex; align-items:center; gap:10px; padding:8px 12px; background:white; border:1px solid #eee; border-radius:6px; text-decoration:none; color:#333; margin-bottom:8px; transition:0.2s;"
+               onmouseover="this.style.borderColor='#28a745';this.style.color='#28a745'"
+               onmouseout="this.style.borderColor='#eee';this.style.color='#333'">
+                <span style="font-size:20px;"><?= $icon ?></span>
+                <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px;"><?= htmlspecialchars($att['original'] ?? '') ?></span>
+                <span style="font-size:12px; color:#bbb; flex-shrink:0;"><?= $size_str ?></span>
+                <span style="font-size:12px; color:#28a745; flex-shrink:0;">⬇ 下载</span>
+            </a>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
 
         <div class="post-actions" style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; display: flex; gap: 20px;">
             <div class="action-item <?php echo $post['my_like'] ? 'active' : ''; ?>"
@@ -305,6 +422,18 @@ function deleteComment(id) {
     if(confirm("确定删除该评论吗？")) {
         fetch('../actions/comment_delete.php?id=' + id).then(() => location.reload());
     }
+}
+
+function toggleRecommend(pid) {
+    let formData = new FormData();
+    formData.append('pid', pid);
+    fetch('../actions/post_recommend.php', { method: 'POST', body: formData })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'success') {
+            location.reload();
+        }
+    });
 }
 
 function togglePostAction(type) {
