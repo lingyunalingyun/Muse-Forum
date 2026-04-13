@@ -22,32 +22,25 @@ if (isset($_SESSION['user_id'])) {
 
         /* ── Hero 横幅 ── */
         .hero {
-            background: linear-gradient(135deg, #1a7a3f 0%, #28a745 50%, #4fc878 100%);
-            color: white;
-            text-align: center;
-            padding: 60px 20px 50px;
-            position: relative;
+            width: 100%;
+            height: 220px;
             overflow: hidden;
-        }
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: -50%; left: -50%;
-            width: 200%; height: 200%;
-            background: radial-gradient(circle at 60% 40%, rgba(255,255,255,0.08) 0%, transparent 60%);
-            pointer-events: none;
-        }
-        .hero h1 { font-size: 36px; margin: 0 0 12px; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(0,0,0,0.15); }
-        .hero p  { font-size: 16px; margin: 0; opacity: 0.88; letter-spacing: 1px; }
-        .hero-stats {
+            background: #d8e8d8;
             display: flex;
+            align-items: center;
             justify-content: center;
-            gap: 40px;
-            margin-top: 30px;
         }
-        .hero-stat { text-align: center; }
-        .hero-stat strong { display: block; font-size: 24px; font-weight: bold; }
-        .hero-stat span   { font-size: 13px; opacity: 0.8; }
+        .hero img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .hero-placeholder {
+            color: #aaa;
+            font-size: 14px;
+            text-align: center;
+        }
 
         /* ── 内容区 ── */
         .main-content {
@@ -133,22 +126,13 @@ if (isset($_SESSION['user_id'])) {
 
 <!-- Hero 横幅 -->
 <div class="hero">
-    <h1>🌟 社区论坛</h1>
-    <p>分享见解 · 交流思想 · 结识朋友</p>
-    <?php
-    $stat_posts = (int)$conn->query("SELECT COUNT(*) as c FROM posts WHERE status='已发布'")->fetch_assoc()['c'];
-    $stat_users = (int)$conn->query("SELECT COUNT(*) as c FROM users")->fetch_assoc()['c'];
-    ?>
-    <div class="hero-stats">
-        <div class="hero-stat">
-            <strong><?= $stat_posts ?></strong>
-            <span>篇帖子</span>
-        </div>
-        <div class="hero-stat">
-            <strong><?= $stat_users ?></strong>
-            <span>位成员</span>
-        </div>
-    </div>
+    <?php if (file_exists(__DIR__ . '/uploads/banner/banner.jpg')): ?>
+        <img src="uploads/banner/banner.jpg" alt="banner">
+    <?php elseif (file_exists(__DIR__ . '/uploads/banner/banner.png')): ?>
+        <img src="uploads/banner/banner.png" alt="banner">
+    <?php else: ?>
+        <div class="hero-placeholder">📷 横幅图片占位 — 将图片放入 uploads/banner/ 并命名为 banner.jpg</div>
+    <?php endif; ?>
 </div>
 
 <!-- 帖子列表 -->
