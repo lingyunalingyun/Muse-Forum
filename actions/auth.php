@@ -14,6 +14,9 @@ if ($action == 'register') {
     if (empty($email) || empty($username) || empty($password_raw)) {
         die("注册失败：所有字段均为必填项。");
     }
+    if (strlen($password_raw) < 8) {
+        die("注册失败：密码长度至少为 8 位。");
+    }
 
     $check_sql = "SELECT id FROM users WHERE email = '$email' OR username = '$username'";
     $check_res = $conn->query($check_sql);
@@ -39,7 +42,8 @@ if ($action == 'register') {
     if ($conn->query($sql)) {
         echo "注册成功！您的系统ID为: <b>$new_userid</b> 。 <a href='../pages/login.php'>去登录</a>";
     } else {
-        echo "注册失败：" . $conn->error;
+        error_log("注册写入失败: " . $conn->error);
+        echo "注册失败，请稍后重试。";
     }
 }
 
@@ -57,6 +61,7 @@ if ($action == 'login') {
 
     if ($user = $result->fetch_assoc()) {
         if (password_verify($password, $user['password'])) {
+            session_regenerate_id(true);
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['system_userid'] = $user['userid'];
             $_SESSION['username'] = $user['username'];

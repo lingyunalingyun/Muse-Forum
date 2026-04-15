@@ -24,11 +24,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $avatar_name = $user['avatar'];
     if (!empty($_FILES['avatar']['name'])) {
         $target_dir = __DIR__ . "/../uploads/avatars/";
-        $file_ext = strtolower(pathinfo($_FILES["avatar"]["name"], PATHINFO_EXTENSION));
-        $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-        if (!in_array($file_ext, $allowed_exts)) {
-            die("不支持的文件格式，仅允许上传 jpg/jpeg/png/gif/webp 格式的图片。");
+        // 大小限制 5MB
+        if ($_FILES['avatar']['size'] > 5 * 1024 * 1024) {
+            die("图片大小不能超过 5MB。");
         }
+        // MIME 类型验证（防止伪装扩展名）
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime  = finfo_file($finfo, $_FILES['avatar']['tmp_name']);
+        finfo_close($finfo);
+        $allowed_mime = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!in_array($mime, $allowed_mime)) {
+            die("不支持的文件格式，仅允许上传 jpg/png/gif/webp 格式的图片。");
+        }
+        // 确认是合法图片
+        if (!getimagesize($_FILES['avatar']['tmp_name'])) {
+            die("无效的图片文件。");
+        }
+        $ext_map = ['image/jpeg'=>'jpg','image/png'=>'png','image/gif'=>'gif','image/webp'=>'webp'];
+        $file_ext  = $ext_map[$mime];
         $avatar_name = "u_" . $my_id . "_" . time() . "." . $file_ext;
         move_uploaded_file($_FILES["avatar"]["tmp_name"], $target_dir . $avatar_name);
     }
@@ -49,7 +62,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['avatar'] = $avatar_name;
         echo "<script>alert('资料更新成功！'); location.href='profile.php?id=$my_id';</script>";
     } else {
-        echo "错误：" . $conn->error;
+        error_log("edit_profile 更新失败: " . $conn->error);
+        echo "<script>alert('更新失败，请稍后重试。');</script>";
     }
 }
 ?>

@@ -57,7 +57,8 @@ if ($post_id > 0 && !empty($content)) {
 
         echo "success";
     } else {
-        echo "错误: " . $conn->error;
+        error_log("comment_save 写入失败: " . $conn->error);
+        echo "error";
     }
     $stmt->close();
 } else {

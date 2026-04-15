@@ -118,7 +118,8 @@ if ($new_id) {
         echo json_encode(['status' => 'ok', 'type' => 'post', 'id' => $new_id, 'msg' => '帖子已提交，等待审核']);
     }
 } else {
-    echo json_encode(['status' => 'error', 'msg' => '写入失败：' . $conn->error]);
+    error_log("save.php 写入失败: " . $conn->error);
+    echo json_encode(['status' => 'error', 'msg' => '写入失败，请稍后重试']);
 }
 
 $conn->close();
