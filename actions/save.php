@@ -3,6 +3,7 @@ ob_start();                      // 缓冲所有输出，防止 notice/warning �
 error_reporting(0);              // 屏蔽 PHP 提示，避免污染 JSON
 session_start();
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../includes/text_format.php';
 ob_clean();                      // 清除 config.php 可能输出的任何空白
 header('Content-Type: application/json; charset=utf-8');
 
@@ -27,6 +28,10 @@ if (empty(trim(strip_tags($content)))) {
     echo json_encode(['status' => 'error', 'msg' => '内容不能为空']);
     exit;
 }
+
+// 分区
+$category_id = (int)($_POST['category_id'] ?? 0);
+$category_id = $category_id > 0 ? $category_id : 'NULL';
 
 // 公告标记（仅管理员）
 $is_notice = 0;
@@ -62,6 +67,7 @@ if ($draft_id > 0) {
         $sql = "UPDATE posts
                 SET title='$safe_title', content='$safe_content', status='$status',
                     is_notice=$is_notice, attachments='$safe_attachments',
+                    category_id=$category_id,
                     created_at = IF('$status'='草稿', created_at, NOW())
                 WHERE id = $draft_id AND user_id = $user_id";
         $conn->query($sql);
@@ -71,8 +77,8 @@ if ($draft_id > 0) {
         exit;
     }
 } else {
-    $sql = "INSERT INTO posts (user_id, title, content, status, is_notice, attachments)
-            VALUES ($user_id, '$safe_title', '$safe_content', '$status', $is_notice, '$safe_attachments')";
+    $sql = "INSERT INTO posts (user_id, title, content, status, is_notice, attachments, category_id)
+            VALUES ($user_id, '$safe_title', '$safe_content', '$status', $is_notice, '$safe_attachments', $category_id)";
     $insert_ok = $conn->query($sql);
     $new_id = $conn->insert_id ?: ($insert_ok ? -1 : 0);
 
@@ -96,6 +102,14 @@ if ($draft_id > 0) {
 }
 
 if ($new_id) {
+    // 发布时（非草稿）保存话题标签
+    if (!$is_draft) {
+        $real_id = ($new_id === -1)
+            ? (int)$conn->query("SELECT MAX(id) c FROM posts WHERE user_id=$user_id")->fetch_assoc()['c']
+            : $new_id;
+        save_post_hashtags($conn, $real_id, $title, $content);
+    }
+
     if ($is_draft) {
         echo json_encode(['status' => 'ok', 'type' => 'draft', 'id' => $new_id, 'msg' => '草稿已保存']);
     } elseif ($is_notice) {

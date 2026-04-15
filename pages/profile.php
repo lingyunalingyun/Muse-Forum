@@ -53,61 +53,50 @@ if ($my_id > 0 && $my_id != $view_uid) {
     <meta charset="UTF-8">
     <title>个人中心 - <?php echo htmlspecialchars($user['username']); ?></title>
     <style>
-        body { background: #f0f2f5; font-family: "Microsoft YaHei", sans-serif; margin: 0; padding-bottom: 40px; }
-        .profile-container { max-width: 800px; margin: 20px auto; }
-
-        /* 顶部资料卡 */
-        .user-card { background: white; padding: 30px; border-radius: 15px; display: flex; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-
-        /* 头像样式修复 */
-        .avatar {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            margin-right: 25px;
-            border: 4px solid #fff;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            object-fit: cover;
-            display: block;
+        .profile-container { max-width: 800px; margin: 24px auto; padding: 0 16px; }
+        .user-card { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 24px; display: flex; align-items: center; gap: 24px; }
+        @media(max-width:600px){
+            .profile-container { padding: 0 10px; margin: 12px auto; }
+            .user-card { flex-direction: column; align-items: center; text-align: center; padding: 20px 16px; gap: 16px; }
+            .user-meta-row { justify-content: center; }
+            .grid { grid-template-columns: repeat(3, 1fr) !important; }
+            .stats-bar .stat-item strong { font-size: 16px; }
         }
+        .avatar { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 2px solid #30363d; cursor: pointer; transition: .2s; flex-shrink: 0; display: block; }
+        .avatar:hover { border-color: #3fb950; box-shadow: 0 0 16px rgba(63,185,80,.25); }
+        .user-info h2 { margin: 0 0 6px; display: flex; align-items: center; gap: 10px; color: #e6edf3; font-size: 18px; }
+        .role-badge { font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 700; }
+        .user-info p { color: #8b949e; margin: 0 0 10px; font-size: 13px; }
+        .user-meta-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+        .user-meta-item { font-size: 12px; color: #6e7681; font-family: "Courier New", monospace; }
+        .user-meta-item span { color: #8b949e; }
+        .btn-edit { font-size: 12px; color: #3fb950; text-decoration: none; border: 1px solid rgba(63,185,80,.4); padding: 5px 14px; border-radius: 4px; transition: .2s; font-weight: 600; display: inline-flex; align-items: center; }
+        .btn-edit:hover { background: rgba(63,185,80,.1); color: #3fb950; }
+        .btn-edit.following { color: #6e7681 !important; border-color: #30363d !important; }
+        .btn-edit.following:hover { color: #f85149 !important; border-color: rgba(248,81,73,.4) !important; }
 
-        .user-info h2 { margin: 0 0 10px 0; display: flex; align-items: center; gap: 10px; }
-        .role-badge { font-size: 12px; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
-
-        /* 数据统计栏 */
-        .stats-bar { display: flex; background: white; margin-top: 15px; padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
-        .stat-item { flex: 1; border-right: 1px solid #eee; }
+        .stats-bar { display: flex; background: #161b22; border: 1px solid #30363d; border-radius: 6px; margin-top: 12px; }
+        .stat-item { flex: 1; text-align: center; padding: 14px; border-right: 1px solid #30363d; }
         .stat-item:last-child { border: none; }
-        .stat-item strong { font-size: 18px; color: #333; }
-        .stat-item small { color: #999; }
+        .stat-item strong { font-size: 20px; color: #e6edf3; display: block; font-family: "Courier New", monospace; }
+        .stat-item small { color: #6e7681; font-size: 11px; letter-spacing: .5px; text-transform: uppercase; font-family: "Courier New", monospace; }
 
-        /* 背包区域 */
-        .inventory-section { background: white; margin-top: 15px; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
-        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 15px; }
-        .item-slot { aspect-ratio: 1; background: #f8f9fa; border: 1px solid #eee; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; transition: 0.3s; }
-        .item-slot:hover { border-color: #28a745; background: #fff; }
+        .inventory-section { background: #161b22; border: 1px solid #30363d; border-radius: 6px; margin-top: 12px; padding: 18px 20px; }
+        .inventory-section h3 { font-size: 11px; font-weight: 700; color: #6e7681; letter-spacing: 1.5px; text-transform: uppercase; font-family: "Courier New", monospace; margin: 0 0 14px; }
+        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+        .item-slot { aspect-ratio: 1; background: #1c2128; border: 1px solid #30363d; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: #6e7681; transition: .2s; }
+        .item-slot:hover { border-color: #3fb950; color: #3fb950; }
 
-        /* 按钮美化 */
-        .btn-edit { font-size: 12px; color: #28a745; text-decoration: none; border: 1px solid #28a745; padding: 4px 12px; border-radius: 20px; transition: 0.3s; }
-        .btn-edit:hover { background: #28a745; color: #fff; }
-        .btn-edit.following { background-color: #f0f0f0 !important; color: #888 !important; box-shadow: none !important; }
-        .btn-edit.following:hover { background-color: #e5e5e5 !important; color: #ff7675 !important; }
-
-        #image-overlay {
-        display: none; display: flex; }
-        #full-image { animation: zoomIn 0.2s ease-out; }
-
-        .post-section { background: white; margin-top: 15px; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
-        .post-list { margin-top: 15px; }
-        .post-item { display: block; text-decoration: none; color: #333; padding: 12px; border-bottom: 1px solid #f5f5f5; transition: 0.2s; }
+        .post-section { background: #161b22; border: 1px solid #30363d; border-radius: 6px; margin-top: 12px; padding: 18px 20px; }
+        .post-section h3 { font-size: 11px; font-weight: 700; color: #6e7681; letter-spacing: 1.5px; text-transform: uppercase; font-family: "Courier New", monospace; margin: 0 0 12px; }
+        .post-list { margin-top: 0; }
+        .post-item { display: block; text-decoration: none; color: #8b949e; padding: 10px 0; border-bottom: 1px solid #21262d; transition: .15s; }
         .post-item:last-child { border-bottom: none; }
-        .post-item:hover { background: #f9f9f9; transform: translateX(5px); }
-        .post-item h4 { margin: 0 0 5px 0; font-size: 15px; color: #2d3436; }
-        .post-item .post-meta { font-size: 12px; color: #999; display: flex; justify-content: space-between; }
-    @keyframes zoomIn {
-        from { transform: scale(0.8); opacity: 0; }
-        to { transform: scale(1); opacity: 1; }
-    }
+        .post-item:hover { color: #e6edf3; padding-left: 6px; }
+        .post-item h4 { margin: 0 0 4px; font-size: 14px; color: #c9d1d9; font-weight: 600; }
+        .post-item:hover h4 { color: #3fb950; }
+        .post-item .post-meta { font-size: 11px; color: #6e7681; display: flex; justify-content: space-between; font-family: "Courier New", monospace; }
+        @keyframes zoomIn { from{transform:scale(.8);opacity:0} to{transform:scale(1);opacity:1} }
     </style>
 </head>
 <body>
@@ -127,16 +116,16 @@ if ($my_id > 0 && $my_id != $view_uid) {
             <h2>
                 <?php echo htmlspecialchars($user['username']); ?>
                 <?php if(isset($user['role']) && $user['role'] === 'admin'): ?>
-                    <span class="role-badge" style="background: #fff0f0; color: #d63031; border: 1px solid #ff7675;">管理员</span>
+                    <span class="role-badge" style="background: rgba(248,81,73,.15); color: #f85149; border: 1px solid rgba(248,81,73,.3);">管理员</span>
                 <?php else: ?>
-                    <span class="role-badge" style="background: #e3f2fd; color: #1976d2; border: 1px solid #bbdefb;">普通用户</span>
+                    <span class="role-badge" style="background: rgba(88,166,255,.15); color: #58a6ff; border: 1px solid rgba(88,166,255,.3);">普通用户</span>
                 <?php endif; ?>
             </h2>
-            <p style="color: #666; margin-bottom: 10px;"><?php echo htmlspecialchars($user['signature'] ?: "这个人很懒，什么都没写~"); ?></p>
-            <div style="margin-bottom: 12px;">
-                <small style="color: #999;">🎂 生日：<?php echo $user['birthday'] ?: "未设置"; ?></small>
-                <small style="color: #999; margin-left: 15px;">💰 积分：<?php echo $user['points']; ?></small>
-                <small style="color: #999; margin-left: 15px;">👶 性别：<?php echo $user['gender'] ?: "未设置" ?></small>
+            <p><?php echo htmlspecialchars($user['signature'] ?: "// 这个人很懒，什么都没留下"); ?></p>
+            <div class="user-meta-row">
+                <span class="user-meta-item">生日 <span><?php echo $user['birthday'] ?: "未设置"; ?></span></span>
+                <span class="user-meta-item">积分 <span style="color:#3fb950;"><?php echo $user['points']; ?></span></span>
+                <span class="user-meta-item">性别 <span><?php echo $user['gender'] ?: "未设置"; ?></span></span>
             </div>
             <?php if($is_mine): ?>
                 <a href="edit_profile.php" class="btn-edit">编辑个人资料</a>
@@ -149,7 +138,7 @@ if ($my_id > 0 && $my_id != $view_uid) {
                 </button>
                 <?php if($my_id > 0): ?>
                     <a href="notifications.php?tab=message&user_id=<?php echo $user['id']; ?>" class="btn-edit"
-                       style="margin-left: 8px; text-decoration: none;">✉️ 私信</a>
+                       style="margin-left: 8px;">私信</a>
                 <?php endif; ?>
             <?php endif; ?>
         </div>
@@ -190,13 +179,13 @@ if ($my_id > 0 && $my_id != $view_uid) {
                 </a>
             <?php endwhile; ?>
         <?php else: ?>
-            <div style="text-align: center; color: #ccc; padding: 30px;">
-                这里空空如也，还没有发过帖子哦~
+            <div style="text-align: center; color: #6e7681; padding: 30px; font-family: 'Courier New', monospace; font-size: 13px;">
+                // 暂无帖子
             </div>
         <?php endif; ?>
 
         <?php if($is_mine): ?>
-            <a href="publish.php" class="post-item" style="text-align: center; border-style: dashed; color: #28a745;">
+            <a href="publish.php" class="post-item" style="text-align: center; border-style: dashed; color: #3fb950;">
                 <strong>+ 发布新帖子</strong>
             </a>
         <?php endif; ?>

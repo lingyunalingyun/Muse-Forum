@@ -2,6 +2,7 @@
 session_start();
 // --- 1. 数据库连接与配置 ---
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../includes/text_format.php';
 
 // --- 2. 获取参数与身份 ---
 $my_id = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : 0;
@@ -62,141 +63,122 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
     <meta charset="UTF-8">
     <title><?php echo htmlspecialchars(!empty($post['title']) ? $post['title'] : $post['username'] . ' 的动态'); ?></title>
     <style>
-        body { background: #f4f7f6; font-family: "Microsoft YaHei", sans-serif; margin: 0; color: #333; }
-        .container { max-width: 1100px; margin: 20px auto; display: flex; gap: 20px; padding: 0 15px; align-items: flex-start; }
-        .post-main { flex: 1; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); overflow: hidden; }
-        .post-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 15px; }
-
-        /* ── 公告帖特殊样式 ── */
-        .post-main.is-notice {
-            border-top: 4px solid #f6a623;
-            box-shadow: 0 2px 16px rgba(246,166,35,0.18);
+        /* ── 帖子页布局 ── */
+        .container { max-width:1100px; margin:24px auto; display:flex; gap:20px; padding:0 16px; align-items:flex-start; }
+        .post-main  { flex:1; background:#161b22; border:1px solid #30363d; border-radius:6px; padding:28px 30px; overflow:hidden; min-width:0; }
+        .post-header{ display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid #30363d; padding-bottom:16px; gap:12px; }
+        @media(max-width:768px){
+            .container { flex-direction:column; margin:12px auto; padding:0 10px; gap:12px; }
+            .post-main { padding:18px 16px; }
+            .post-sidebar { width:100% !important; position:static !important; }
+            .post-header { flex-direction:column; gap:10px; }
+            .admin-actions { flex-wrap:wrap; }
+            .post-content img { max-width:100%; max-height:none; }
         }
+        @media(max-width:480px){
+            .post-main { padding:14px 12px; }
+            .post-content { font-size:14px; }
+        }
+        .post-main.is-notice    { border-top:3px solid #f0883e; }
+        .post-main.is-recommend { border-top:3px solid #e3b341; }
+
+        /* 公告/推荐 bar */
         .notice-top-bar {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: linear-gradient(135deg, #fff8ee, #fff3e0);
-            border: 1px solid #fde8c4;
-            border-radius: 8px;
-            padding: 12px 16px;
-            margin-bottom: 20px;
-            font-size: 14px;
-            color: #a0621a;
-            font-weight: bold;
+            display:flex; align-items:center; gap:10px;
+            background:rgba(240,136,62,.08); border:1px solid rgba(240,136,62,.25);
+            border-radius:4px; padding:10px 14px; margin-bottom:20px;
+            font-size:13px; color:#f0883e;
         }
-        .notice-top-bar .top-badge {
-            color: white;
-            font-size: 12px;
-            padding: 3px 10px;
-            border-radius: 20px;
-            font-weight: bold;
-            letter-spacing: 1px;
-            flex-shrink: 0;
-        }
-        .notice-top-bar .top-badge.orange { background: linear-gradient(135deg, #f6a623, #e8821a); }
-        .notice-top-bar .top-badge.gold   { background: linear-gradient(135deg, #f6c90e, #e6a817); }
-        .post-main.is-notice .post-header { border-bottom-color: #fde8c4; }
-        .post-main.is-notice h2           { color: #c47010; }
+        .notice-top-bar .top-badge { color:#fff; font-size:11px; padding:2px 8px; border-radius:4px; font-weight:700; letter-spacing:.5px; flex-shrink:0; }
+        .notice-top-bar .top-badge.orange { background:#f0883e; }
+        .notice-top-bar .top-badge.gold   { background:#e3b341; }
+        .notice-top-bar a { margin-left:auto; color:#f0883e; font-size:12px; }
+        .post-main.is-recommend .notice-top-bar { background:rgba(227,179,65,.08); border-color:rgba(227,179,65,.25); color:#e3b341; }
+        .post-main.is-recommend .notice-top-bar a { color:#e3b341; }
 
-        /* ── 推荐帖特殊样式 ── */
-        .post-main.is-recommend {
-            border-top: 4px solid #f6c90e;
-            box-shadow: 0 2px 16px rgba(246,201,14,0.2);
-        }
-        .post-main.is-recommend .post-header { border-bottom-color: #ffe69c; }
-        .post-main.is-recommend h2           { color: #8a6d00; }
+        /* 帖子标题区 */
+        .post-header h2 { color:#e6edf3; margin:0 0 6px; font-size:20px; }
+        .post-meta-line { font-size:12px; color:#6e7681; font-family:"Courier New",monospace; }
+        .post-meta-line a { color:#3fb950; }
+        .edited-at-tag  { font-size:11px; color:#6e7681; margin-top:3px; font-family:"Courier New",monospace; }
 
-        /* ── 管理员操作按钮 ── */
-        .admin-actions { display: flex; gap: 10px; align-items: center; }
-        .btn-recommend {
-            background: white;
-            color: #b8860b;
-            border: 1px solid #f6c90e;
-            padding: 6px 14px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 13px;
-            transition: 0.2s;
-        }
-        .btn-recommend:hover { background: #fffbea; }
-        .btn-recommend.active { background: #f6c90e; color: white; border-color: #f6c90e; }
-        .btn-post-del { background: #ff7675; color: white; border: none; padding: 6px 15px; border-radius: 4px; cursor: pointer; }
-        .post-content { font-size: 16px; line-height: 1.8; margin: 25px 0; min-height: 100px; }
+        /* 管理操作 */
+        .admin-actions { display:flex; gap:8px; align-items:center; flex-shrink:0; }
+        .btn-recommend { background:transparent; color:#e3b341; border:1px solid rgba(227,179,65,.4); padding:5px 12px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:700; transition:.2s; }
+        .btn-recommend:hover { background:rgba(227,179,65,.1); }
+        .btn-recommend.active { background:rgba(227,179,65,.2); border-color:#e3b341; }
+        .btn-edit-post { background:transparent; color:#3fb950; border:1px solid rgba(63,185,80,.4); padding:5px 12px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:700; transition:.2s; }
+        .btn-edit-post:hover { background:rgba(63,185,80,.1); }
+        .btn-edit-post:disabled { color:#6e7681; border-color:#30363d; cursor:not-allowed; }
+        .btn-post-del { background:transparent; color:#f85149; border:1px solid rgba(248,81,73,.4); padding:5px 12px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:700; transition:.2s; }
+        .btn-post-del:hover { background:rgba(248,81,73,.1); }
+
+        /* 帖子内容 */
+        .post-content { font-size:15px; line-height:1.9; margin:24px 0; color:#c9d1d9; min-height:80px; }
+        .post-content h1,.post-content h2,.post-content h3 { color:#e6edf3; border-bottom:1px solid #30363d; padding-bottom:8px; }
+        .post-content a { color:#58a6ff; }
+        .post-content code { background:#1c2128; color:#3fb950; padding:2px 6px; border-radius:4px; font-size:13px; font-family:"Courier New",monospace; }
+        .post-content pre { background:#1c2128; border:1px solid #30363d; border-radius:4px; padding:14px; overflow-x:auto; }
+        .post-content blockquote { border-left:3px solid #30363d; margin:0; padding:4px 16px; color:#8b949e; }
         .post-content img {
-            max-width: 240px;
-            max-height: 180px;
-            object-fit: cover;
-            border-radius: 6px;
-            cursor: zoom-in;
-            border: 1px solid #eee;
-            transition: transform 0.2s, box-shadow 0.2s;
-            display: inline-block;
-            vertical-align: middle;
-            margin: 4px;
+            max-width:240px; max-height:180px; object-fit:cover;
+            border-radius:4px; cursor:zoom-in; border:1px solid #30363d;
+            transition:.2s; display:inline-block; vertical-align:middle; margin:4px;
         }
-        .post-content img:hover { transform: scale(1.03); box-shadow: 0 4px 14px rgba(0,0,0,0.15); }
-        .img-lightbox {
-            display: none;
-            position: fixed; inset: 0;
-            background: rgba(0,0,0,0.82);
-            z-index: 9999;
-            align-items: center;
-            justify-content: center;
-            cursor: zoom-out;
-        }
-        .img-lightbox.open { display: flex; }
-        .img-lightbox img {
-            max-width: 92vw;
-            max-height: 90vh;
-            object-fit: contain;
-            border-radius: 6px;
-            box-shadow: 0 8px 40px rgba(0,0,0,0.5);
-            animation: lbIn 0.2s ease-out;
-        }
-        @keyframes lbIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        .btn-edit-post { background: white; color: #28a745; border: 1px solid #28a745; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 13px; transition: 0.2s; }
-        .btn-edit-post:hover { background: #f0fff4; }
-        .btn-edit-post:disabled { color: #bbb; border-color: #ddd; cursor: not-allowed; background: white; }
-        .edited-at-tag { font-size: 12px; color: #bbb; margin-top: 3px; font-style: italic; }
-        .post-sidebar { width: 280px; position: sticky; top: 80px; }
-        .author-card { background: white; padding: 25px 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); text-align: center; }
-        .author-avatar { width: 85px; height: 85px; border-radius: 50%; object-fit: cover; border: 3px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.1); cursor: pointer; transition: 0.3s; }
-        .author-avatar:hover { transform: scale(1.05); }
-        .author-name { display: block; font-size: 18px; font-weight: bold; color: #333; margin: 12px 0 8px; text-decoration: none; }
-        .author-name:hover { color: #28a745; }
-        .badge-row { display: flex; justify-content: center; gap: 8px; margin-bottom: 20px; }
-        .user-title { background: #e3f2fd; color: #1976d2; font-size: 12px; padding: 2px 10px; border-radius: 4px; }
-        .user-level { background: #fff3e0; color: #ef6c00; font-size: 12px; padding: 2px 10px; border-radius: 4px; font-weight: bold; }
-        .stats-row { display: flex; border-top: 1px solid #f8f8f8; padding-top: 15px; margin-top: 5px; }
-        .stat-item { flex: 1; text-align: center; }
-        .stat-num { display: block; font-size: 16px; font-weight: bold; color: #333; }
-        .stat-label { font-size: 12px; color: #999; }
-        .btn-follow { width: 100%; margin-top: 20px; padding: 10px; border: none; border-radius: 25px; cursor: pointer; font-size: 14px; font-weight: bold; transition: 0.3s; }
-        .follow-add { background: #28a745; color: white; }
-        .follow-add:hover { background: #218838; }
-        .follow-yet { background: #f0f0f0; color: #888; }
-        .comment-section { margin-top: 40px; }
-        .filter-bar { margin: 15px 0; display: flex; gap: 15px; font-size: 14px; }
-        .filter-bar a { text-decoration: none; color: #999; }
-        .filter-bar a.active { color: #28a745; font-weight: bold; border-bottom: 2px solid #28a745; }
-        textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; resize: none; font-family: inherit; }
-        .comment-item { display: flex; gap: 12px; padding: 20px 15px; border-bottom: 1px solid #f2f2f2; }
-        .is-top-style { background: #fffdf5; border-left: 4px solid #f1c40f; }
-        .top-badge { background: #f1c40f; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 5px; }
-        .reply-target { color: #1976d2; margin-left: 5px; font-size: 13px; font-weight: normal; }
-        .floor-tag { color: #bbb; font-size: 12px; margin-left: 10px; }
-        .c-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; }
-        .c-body { flex: 1; }
-        .c-header { display: flex; justify-content: space-between; margin-bottom: 5px; }
-        .c-user { font-weight: bold; color: #444; font-size: 14px; text-decoration: none; }
-        .c-user:hover { color: #28a745; }
-        .btn-action { cursor: pointer; font-size: 12px; color: #999; margin-left: 15px; transition: 0.2s; }
-        .btn-action:hover { color: #28a745; }
-        .like-btn.active { color: #ff7675; font-weight: bold; }
-        .action-item { font-size: 16px; color: #666; transition: 0.3s; }
-        .action-item.active { color: #ff7675; font-weight: bold; }
-        .action-item.active #fav-icon { color: #f1c40f; }
+        .post-content img:hover { border-color:#3fb950; box-shadow:0 0 12px rgba(63,185,80,.2); }
+
+        /* 灯箱 */
+        .img-lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,.88); z-index:9999; align-items:center; justify-content:center; cursor:zoom-out; }
+        .img-lightbox.open { display:flex; }
+        .img-lightbox img { max-width:92vw; max-height:90vh; object-fit:contain; border-radius:4px; box-shadow:0 8px 40px rgba(0,0,0,.6); animation:lbIn .2s ease-out; }
+        @keyframes lbIn { from{transform:scale(.88);opacity:0} to{transform:scale(1);opacity:1} }
+
+        /* 互动按钮 */
+        .action-item { font-size:14px; color:#8b949e; transition:.2s; cursor:pointer; display:flex; align-items:center; gap:6px; padding:6px 14px; border:1px solid #30363d; border-radius:4px; background:#1c2128; }
+        .action-item:hover { border-color:#3fb950; color:#3fb950; }
+        .action-item.active { color:#f85149; border-color:rgba(248,81,73,.4); }
+        .action-item.fav.active { color:#e3b341; border-color:rgba(227,179,65,.4); }
+
+        /* 评论区 */
+        .comment-section { margin-top:32px; }
+        .filter-bar { margin:14px 0; display:flex; gap:12px; font-size:13px; }
+        .filter-bar a { text-decoration:none; color:#6e7681; padding-bottom:4px; }
+        .filter-bar a.active { color:#3fb950; font-weight:700; border-bottom:2px solid #3fb950; }
+        .comment-item { display:flex; gap:12px; padding:16px 0; border-bottom:1px solid #21262d; }
+        .comment-item:last-child { border-bottom:none; }
+        .is-top-style { background:rgba(227,179,65,.05); border-left:3px solid #e3b341; padding-left:13px; }
+        .top-badge { background:rgba(227,179,65,.2); color:#e3b341; padding:1px 6px; border-radius:4px; font-size:10px; margin-right:4px; font-weight:700; font-family:"Courier New",monospace; border:1px solid rgba(227,179,65,.3); }
+        .reply-target { color:#58a6ff; margin-left:6px; font-size:12px; }
+        .floor-tag  { color:#6e7681; font-size:11px; margin-left:8px; font-family:"Courier New",monospace; }
+        .c-avatar   { width:38px; height:38px; border-radius:50%; object-fit:cover; border:1px solid #30363d; }
+        .c-body     { flex:1; min-width:0; }
+        .c-header   { display:flex; justify-content:space-between; margin-bottom:5px; align-items:center; }
+        .c-user     { font-weight:700; color:#3fb950; font-size:13px; text-decoration:none; }
+        .c-user:hover { color:#5fdd70; }
+        .c-text     { color:#8b949e; font-size:14px; line-height:1.7; margin:4px 0; word-break:break-word; }
+        .btn-action { cursor:pointer; font-size:12px; color:#6e7681; margin-left:12px; transition:.15s; }
+        .btn-action:hover { color:#3fb950; }
+        .like-btn.active { color:#f85149; font-weight:700; }
+        .reply-input-box textarea { background:#1c2128; color:#e6edf3; border-color:#30363d; }
+
+        /* 侧边作者卡片 */
+        .post-sidebar   { width:260px; position:sticky; top:76px; flex-shrink:0; }
+        .author-card    { background:#161b22; border:1px solid #30363d; border-radius:6px; padding:22px 18px; text-align:center; }
+        .author-avatar  { width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid #30363d; cursor:pointer; transition:.2s; margin:0 auto; }
+        .author-avatar:hover { border-color:#3fb950; box-shadow:0 0 14px rgba(63,185,80,.25); }
+        .author-name    { display:block; font-size:16px; font-weight:700; color:#e6edf3; margin:12px 0 8px; text-decoration:none; }
+        .author-name:hover { color:#3fb950; }
+        .badge-row      { display:flex; justify-content:center; gap:6px; margin-bottom:16px; flex-wrap:wrap; }
+        .user-title     { font-size:11px; padding:2px 8px; border-radius:4px; font-weight:700; }
+        .user-level     { background:rgba(227,179,65,.15); color:#e3b341; border:1px solid rgba(227,179,65,.3); font-size:11px; padding:2px 8px; border-radius:4px; font-weight:700; font-family:"Courier New",monospace; }
+        .stats-row      { display:flex; border-top:1px solid #30363d; padding-top:14px; margin-top:4px; }
+        .stat-item      { flex:1; text-align:center; }
+        .stat-num       { display:block; font-size:18px; font-weight:700; color:#e6edf3; font-family:"Courier New",monospace; }
+        .stat-label     { font-size:11px; color:#6e7681; letter-spacing:.5px; text-transform:uppercase; font-family:"Courier New",monospace; }
+        .btn-follow     { width:100%; margin-top:16px; padding:9px; border:none; border-radius:4px; cursor:pointer; font-size:13px; font-weight:700; transition:.2s; }
+        .follow-add     { background:#3fb950; color:#fff; }
+        .follow-add:hover { background:#2ea043; box-shadow:0 0 12px rgba(63,185,80,.3); }
+        .follow-yet     { background:#1c2128; color:#6e7681; border:1px solid #30363d; }
     </style>
 </head>
 <body>
@@ -228,15 +210,13 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
             <div>
                 <?php if(!empty($post['title'])): ?>
                     <h2 style="margin:0;"><?php echo htmlspecialchars($post['title']); ?></h2>
-                    <div style="font-size: 13px; color: #999; margin-top: 6px;">
-                        <a href="profile.php?id=<?php echo $post['author_id']; ?>" style="color:#28a745; text-decoration:none;"><?php echo htmlspecialchars($post['username']); ?></a>
-                        · 发布于：<?php echo date('Y-m-d H:i', strtotime($post['created_at'])); ?>
+                    <div class="post-meta-line">
+                        <a href="profile.php?id=<?php echo $post['author_id']; ?>"><?php echo htmlspecialchars($post['username']); ?></a>
+                        · <?php echo date('Y-m-d H:i', strtotime($post['created_at'])); ?>
                     </div>
                 <?php else: ?>
                     <h2 style="margin:0;"><?php echo htmlspecialchars($post['username']); ?> 的动态</h2>
-                    <div style="font-size: 13px; color: #999; margin-top: 8px;">
-                        发布于：<?php echo date('Y-m-d H:i', strtotime($post['created_at'])); ?>
-                    </div>
+                    <div class="post-meta-line"><?php echo date('Y-m-d H:i', strtotime($post['created_at'])); ?></div>
                 <?php endif; ?>
                 <?php if (!empty($post['edited_at'])): ?>
                     <div class="edited-at-tag">已编辑 · <?= date('Y-m-d H:i', strtotime($post['edited_at'])) ?></div>
@@ -260,7 +240,7 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
         </div>
 
         <div class="post-content" id="post-content-view">
-            <?php echo $post['content']; ?>
+            <?php echo format_post_content($post['content'], $conn); ?>
         </div>
 
 
@@ -276,7 +256,7 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
                       'mp4'=>'🎬','mp3'=>'🎵','txt'=>'📃','png'=>'🖼️','jpg'=>'🖼️',
                       'jpeg'=>'🖼️','gif'=>'🖼️','webp'=>'🖼️'];
         ?>
-        <div style="margin-top:24px; padding:16px 20px; background:#fafafa; border-radius:8px; border:1px solid #eee;">
+        <div style="margin-top:24px; padding:14px 18px; background:#1c2128; border-radius:4px; border:1px solid #30363d;">
             <div style="font-size:13px; color:#888; font-weight:bold; margin-bottom:12px;">📎 附件 (<?= count($att_data) ?>)</div>
             <?php foreach ($att_data as $att):
                 $ext  = strtolower($att['ext'] ?? pathinfo($att['original'] ?? '', PATHINFO_EXTENSION));
@@ -286,19 +266,19 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
             ?>
             <a href="<?= htmlspecialchars($att['url'] ?? '#') ?>"
                download="<?= htmlspecialchars($att['original'] ?? '') ?>"
-               style="display:flex; align-items:center; gap:10px; padding:8px 12px; background:white; border:1px solid #eee; border-radius:6px; text-decoration:none; color:#333; margin-bottom:8px; transition:0.2s;"
-               onmouseover="this.style.borderColor='#28a745';this.style.color='#28a745'"
-               onmouseout="this.style.borderColor='#eee';this.style.color='#333'">
+               style="display:flex; align-items:center; gap:10px; padding:8px 12px; background:#1c2128; border:1px solid #30363d; border-radius:4px; text-decoration:none; color:#8b949e; margin-bottom:8px; transition:0.2s;"
+               onmouseover="this.style.borderColor='#3fb950';this.style.color='#3fb950'"
+               onmouseout="this.style.borderColor='#30363d';this.style.color='#8b949e'">
                 <span style="font-size:20px;"><?= $icon ?></span>
                 <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px;"><?= htmlspecialchars($att['original'] ?? '') ?></span>
                 <span style="font-size:12px; color:#bbb; flex-shrink:0;"><?= $size_str ?></span>
-                <span style="font-size:12px; color:#28a745; flex-shrink:0;">⬇ 下载</span>
+                <span style="font-size:12px; color:#3fb950; flex-shrink:0;">⬇ 下载</span>
             </a>
             <?php endforeach; ?>
         </div>
         <?php endif; ?>
 
-        <div class="post-actions" style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; display: flex; gap: 20px;">
+        <div class="post-actions" style="margin-top: 30px; border-top: 1px solid #30363d; padding-top: 20px; display: flex; gap: 12px; flex-wrap: wrap;">
             <div class="action-item <?php echo $post['my_like'] ? 'active' : ''; ?>"
                 onclick="togglePostAction('like')" style="cursor:pointer;">
                 <span id="like-icon"><?php echo $post['my_like'] ? '❤️' : '🤍'; ?></span> 赞 (<span id="like-count"><?php echo $post['likes_count']; ?></span>)
@@ -311,11 +291,14 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
         </div>
 
         <div class="comment-section">
-            <h3 style="margin-bottom:10px;">评论互动 (<?php echo $total_comments; ?>)</h3>
-            <div style="margin-bottom: 20px;">
-                <textarea id="main-input" rows="3" placeholder="友善评论，文明发言..."></textarea>
-                <div style="text-align:right; margin-top:10px;">
-                    <button style="background:#28a745; color:white; border:none; padding:8px 25px; border-radius:20px; cursor:pointer;" onclick="submitComment(0)">发表评论</button>
+            <div style="font-size:11px;font-weight:700;color:#6e7681;letter-spacing:1.5px;text-transform:uppercase;font-family:'Courier New',monospace;margin-bottom:14px;display:flex;align-items:center;gap:8px;">
+                <span style="color:#3fb950">//</span> 评论 <span style="color:#3fb950;font-family:'Courier New',monospace;"><?php echo $total_comments; ?></span>
+                <span style="flex:1;height:1px;background:#30363d;"></span>
+            </div>
+            <div style="margin-bottom:20px;">
+                <textarea id="main-input" rows="3" placeholder="发表你的看法..."></textarea>
+                <div style="text-align:right;margin-top:8px;">
+                    <button style="background:#3fb950;color:#fff;border:none;padding:7px 20px;border-radius:4px;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;transition:.2s;" onmouseover="this.style.background='#2ea043'" onmouseout="this.style.background='#3fb950'" onclick="submitComment(0)">提交评论</button>
                 </div>
             </div>
 
@@ -344,7 +327,7 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
                                 <span class="floor-tag"><?php echo $floor_map[$c['id']]; ?> 楼</span>
                             </div>
                         </div>
-                        <p class="c-text"><?php echo nl2br(htmlspecialchars($c['content'])); ?></p>
+                        <p class="c-text"><?php echo nl2br(format_comment($c['content'], $conn)); ?></p>
                         <div class="c-footer">
                             <span style="font-size:12px; color:#999;"><?php echo date('m-d H:i', strtotime($c['created_at'])); ?></span>
                             <span class="btn-action" onclick="toggleReplyBox(<?php echo $c['id']; ?>)">回复</span>
@@ -599,6 +582,119 @@ async function saveEdit() {
     } catch(e) { alert('网络错误，请重试'); saveBtn.disabled = false; saveBtn.textContent = '保存修改'; }
 }
 <?php endif; ?>
+
+// ── @提及 自动补全 ──
+(function() {
+    let dropdown = null, activeTA = null, atPos = -1;
+
+    function getDropdown() {
+        if (!dropdown) {
+            dropdown = document.createElement('ul');
+            dropdown.id = 'mention-dropdown';
+            dropdown.style.cssText = 'position:absolute;z-index:9999;background:#fff;border:1px solid #ddd;border-radius:8px;list-style:none;margin:0;padding:4px 0;min-width:180px;box-shadow:0 4px 16px rgba(0,0,0,0.12);display:none;';
+            document.body.appendChild(dropdown);
+        }
+        return dropdown;
+    }
+
+    function hideDropdown() {
+        if (dropdown) dropdown.style.display = 'none';
+        atPos = -1;
+    }
+
+    function getCaretCoords(ta) {
+        const rect = ta.getBoundingClientRect();
+        return { top: rect.bottom + window.scrollY + 4, left: rect.left + window.scrollX };
+    }
+
+    function bindTA(ta) {
+        if (ta.dataset.mentionBound) return;
+        ta.dataset.mentionBound = '1';
+        ta.addEventListener('input', onInput);
+        ta.addEventListener('keydown', onKeydown);
+        ta.addEventListener('blur', function() { setTimeout(hideDropdown, 150); });
+    }
+
+    function onInput() {
+        activeTA = this;
+        const val = this.value, cur = this.selectionStart;
+        const seg = val.slice(0, cur);
+        const m = seg.match(/@([\w\u4e00-\u9fa5]{0,20})$/u);
+        if (!m) { hideDropdown(); return; }
+        atPos = seg.lastIndexOf('@');
+        const q = m[1];
+        fetch('../actions/user_search.php?q=' + encodeURIComponent(q))
+            .then(r => r.json())
+            .then(users => renderDropdown(users));
+    }
+
+    function renderDropdown(users) {
+        const dd = getDropdown();
+        dd.innerHTML = '';
+        if (!users.length) { dd.style.display = 'none'; return; }
+        users.forEach(u => {
+            const li = document.createElement('li');
+            li.style.cssText = 'padding:7px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;';
+            li.innerHTML = '<img src="../uploads/avatars/' + u.avatar + '" style="width:24px;height:24px;border-radius:50%;object-fit:cover;" onerror="this.src=\'../uploads/avatars/default.png\'">'
+                         + '<span>' + u.username + '</span>';
+            li.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                insertMention(u.username);
+            });
+            li.addEventListener('mouseover', function() { this.style.background = '#f5f5f5'; });
+            li.addEventListener('mouseout',  function() { this.style.background = ''; });
+            dd.appendChild(li);
+        });
+        const coords = getCaretCoords(activeTA);
+        dd.style.top  = coords.top  + 'px';
+        dd.style.left = coords.left + 'px';
+        dd.style.display = 'block';
+    }
+
+    function insertMention(username) {
+        if (!activeTA || atPos < 0) return;
+        const val = activeTA.value;
+        const cur = activeTA.selectionStart;
+        activeTA.value = val.slice(0, atPos) + '@' + username + ' ' + val.slice(cur);
+        const newPos = atPos + username.length + 2;
+        activeTA.setSelectionRange(newPos, newPos);
+        activeTA.focus();
+        hideDropdown();
+    }
+
+    function onKeydown(e) {
+        if (!dropdown || dropdown.style.display === 'none') return;
+        const items = dropdown.querySelectorAll('li');
+        const active = dropdown.querySelector('li.hover');
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const next = active ? active.nextElementSibling : items[0];
+            if (active) active.classList.remove('hover'), active.style.background = '';
+            if (next) next.classList.add('hover'), next.style.background = '#f5f5f5';
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            const prev = active ? active.previousElementSibling : items[items.length - 1];
+            if (active) active.classList.remove('hover'), active.style.background = '';
+            if (prev) prev.classList.add('hover'), prev.style.background = '#f5f5f5';
+        } else if (e.key === 'Enter' && active) {
+            e.preventDefault();
+            insertMention(active.querySelector('span').textContent);
+        } else if (e.key === 'Escape') {
+            hideDropdown();
+        }
+    }
+
+    // 绑定主评论框
+    const main = document.getElementById('main-input');
+    if (main) bindTA(main);
+
+    // 绑定所有回复框（包括动态生成的）
+    document.body.addEventListener('click', function(e) {
+        const ta = document.querySelector('textarea:focus');
+        if (ta) bindTA(ta);
+    });
+    document.querySelectorAll('textarea').forEach(bindTA);
+})();
 
 // 图片灯箱
 (function() {

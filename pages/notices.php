@@ -17,103 +17,97 @@ $notices = $conn->query("
     <title>社区公告</title>
     <style>
         * { box-sizing: border-box; }
-        body { background: #f4f7f6; font-family: "Microsoft YaHei", sans-serif; margin: 0; padding-bottom: 60px; }
 
-        .notice-page { max-width: 800px; margin: 30px auto; padding: 0 15px; }
+        .notice-page { max-width: 800px; margin: 24px auto; padding: 0 15px; }
 
         /* 页头 */
         .notice-banner {
-            background: linear-gradient(135deg, #f6a623 0%, #e8821a 100%);
-            border-radius: 14px;
-            padding: 30px 36px;
-            color: white;
-            margin-bottom: 24px;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-left: 3px solid #f0883e;
+            border-radius: 6px;
+            padding: 24px 28px;
+            margin-bottom: 16px;
             display: flex;
             align-items: center;
-            gap: 18px;
-            box-shadow: 0 6px 24px rgba(232,130,26,0.3);
+            gap: 16px;
         }
-        .notice-banner-icon { font-size: 52px; line-height: 1; }
-        .notice-banner h1 { margin: 0 0 6px; font-size: 24px; }
-        .notice-banner p  { margin: 0; font-size: 14px; opacity: 0.88; }
+        .notice-banner-icon { font-size: 36px; line-height: 1; }
+        .notice-banner h1 { margin: 0 0 4px; font-size: 18px; color: #e6edf3; font-family: "Courier New", monospace; }
+        .notice-banner p  { margin: 0; font-size: 13px; color: #8b949e; }
 
         /* 公告卡片 */
         .notice-card {
-            background: white;
-            border-radius: 12px;
-            border: 1px solid #fde8c4;
-            border-left: 5px solid #f6a623;
-            padding: 20px 24px;
-            margin-bottom: 16px;
+            background: #161b22;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+            border-left: 3px solid #f0883e;
+            padding: 18px 22px;
+            margin-bottom: 10px;
             cursor: pointer;
-            transition: all 0.25s;
+            transition: border-color .2s, box-shadow .2s;
             text-decoration: none;
             display: block;
             color: inherit;
         }
-        .notice-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(246,166,35,0.18);
-            border-left-color: #e8821a;
-        }
+        .notice-card:hover { border-color: #f0883e; box-shadow: 0 0 0 1px rgba(240,136,62,.4); }
+
         .notice-card-header {
             display: flex;
             align-items: flex-start;
-            gap: 12px;
+            gap: 10px;
             margin-bottom: 10px;
         }
         .notice-icon-sm {
-            background: linear-gradient(135deg, #f6a623, #e8821a);
-            color: white;
-            width: 34px;
-            height: 34px;
-            border-radius: 8px;
+            background: rgba(240,136,62,.15);
+            color: #f0883e;
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            border: 1px solid rgba(240,136,62,.3);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 16px;
+            font-size: 14px;
             flex-shrink: 0;
             margin-top: 2px;
         }
         .notice-title {
-            font-size: 17px;
-            font-weight: bold;
-            color: #222;
+            font-size: 15px;
+            font-weight: 600;
+            color: #c9d1d9;
             line-height: 1.4;
             flex: 1;
         }
         .notice-excerpt {
-            color: #777;
-            font-size: 14px;
+            color: #8b949e;
+            font-size: 13px;
             line-height: 1.7;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             overflow: hidden;
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
         }
         .notice-meta {
-            font-size: 12px;
-            color: #bbb;
+            font-size: 11px;
+            color: #6e7681;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            font-family: "Courier New", monospace;
         }
         .notice-meta img {
-            width: 20px;
-            height: 20px;
+            width: 18px;
+            height: 18px;
             border-radius: 50%;
             object-fit: cover;
             vertical-align: middle;
             margin-right: 5px;
+            border: 1px solid #30363d;
         }
 
-        .empty-tip {
-            text-align: center;
-            padding: 60px 0;
-            color: #ccc;
-            font-size: 15px;
-        }
+        .empty-tip { text-align: center; padding: 60px 0; color: #6e7681; font-size: 14px; }
     </style>
 </head>
 <body>

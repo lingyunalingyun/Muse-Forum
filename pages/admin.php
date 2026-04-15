@@ -74,71 +74,72 @@ if ($result) while ($r = $result->fetch_assoc()) $posts[] = $r;
     <title>内容管理中心</title>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
-        body { font-family: "Microsoft YaHei", sans-serif; background: #f0f2f5; margin: 0; padding-bottom: 60px; }
 
         .admin-wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
 
         /* 顶部标题栏 */
         .admin-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-        .admin-header h2 { margin: 0; font-size: 22px; color: #1a1a1a; }
-        .admin-header .meta { font-size: 13px; color: #888; }
-        .admin-header .meta a { color: #28a745; text-decoration: none; }
+        .admin-header h2 { margin: 0; font-size: 14px; font-weight: 700; color: #3fb950; letter-spacing: 1.5px; text-transform: uppercase; font-family: "Courier New", monospace; }
+        .admin-header h2::before { content: '// '; opacity: .6; }
+        .admin-header .meta { font-size: 12px; color: #6e7681; font-family: "Courier New", monospace; }
+        .admin-header .meta a { color: #3fb950; text-decoration: none; }
 
         /* 统计卡片 */
-        .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
-        .stat-card { background: white; border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 6px rgba(0,0,0,0.06); }
-        .stat-card .num { font-size: 32px; font-weight: 700; line-height: 1.1; }
-        .stat-card .label { font-size: 13px; color: #888; margin-top: 4px; }
-        .stat-card.pending .num { color: #e67e22; }
-        .stat-card.pub     .num { color: #27ae60; }
-        .stat-card.draft   .num { color: #3498db; }
-        .stat-card.total   .num { color: #2c3e50; }
+        .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+        .stat-card { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 16px 18px; }
+        .stat-card .num { font-size: 28px; font-weight: 700; line-height: 1.1; font-family: "Courier New", monospace; }
+        .stat-card .label { font-size: 11px; color: #6e7681; margin-top: 4px; letter-spacing: .5px; text-transform: uppercase; font-family: "Courier New", monospace; }
+        .stat-card.pending .num { color: #f0883e; }
+        .stat-card.pub     .num { color: #3fb950; }
+        .stat-card.draft   .num { color: #58a6ff; }
+        .stat-card.total   .num { color: #e6edf3; }
 
         /* 过滤 Tab */
-        .filter-tabs { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
-        .ftab { padding: 7px 18px; border-radius: 20px; font-size: 13px; cursor: pointer;
-                border: 1px solid #ddd; background: white; color: #555; text-decoration: none; transition: 0.2s; }
-        .ftab:hover { border-color: #28a745; color: #28a745; }
-        .ftab.active { background: #28a745; color: white; border-color: #28a745; font-weight: 600; }
-        .ftab .badge { display: inline-block; background: rgba(255,255,255,0.35); border-radius: 9px;
-                       padding: 0 6px; font-size: 11px; margin-left: 4px; }
-        .ftab:not(.active) .badge { background: #f1f1f1; color: #888; }
+        .filter-tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+        .ftab { padding: 6px 16px; border-radius: 4px; font-size: 12px; cursor: pointer;
+                border: 1px solid #30363d; background: #161b22; color: #8b949e; text-decoration: none; transition: .2s; font-weight: 600; }
+        .ftab:hover { border-color: #3fb950; color: #3fb950; }
+        .ftab.active { background: #238636; color: #fff; border-color: rgba(63,185,80,.4); }
+        .ftab .badge { display: inline-block; background: rgba(255,255,255,.12); border-radius: 9px;
+                       padding: 0 6px; font-size: 10px; margin-left: 4px; }
+        .ftab:not(.active) .badge { background: #21262d; color: #6e7681; }
 
         /* 帖子卡片 */
-        .post-card { background: white; border-radius: 12px; padding: 18px 20px; margin-bottom: 12px;
-                     box-shadow: 0 1px 6px rgba(0,0,0,0.06); display: flex; gap: 16px; align-items: flex-start; }
+        .post-card { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 16px 18px; margin-bottom: 10px;
+                     display: flex; gap: 16px; align-items: flex-start; transition: border-color .2s; }
+        .post-card:hover { border-color: #3fb950; }
         .post-card-body { flex: 1; min-width: 0; }
-        .post-card-title { font-size: 15px; font-weight: 600; color: #1a1a1a; margin: 0 0 6px;
+        .post-card-title { font-size: 14px; font-weight: 600; color: #c9d1d9; margin: 0 0 6px;
                            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .post-card-title a { color: inherit; text-decoration: none; }
-        .post-card-title a:hover { color: #28a745; }
-        .post-card-preview { font-size: 13px; color: #777; line-height: 1.55; display: -webkit-box;
+        .post-card-title a:hover { color: #3fb950; }
+        .post-card-preview { font-size: 12px; color: #8b949e; line-height: 1.55; display: -webkit-box;
                               -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 10px; }
-        .post-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 12px; color: #999; }
-        .meta-author { color: #27ae60; font-weight: 600; }
-        .meta-dot { color: #ddd; }
+        .post-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 11px; color: #6e7681; font-family: "Courier New", monospace; }
+        .meta-author { color: #3fb950; font-weight: 600; }
+        .meta-dot { color: #30363d; }
 
-        .status-tag { padding: 2px 9px; border-radius: 10px; font-size: 12px; font-weight: 600; white-space: nowrap; }
-        .status-pending  { background: #fff3cd; color: #d9770a; }
-        .status-ok       { background: #d4edda; color: #198754; }
-        .status-draft    { background: #dbeafe; color: #1d6fcc; }
+        .status-tag { padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 700; white-space: nowrap; font-family: "Courier New", monospace; }
+        .status-pending  { background: rgba(240,136,62,.15); color: #f0883e; border: 1px solid rgba(240,136,62,.3); }
+        .status-ok       { background: rgba(63,185,80,.15); color: #3fb950; border: 1px solid rgba(63,185,80,.3); }
+        .status-draft    { background: rgba(88,166,255,.15); color: #58a6ff; border: 1px solid rgba(88,166,255,.3); }
 
-        .approved-info { font-size: 12px; color: #aaa; }
-        .approved-info strong { color: #27ae60; }
+        .approved-info { font-size: 11px; color: #6e7681; }
+        .approved-info strong { color: #3fb950; }
 
         /* 操作按钮区 */
-        .post-card-actions { display: flex; flex-direction: column; gap: 7px; flex-shrink: 0; }
-        .btn { padding: 6px 14px; border: none; border-radius: 7px; cursor: pointer;
-               text-decoration: none; font-size: 13px; display: inline-block; font-weight: 500;
-               transition: opacity 0.15s; white-space: nowrap; text-align: center; }
+        .post-card-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+        .btn { padding: 5px 12px; border: none; border-radius: 4px; cursor: pointer;
+               text-decoration: none; font-size: 12px; display: inline-block; font-weight: 600;
+               transition: opacity .15s; white-space: nowrap; text-align: center; font-family: inherit; }
         .btn:hover { opacity: 0.85; }
-        .btn-approve { background: #28a745; color: white; }
-        .btn-view    { background: #e9ecef; color: #333; }
-        .btn-delete  { background: #dc3545; color: white; }
+        .btn-approve { background: #238636; color: white; border: 1px solid rgba(63,185,80,.4); }
+        .btn-view    { background: #21262d; color: #8b949e; border: 1px solid #30363d; }
+        .btn-delete  { background: rgba(248,81,73,.15); color: #f85149; border: 1px solid rgba(248,81,73,.3); }
 
-        .empty-state { text-align: center; padding: 60px 20px; background: white; border-radius: 12px;
-                       color: #aaa; font-size: 14px; box-shadow: 0 1px 6px rgba(0,0,0,0.06); }
-        .empty-state .icon { font-size: 48px; margin-bottom: 10px; }
+        .empty-state { text-align: center; padding: 60px 20px; background: #161b22; border: 1px solid #30363d; border-radius: 6px;
+                       color: #6e7681; font-size: 13px; }
+        .empty-state .icon { font-size: 36px; margin-bottom: 10px; }
 
         @media (max-width: 640px) {
             .stats-row { grid-template-columns: repeat(2, 1fr); }

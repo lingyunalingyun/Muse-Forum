@@ -44,295 +44,374 @@ $active_users = $conn->query("
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>社区论坛</title>
+    <title>缪斯 MUSE</title>
     <style>
-        * { box-sizing: border-box; }
-        body { background: #f4f7f6; font-family: "Microsoft YaHei", sans-serif; margin: 0; padding-bottom: 80px; }
+        /* ── 首页专属布局 ── */
+        .page-layout { max-width:1100px; margin:28px auto; padding:0 16px; display:flex; gap:20px; align-items:flex-start; }
+        .main-feed   { flex:1; min-width:0; }
+        .sidebar     { width:260px; flex-shrink:0; display:flex; flex-direction:column; gap:12px; }
+        @media(max-width:768px){
+            /* 改成 block 让子元素自然堆叠，不再有 flex 高度问题 */
+            .page-layout { display: block; margin: 0; padding: 0; }
 
-        /* ── Hero 横幅 ── */
+            .sidebar {
+                display: flex;
+                flex-direction: row;
+                overflow-x: auto;
+                gap: 8px;
+                padding: 10px 12px;
+                background: #0d1117;
+                border-bottom: 1px solid #30363d;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                align-items: flex-start;
+                width: 100%;
+                box-sizing: border-box;
+            }
+            .sidebar::-webkit-scrollbar { display: none; }
+            .sidebar .widget {
+                min-width: 180px;
+                max-width: 220px;
+                flex-shrink: 0;
+            }
+            /* 每个小部件最多显示 3 条 */
+            .sidebar .hot-item:nth-child(n+4),
+            .sidebar .notice-item:nth-child(n+4),
+            .sidebar .user-item:nth-child(n+4) { display: none; }
+            /* 缩紧内部间距 */
+            .sidebar .widget-head { padding: 8px 12px; font-size: 10px; }
+            .sidebar .hot-item,
+            .sidebar .user-item { padding: 6px 10px; font-size: 12px; }
+            .sidebar .notice-body { padding: 8px 12px; }
+            .sidebar .notice-item { margin-bottom: 6px; }
+            .sidebar .notice-item a { font-size: 12px; }
+
+            .main-feed { padding: 12px 12px 0; }
+        }
+
+        /* ── Hero 科技横幅 ── */
         .hero {
             width: 100%;
-            height: 220px;
+            background-color: #0d1117;
+            border-bottom: 1px solid #30363d;
+            padding: 0;
             overflow: hidden;
-            background: #d8e8d8;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            position: relative;
         }
-        .hero img {
-            width: 100%;
-            height: 100%;
+        /* 背景大图：绝对定位，比容器略大，留出视差移动空间 */
+        .hero-bg {
+            position: absolute;
+            inset: -8% -4%;
+            width: calc(100% + 8%);
+            height: calc(116%);
             object-fit: cover;
-            display: block;
-            transform: scale(1.08);
-            transition: transform 0.1s ease-out;
+            display: none;           /* 默认隐藏，JS 加载成功后显示 */
             will-change: transform;
         }
-
-        /* ── 两栏布局 ── */
-        .page-layout {
+        .hero-bg.loaded { display: block; }
+        .hero-inner {
             max-width: 1100px;
-            margin: 30px auto;
-            padding: 0 15px;
+            margin: 0 auto;
+            padding: 36px 20px;
             display: flex;
+            align-items: center;
+            justify-content: space-between;
             gap: 20px;
-            align-items: flex-start;
+            position: relative;
+            z-index: 2;
+        }
+        .hero-text h1 {
+            font-size: 26px;
+            font-weight: 700;
+            color: #e6edf3;
+            margin: 0 0 6px;
+            font-family: "Courier New", monospace;
+        }
+        .hero-text h1 span { color: #3fb950; }
+        .hero-text p { color: #8b949e; font-size: 13px; margin: 0; font-family: "Courier New", monospace; }
+        .hero-stats { display:flex; gap:24px; }
+        .hero-stat  { text-align:center; }
+        .hero-stat-num  { font-size:22px; font-weight:700; color:#3fb950; font-family:"Courier New",monospace; display:block; }
+        .hero-stat-label{ font-size:11px; color:#6e7681; letter-spacing:.5px; text-transform:uppercase; font-family:"Courier New",monospace; }
+        @media(max-width:600px){
+            .hero-inner { flex-direction:column; text-align:center; padding:24px 16px; gap:16px; }
+            .hero-text h1 { font-size:20px; }
+            .hero-stats { gap:28px; }
+        }
+        /* 暗色遮罩 + 背景网格（z-index:1 确保压在背景图上方） */
+        .hero::before {
+            content:'';
+            position:absolute; inset:0;
+            background:
+                linear-gradient(rgba(63,185,80,.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(63,185,80,.04) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(13,17,23,.88) 0%, rgba(13,17,23,.78) 100%);
+            background-size: 40px 40px, 40px 40px, auto;
+            pointer-events:none;
+            z-index: 1;
+        }
+        /* 右侧光晕 */
+        .hero::after {
+            content:'';
+            position:absolute; right:-60px; top:50%; transform:translateY(-50%);
+            width:400px; height:400px;
+            background: radial-gradient(circle, rgba(63,185,80,.15) 0%, transparent 70%);
+            pointer-events:none;
+            z-index: 1;
         }
 
-        /* ── 主内容区 ── */
-        .main-feed {
-            flex: 1;
-            min-width: 0;
-        }
+        /* ── 节标题 ── */
         .section-title {
-            font-size: 16px;
-            color: #666;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            font-size:11px; font-weight:700; color:#6e7681;
+            letter-spacing:1.5px; text-transform:uppercase;
+            font-family:"Courier New",monospace;
+            margin-bottom:14px;
+            display:flex; align-items:center; gap:8px;
         }
-        .section-title::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: #eee;
+        .section-title::before { content:'//'; color:#3fb950; }
+        .section-title::after  { content:''; flex:1; height:1px; background:#30363d; }
+
+        /* ── 推荐帖子：图片方格网格 ── */
+        .featured-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        @media(max-width:480px) {
+            .featured-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
         }
 
-        /* ── 帖子卡片 ── */
-        .post-card {
-            background: white;
-            margin-bottom: 15px;
-            padding: 20px;
-            border-radius: 10px;
-            border: 1px solid #eee;
-            cursor: pointer;
-            transition: all 0.25s;
-        }
-        .post-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.08); border-color: #28a745; }
-
-        /* 推荐帖 */
-        .post-card.is-recommend {
-            border-color: #ffe69c;
-            border-left: 4px solid #f6c90e;
-            background: linear-gradient(to bottom right, #fffef5, #fff);
-        }
-        .post-card.is-recommend:hover { border-color: #f6c90e; box-shadow: 0 6px 18px rgba(246,201,14,0.18); }
-
-        /* 公告帖 */
-        .post-card.is-notice {
-            border-color: #fde8c4;
-            border-left: 4px solid #f6a623;
-            background: linear-gradient(to bottom right, #fffaf3, #fff);
-        }
-        .post-card.is-notice:hover { border-color: #f6a623; box-shadow: 0 6px 18px rgba(246,166,35,0.18); }
-
-        /* 卡片 badge */
-        .card-badges { display: flex; gap: 6px; margin-bottom: 8px; }
-        .card-badge {
-            font-size: 11px;
-            font-weight: bold;
-            padding: 2px 8px;
-            border-radius: 20px;
-            letter-spacing: 0.5px;
-            white-space: nowrap;
-        }
-        .card-badge.recommend { background: #fff8dc; color: #b8860b; border: 1px solid #f6c90e; }
-        .card-badge.notice    { background: #fff3e0; color: #a0621a; border: 1px solid #f6a623; }
-
-        .post-title   { font-size: 17px; font-weight: bold; color: #222; margin-bottom: 8px; }
-        .post-excerpt { color: #666; font-size: 14px; line-height: 1.6; margin-bottom: 12px;
-                        overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-        .post-meta    { font-size: 12px; color: #999; display: flex; justify-content: space-between; align-items: center; }
-        .author-info  { color: #28a745; font-weight: bold; }
-
-        /* ── 侧栏 ── */
-        .sidebar {
-            width: 260px;
-            flex-shrink: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-        .widget {
-            background: white;
-            border-radius: 10px;
-            border: 1px solid #eee;
+        .featured-card {
+            position: relative;
+            aspect-ratio: 1 / 1;
+            border-radius: 8px;
             overflow: hidden;
+            cursor: pointer;
+            background: #161b22;
+            border: 1px solid #30363d;
+            transition: transform .2s, box-shadow .2s;
         }
-        .widget-title {
-            font-size: 13px;
-            font-weight: bold;
-            color: #555;
-            padding: 12px 16px;
-            border-bottom: 1px solid #f5f5f5;
-            background: #fafafa;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+        .featured-card:hover {
+            transform: translateY(-3px) scale(1.01);
+            box-shadow: 0 8px 28px rgba(0,0,0,.5);
         }
-
-        /* 热搜列表 */
-        .hot-list { padding: 8px 0; }
-        .hot-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 16px;
-            text-decoration: none;
-            color: #333;
-            font-size: 13px;
-            transition: 0.2s;
-            line-height: 1.4;
-        }
-        .hot-item:hover { background: #f9f9f9; color: #28a745; }
-        .hot-rank {
-            width: 20px;
-            height: 20px;
-            border-radius: 4px;
-            background: #eee;
-            color: #999;
-            font-size: 11px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-        .hot-rank.top1 { background: #ff4757; color: white; }
-        .hot-rank.top2 { background: #ff6b81; color: white; }
-        .hot-rank.top3 { background: #ffa502; color: white; }
-        .hot-text { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-        .hot-likes { font-size: 11px; color: #bbb; flex-shrink: 0; }
-
-        /* 公告 */
-        .notice-body { padding: 14px 16px; font-size: 13px; color: #555; line-height: 1.8; }
-        .notice-item { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
-        .notice-item:last-child { margin-bottom: 0; }
-        .notice-dot { width: 6px; height: 6px; border-radius: 50%; background: #28a745; margin-top: 7px; flex-shrink: 0; }
-
-        /* 活跃用户 */
-        .user-list { padding: 8px 0; }
-        .user-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 16px;
-            text-decoration: none;
-            color: #333;
-            transition: 0.2s;
-        }
-        .user-item:hover { background: #f9f9f9; }
-        .user-item img {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
+        /* 帖子缩略图 */
+        .featured-card .fc-img {
+            position: absolute; inset: 0;
+            width: 100%; height: 100%;
             object-fit: cover;
-            border: 2px solid #eee;
+            transition: transform .3s;
         }
-        .user-item-info { flex: 1; min-width: 0; }
-        .user-item-name { font-size: 13px; font-weight: bold; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .user-item-count { font-size: 11px; color: #999; }
-
-        /* ── 悬浮发布按钮 ── */
-        .fab {
-            position: fixed;
-            right: 32px;
-            bottom: 36px;
-            width: 54px;
-            height: 54px;
-            background: #28a745;
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            text-decoration: none;
-            box-shadow: 0 4px 16px rgba(40,167,69,0.45);
-            transition: 0.25s;
-            z-index: 999;
+        .featured-card:hover .fc-img { transform: scale(1.05); }
+        /* 无图时的占位背景 */
+        .featured-card .fc-placeholder {
+            position: absolute; inset: 0;
+            background: #161b22;
+            background-image:
+                linear-gradient(rgba(63,185,80,.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(63,185,80,.05) 1px, transparent 1px);
+            background-size: 24px 24px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 28px; color: rgba(63,185,80,.25);
+            font-family: "Courier New", monospace;
         }
-        .fab:hover { background: #218838; transform: scale(1.1); box-shadow: 0 6px 20px rgba(40,167,69,0.55); }
-        .fab-tip {
-            position: fixed;
-            right: 94px;
-            bottom: 47px;
-            background: rgba(0,0,0,0.65);
-            color: white;
-            font-size: 13px;
-            padding: 4px 10px;
-            border-radius: 6px;
+        /* 底部渐变遮罩 */
+        .featured-card::after {
+            content: '';
+            position: absolute; inset: 0;
+            background: linear-gradient(
+                to bottom,
+                transparent 30%,
+                rgba(13,17,23,.6) 60%,
+                rgba(13,17,23,.92) 100%
+            );
             pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.2s;
-            white-space: nowrap;
-            z-index: 999;
         }
-        .fab:hover + .fab-tip,
-        .fab-wrap:hover .fab-tip { opacity: 1; }
-        .fab-wrap { position: fixed; right: 32px; bottom: 36px; z-index: 999; }
+        /* 推荐角标 */
+        .fc-badge {
+            position: absolute; top: 10px; left: 10px;
+            background: rgba(227,179,65,.9); color: #0d1117;
+            font-size: 10px; font-weight: 700; padding: 2px 7px;
+            border-radius: 3px; font-family: "Courier New", monospace;
+            letter-spacing: .5px; z-index: 2;
+        }
+        /* 底部文字区 */
+        .fc-body {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            padding: 16px 14px 12px;
+            z-index: 2;
+        }
+        .fc-title {
+            font-size: 16px; font-weight: 700; color: #e6edf3;
+            line-height: 1.4; margin-bottom: 8px;
+            overflow: hidden; display: -webkit-box;
+            -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+        }
+        .fc-meta {
+            font-size: 12px; color: rgba(230,237,243,.65);
+            font-family: "Courier New", monospace;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .fc-author { color: #3fb950; font-weight: 700; }
 
-        /* ── 响应式 ── */
-        @media (max-width: 768px) {
-            .page-layout { flex-direction: column; }
-            .sidebar { width: 100%; }
+        .author-info { color:#3fb950; font-weight:700; font-family:inherit; }
+
+        /* 广场入口横幅 */
+        .square-banner {
+            display: flex; align-items: center; justify-content: space-between;
+            background: #161b22; border: 1px solid #30363d; border-radius:6px;
+            padding: 14px 18px; margin-bottom: 8px;
+            text-decoration: none; transition: border-color .2s;
         }
+        .square-banner:hover { border-color: #3fb950; }
+        .square-banner-left { font-size:13px; color:#8b949e; font-family:"Courier New",monospace; }
+        .square-banner-left strong { color:#e6edf3; display:block; font-size:14px; margin-bottom:2px; }
+        .square-banner-arrow { font-size:18px; color:#3fb950; }
+
+        /* ── 侧栏组件 ── */
+        .widget { background:#161b22; border:1px solid #30363d; border-radius:6px; overflow:hidden; margin-bottom:0; }
+        .widget-title {
+            font-size:11px; font-weight:700; color:#6e7681;
+            letter-spacing:1.5px; text-transform:uppercase;
+            padding:11px 14px; border-bottom:1px solid #30363d;
+            font-family:"Courier New",monospace;
+            display:flex; align-items:center; gap:6px;
+        }
+        .widget-title::before { content:'//'; color:#3fb950; }
+        .widget-title a { margin-left:auto; font-size:11px; color:#3fb950; font-weight:normal; font-family:inherit; text-transform:none; letter-spacing:0; }
+
+        .hot-list { padding:6px 0; }
+        .hot-item { display:flex; align-items:center; gap:10px; padding:8px 14px;
+                    text-decoration:none; color:#8b949e; font-size:13px; transition:.15s; line-height:1.4; }
+        .hot-item:hover { background:#1c2128; color:#e6edf3; }
+        .hot-rank { width:18px; height:18px; border-radius:4px; background:#1c2128; color:#6e7681;
+                    font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center;
+                    flex-shrink:0; font-family:"Courier New",monospace; }
+        .hot-rank.top1 { background:rgba(63,185,80,.2);  color:#3fb950; }
+        .hot-rank.top2 { background:rgba(88,166,255,.2); color:#58a6ff; }
+        .hot-rank.top3 { background:rgba(240,136,62,.2); color:#f0883e; }
+        .hot-text  { flex:1; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        .hot-likes { font-size:11px; color:#6e7681; flex-shrink:0; font-family:"Courier New",monospace; }
+
+        .notice-body { padding:12px 14px; }
+        .notice-item { display:flex; align-items:flex-start; gap:8px; margin-bottom:8px; }
+        .notice-item:last-child { margin-bottom:0; }
+        .notice-dot  { width:5px; height:5px; border-radius:50%; background:#3fb950; margin-top:8px; flex-shrink:0; }
+        .notice-item a { color:#8b949e; font-size:13px; line-height:1.5; transition:color .15s; }
+        .notice-item a:hover { color:#3fb950; }
+
+        .user-list { padding:6px 0; }
+        .user-item { display:flex; align-items:center; gap:10px; padding:8px 14px;
+                     text-decoration:none; color:#8b949e; transition:.15s; }
+        .user-item:hover { background:#1c2128; color:#e6edf3; }
+        .user-item img { width:30px; height:30px; border-radius:50%; object-fit:cover; border:1px solid #30363d; }
+        .user-item-info  { flex:1; min-width:0; }
+        .user-item-name  { font-size:13px; font-weight:700; color:#e6edf3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .user-item-count { font-size:11px; color:#6e7681; font-family:"Courier New",monospace; }
+
+        /* ── 登录奖励 Toast ── */
+        .reward-toast {
+            position:fixed; top:76px; left:50%;
+            transform:translateX(-50%) translateY(-20px);
+            background:#161b22; border:1px solid #3fb950;
+            color:#e6edf3; padding:12px 24px; border-radius:4px;
+            box-shadow:0 0 20px rgba(63,185,80,.25);
+            font-size:14px; font-weight:700; font-family:"Courier New",monospace;
+            z-index:9999; opacity:0; transition:opacity .4s, transform .4s;
+            white-space:nowrap; pointer-events:none;
+        }
+        .reward-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+        .reward-toast .accent { color:#3fb950; }
     </style>
 </head>
 <body>
 
 <?php include __DIR__ . '/includes/header.php'; ?>
 
-<!-- Hero 横幅 -->
-<div class="hero">
-    <img src="uploads/banner/banner.jpg" alt="banner">
+<!-- Hero 科技横幅 -->
+<div class="hero" id="site-hero">
+    <img class="hero-bg" id="hero-bg" src="uploads/hero-bg.jpg" alt=""
+         onerror="this.style.display='none'" onload="this.classList.add('loaded')">
+    <div class="hero-inner">
+        <div class="hero-text">
+            <h1>&gt; 欢迎来到 <span>MUSE</span>_</h1>
+            <p>// 创作 · 分享 · 交流 · 探索</p>
+        </div>
+        <?php
+        $stat_posts = $conn->query("SELECT COUNT(*) c FROM posts WHERE status='已发布'")->fetch_assoc()['c'] ?? 0;
+        $stat_users = $conn->query("SELECT COUNT(*) c FROM users")->fetch_assoc()['c'] ?? 0;
+        ?>
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <span class="hero-stat-num"><?= $stat_posts ?></span>
+                <span class="hero-stat-label">帖子</span>
+            </div>
+            <div class="hero-stat">
+                <span class="hero-stat-num"><?= $stat_users ?></span>
+                <span class="hero-stat-label">成员</span>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- 两栏布局 -->
 <div class="page-layout">
 
-    <!-- 主帖子列表 -->
+    <!-- 主帖子列表：仅推荐帖 -->
     <div class="main-feed">
-        <div class="section-title">✨ 精选内容</div>
+        <div class="section-title">编辑推荐</div>
         <?php
-        $sql = "SELECT p.id, p.title, p.content, p.created_at, p.is_notice, p.is_recommend, u.username
+        $sql = "SELECT p.id, p.title, p.content, p.created_at,
+                       u.username,
+                       (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) as likes_count,
+                       (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count
                 FROM posts p
                 LEFT JOIN users u ON p.user_id = u.id
-                WHERE p.status = '已发布'
+                WHERE p.status = '已发布' AND p.is_recommend = 1
                 ORDER BY p.id DESC";
         $result = $conn->query($sql);
 
-        if ($result && $result->num_rows > 0) {
-            while ($row = $result->fetch_assoc()) {
-                $clean_text    = strip_tags($row['content']);
-                $excerpt       = mb_substr($clean_text, 0, 100) . (mb_strlen($clean_text) > 100 ? '...' : '');
-                $display_title = !empty($row['title']) ? $row['title'] : $row['username'] . ' 的分享';
-
-                // 卡片样式类
-                $card_class = 'post-card';
-                if ($row['is_notice'])    $card_class .= ' is-notice';
-                if ($row['is_recommend']) $card_class .= ' is-recommend';
-
-                // badge 标签
-                $badges = '';
-                if ($row['is_notice'])    $badges .= '<span class="card-badge notice">📢 公告</span>';
-                if ($row['is_recommend']) $badges .= '<span class="card-badge recommend">⭐ 编辑推荐</span>';
-
-                echo '<div class="' . $card_class . '" onclick="location.href=\'pages/post.php?id=' . $row['id'] . '\'">';
-                if ($badges) echo '  <div class="card-badges">' . $badges . '</div>';
-                echo '  <div class="post-title">'   . htmlspecialchars($display_title) . '</div>';
-                echo '  <div class="post-excerpt">' . htmlspecialchars($excerpt) . '</div>';
-                echo '  <div class="post-meta">';
-                echo '    <span>作者：<span class="author-info">' . htmlspecialchars($row['username']) . '</span></span>';
-                echo '    <span>' . date('Y-m-d H:i', strtotime($row['created_at'])) . '</span>';
-                echo '  </div>';
-                echo '</div>';
-            }
-        } else {
-            echo '<p style="text-align:center;color:#bbb;padding:40px 0;">暂无内容，快来发第一篇吧～</p>';
-        }
+        if ($result && $result->num_rows > 0):
         ?>
+        <div class="featured-grid">
+        <?php while ($row = $result->fetch_assoc()):
+            $display_title = !empty($row['title']) ? $row['title'] : $row['username'] . ' 的分享';
+            // 提取内容中的第一张图片
+            preg_match('/<img[^>]+src=["\']([^"\']+)["\']/', $row['content'], $img_match);
+            $thumb = $img_match[1] ?? null;
+        ?>
+        <div class="featured-card" onclick="location.href='pages/post.php?id=<?= $row['id'] ?>'">
+            <?php if ($thumb): ?>
+                <img class="fc-img" src="<?= htmlspecialchars($thumb) ?>" alt="" loading="lazy"
+                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                <div class="fc-placeholder" style="display:none;">#</div>
+            <?php else: ?>
+                <div class="fc-placeholder">#</div>
+            <?php endif; ?>
+            <span class="fc-badge">★ 推荐</span>
+            <div class="fc-body">
+                <div class="fc-title"><?= htmlspecialchars($display_title) ?></div>
+                <div class="fc-meta">
+                    <span class="fc-author"><?= htmlspecialchars($row['username']) ?></span>
+                    <span>❤️ <?= (int)$row['likes_count'] ?> &nbsp;💬 <?= (int)$row['comment_count'] ?></span>
+                </div>
+            </div>
+        </div>
+        <?php endwhile; ?>
+        </div>
+        <?php else: ?>
+        <div style="text-align:center;color:#6e7681;padding:40px 0;font-family:'Courier New',monospace;">// 暂无推荐内容</div>
+        <?php endif; ?>
+
+        <!-- 广场入口 -->
+        <a href="square.php" class="square-banner">
+            <div class="square-banner-left">
+                <strong>// 前往广场</strong>
+                浏览全部帖子
+            </div>
+            <span class="square-banner-arrow">→</span>
+        </a>
     </div>
 
     <!-- 右侧栏 -->
@@ -340,7 +419,7 @@ $active_users = $conn->query("
 
         <!-- 热搜 -->
         <div class="widget">
-            <div class="widget-title">🔥 热门帖子</div>
+            <div class="widget-title">热门帖子</div>
             <div class="hot-list">
                 <?php
                 $rank_classes = ['top1', 'top2', 'top3', '', ''];
@@ -357,7 +436,7 @@ $active_users = $conn->query("
                         $i++;
                     }
                 } else {
-                    echo '<div style="padding:16px;color:#ccc;font-size:13px;text-align:center;">暂无数据</div>';
+                    echo '<div style="padding:16px;color:#6e7681;font-size:12px;text-align:center;font-family:\'Courier New\',monospace;">// 暂无数据</div>';
                 }
                 ?>
             </div>
@@ -366,31 +445,26 @@ $active_users = $conn->query("
         <!-- 公告 -->
         <div class="widget">
             <div class="widget-title">
-                📢 社区公告
-                <a href="pages/notices.php" style="margin-left:auto; font-size:12px; color:#28a745; font-weight:normal; text-decoration:none; white-space:nowrap;">更多 →</a>
+                社区公告
+                <a href="pages/notices.php">更多</a>
             </div>
             <div class="notice-body">
                 <?php if ($notice_posts && $notice_posts->num_rows > 0): ?>
                     <?php while ($np = $notice_posts->fetch_assoc()): ?>
                     <div class="notice-item">
                         <span class="notice-dot"></span>
-                        <a href="pages/post.php?id=<?= $np['id'] ?>"
-                           style="color:#444; text-decoration:none; font-size:13px; line-height:1.5;"
-                           onmouseover="this.style.color='#28a745'"
-                           onmouseout="this.style.color='#444'">
-                            <?= htmlspecialchars($np['title']) ?>
-                        </a>
+                        <a href="pages/post.php?id=<?= $np['id'] ?>"><?= htmlspecialchars($np['title']) ?></a>
                     </div>
                     <?php endwhile; ?>
                 <?php else: ?>
-                    <div style="color:#ccc; font-size:13px; text-align:center; padding:8px 0;">暂无公告</div>
+                    <div style="color:#6e7681;font-size:12px;text-align:center;padding:8px 0;font-family:'Courier New',monospace;">// 暂无公告</div>
                 <?php endif; ?>
             </div>
         </div>
 
         <!-- 活跃用户 -->
         <div class="widget">
-            <div class="widget-title">🏆 活跃用户</div>
+            <div class="widget-title">活跃用户</div>
             <div class="user-list">
                 <?php
                 if ($active_users && $active_users->num_rows > 0) {
@@ -405,7 +479,7 @@ $active_users = $conn->query("
                         echo '</a>';
                     }
                 } else {
-                    echo '<div style="padding:16px;color:#ccc;font-size:13px;text-align:center;">暂无数据</div>';
+                    echo '<div style="padding:16px;color:#6e7681;font-size:12px;text-align:center;font-family:\'Courier New\',monospace;">// 暂无数据</div>';
                 }
                 ?>
             </div>
@@ -416,51 +490,58 @@ $active_users = $conn->query("
 
 <script>
 (function() {
-    const hero = document.querySelector('.hero');
-    const img  = hero && hero.querySelector('img');
+    const hero  = document.getElementById('site-hero');
+    const img   = document.getElementById('hero-bg');
     if (!img) return;
 
+    // 目标值 / 当前插值
+    let targetX  = 0, curX  = 0;  // 鼠标水平偏移 px
+    let targetY  = 0, curY  = 0;  // 滚动垂直偏移 px
+    let rafId    = null;
+    let isMoving = false;
+
+    function lerp(a, b, t) { return a + (b - a) * t; }
+
+    function tick() {
+        curX = lerp(curX, targetX, 0.07);
+        img.style.transform = 'translateX(' + curX.toFixed(2) + 'px) translateY(' + curY.toFixed(2) + 'px)';
+
+        if (Math.abs(curX - targetX) > 0.05) {
+            rafId = requestAnimationFrame(tick);
+        } else {
+            rafId = null;
+        }
+    }
+
+    function startTick() {
+        if (!rafId) rafId = requestAnimationFrame(tick);
+    }
+
+    // 鼠标水平视差（仅 X 轴，幅度 ±24px，带平滑插值）
     hero.addEventListener('mousemove', function(e) {
-        const rect   = hero.getBoundingClientRect();
-        const cx     = rect.width  / 2;
-        const dx     = (e.clientX - rect.left - cx) / cx; // -1 ~ 1
-        const moveX  = dx * 12;
-        img.style.transform = `scale(1.08) translateX(${moveX}px)`;
+        const rect = hero.getBoundingClientRect();
+        const dx   = (e.clientX - rect.left - rect.width / 2) / rect.width;
+        targetX = dx * -24;
+        startTick();
+    });
+    hero.addEventListener('mouseleave', function() {
+        targetX = 0;
+        startTick();
     });
 
-    hero.addEventListener('mouseleave', function() {
-        img.style.transform = 'scale(1.08) translateX(0)';
-    });
+    // 滚动视差：Y 轴直接跟随，不插值
+    window.addEventListener('scroll', function() {
+        curY = window.scrollY * 0.35;
+        img.style.transform = 'translateX(' + curX.toFixed(2) + 'px) translateY(' + curY.toFixed(2) + 'px)';
+    }, { passive: true });
 })();
 </script>
 
 <!-- 登录奖励 Toast -->
 <?php if (isset($_SESSION['login_reward'])): ?>
 <?php $reward = $_SESSION['login_reward']; unset($_SESSION['login_reward']); ?>
-<style>
-    .reward-toast {
-        position: fixed;
-        top: 80px;
-        left: 50%;
-        transform: translateX(-50%) translateY(-20px);
-        background: linear-gradient(135deg, #28a745, #20c997);
-        color: white;
-        padding: 14px 28px;
-        border-radius: 40px;
-        box-shadow: 0 6px 24px rgba(40,167,69,0.4);
-        font-size: 15px;
-        font-weight: bold;
-        z-index: 9999;
-        opacity: 0;
-        transition: opacity 0.4s ease, transform 0.4s ease;
-        white-space: nowrap;
-        pointer-events: none;
-    }
-    .reward-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-</style>
 <div class="reward-toast" id="reward-toast">
-    🎁 每日登录奖励 +<?= $reward['points'] ?> 积分 &nbsp;|&nbsp;
-    🔥 已连续登录 <?= $reward['streak'] ?> 天
+    &gt; 登录奖励 <span class="accent">+<?= $reward['points'] ?> pts</span> &nbsp;|&nbsp; 连续登录 <span class="accent"><?= $reward['streak'] ?> 天</span>
 </div>
 <script>
 (function(){
@@ -474,8 +555,8 @@ $active_users = $conn->query("
 <!-- 悬浮发布按钮 -->
 <?php if (isset($_SESSION['user_id'])): ?>
 <div class="fab-wrap">
-    <a href="pages/publish.php" class="fab" title="发布帖子">✍️</a>
-    <div class="fab-tip">发布帖子</div>
+    <div class="fab-tip">发帖</div>
+    <a href="pages/publish.php" class="fab" title="发布帖子">+</a>
 </div>
 <?php endif; ?>
 

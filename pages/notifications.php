@@ -101,73 +101,81 @@ $type_config = [
     <meta charset="UTF-8">
     <title>消息中心</title>
     <style>
-        body { background: #f4f7f6; font-family: "Microsoft YaHei", sans-serif; margin: 0; padding-bottom: 40px; }
-
         /* ── 通知布局 ── */
-        .notif-wrap { max-width: 700px; margin: 30px auto; padding: 0 15px; }
+        .notif-wrap { max-width: 700px; margin: 24px auto; padding: 0 15px; }
+        .notif-wrap h2 { font-size: 13px; font-weight: 700; color: #3fb950; letter-spacing: 1.5px; text-transform: uppercase; font-family: "Courier New", monospace; margin: 0 0 18px; }
+        .notif-wrap h2::before { content: '// '; opacity: .6; }
 
         /* ── 私信布局 ── */
-        .msg-layout { max-width: 1000px; margin: 0 auto; padding: 0 15px; display: flex; gap: 15px; height: calc(100vh - 270px); }
-        .inbox { width: 280px; background: white; border-radius: 12px; overflow-y: auto; box-shadow: 0 2px 10px rgba(0,0,0,0.05); flex-shrink: 0; }
-        .inbox-title { padding: 16px 20px; font-weight: bold; font-size: 15px; border-bottom: 1px solid #f0f0f0; }
-        .inbox-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid #f9f9f9; text-decoration: none; color: #333; }
-        .inbox-item:hover, .inbox-item.active { background: #f0fdf4; }
-        .inbox-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+        .msg-layout { max-width: 1000px; margin: 0 auto; padding: 0 15px; display: flex; gap: 12px; height: calc(100vh - 260px); }
+        .inbox { width: 270px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; overflow-y: auto; flex-shrink: 0; }
+        @media(max-width:700px){
+            .msg-layout { flex-direction: column; height: auto; padding: 0 10px; }
+            .inbox { width: 100%; max-height: 220px; }
+            .chat-area { height: 420px; }
+            .notif-wrap { padding: 0 10px; }
+        }
+        .inbox-title { padding: 14px 18px; font-weight: 700; font-size: 12px; color: #3fb950; border-bottom: 1px solid #30363d; letter-spacing: 1px; text-transform: uppercase; font-family: "Courier New", monospace; }
+        .inbox-title::before { content: '// '; opacity: .6; }
+        .inbox-item { display: flex; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer; transition: background .2s; border-bottom: 1px solid #21262d; text-decoration: none; color: #c9d1d9; }
+        .inbox-item:hover, .inbox-item.active { background: rgba(63,185,80,.06); }
+        .inbox-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid #30363d; }
         .inbox-info { flex: 1; min-width: 0; }
-        .inbox-name { font-weight: bold; font-size: 14px; display: flex; justify-content: space-between; }
-        .inbox-preview { font-size: 12px; color: #999; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
-        .unread-dot { background: #e74c3c; color: white; border-radius: 10px; padding: 1px 6px; font-size: 11px; }
-        .inbox-empty { padding: 30px 20px; text-align: center; color: #bbb; font-size: 13px; }
-        .chat-area { flex: 1; display: flex; flex-direction: column; background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); overflow: hidden; }
-        .chat-header { padding: 16px 20px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; gap: 12px; }
-        .chat-header img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
-        .chat-header strong { font-size: 15px; }
-        .chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
-        .msg-row { display: flex; align-items: flex-end; gap: 10px; }
+        .inbox-name { font-weight: 600; font-size: 13px; display: flex; justify-content: space-between; color: #e6edf3; }
+        .inbox-preview { font-size: 11px; color: #6e7681; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
+        .unread-dot { background: #f85149; color: white; border-radius: 8px; padding: 1px 6px; font-size: 10px; font-family: "Courier New", monospace; }
+        .inbox-empty { padding: 30px 20px; text-align: center; color: #6e7681; font-size: 13px; }
+        .chat-area { flex: 1; display: flex; flex-direction: column; background: #161b22; border: 1px solid #30363d; border-radius: 6px; overflow: hidden; }
+        .chat-header { padding: 14px 18px; border-bottom: 1px solid #30363d; display: flex; align-items: center; gap: 12px; }
+        .chat-header img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid #30363d; }
+        .chat-header strong { font-size: 14px; color: #e6edf3; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 12px; background: #0d1117; }
+        .msg-row { display: flex; align-items: flex-end; gap: 8px; }
         .msg-row.sent { flex-direction: row-reverse; }
-        .msg-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
-        .msg-bubble { max-width: 65%; padding: 10px 14px; border-radius: 18px; font-size: 14px; line-height: 1.5; word-break: break-word; }
-        .msg-row.received .msg-bubble { background: #f1f3f4; color: #333; border-bottom-left-radius: 4px; }
-        .msg-row.sent .msg-bubble { background: #28a745; color: white; border-bottom-right-radius: 4px; }
-        .msg-time { font-size: 11px; color: #bbb; margin-top: 4px; text-align: right; }
+        .msg-avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid #30363d; }
+        .msg-bubble { max-width: 65%; padding: 9px 13px; border-radius: 4px; font-size: 13px; line-height: 1.5; word-break: break-word; }
+        .msg-row.received .msg-bubble { background: #161b22; color: #c9d1d9; border: 1px solid #30363d; border-bottom-left-radius: 2px; }
+        .msg-row.sent .msg-bubble { background: rgba(63,185,80,.2); color: #e6edf3; border: 1px solid rgba(63,185,80,.4); border-bottom-right-radius: 2px; }
+        .msg-time { font-size: 10px; color: #484f58; margin-top: 3px; text-align: right; font-family: "Courier New", monospace; }
         .msg-row.received .msg-time { text-align: left; }
-        .chat-input { border-top: 1px solid #f0f0f0; padding: 14px 16px; display: flex; gap: 10px; }
-        .chat-input textarea { flex: 1; border: 1px solid #ddd; border-radius: 8px; padding: 10px 14px; font-size: 14px; font-family: inherit; resize: none; outline: none; height: 44px; line-height: 1.4; }
-        .chat-input textarea:focus { border-color: #28a745; }
-        .send-btn { background: #28a745; color: white; border: none; border-radius: 8px; padding: 0 20px; cursor: pointer; font-size: 14px; transition: 0.2s; }
-        .send-btn:hover { background: #218838; }
-        .no-chat { flex: 1; display: flex; align-items: center; justify-content: center; color: #bbb; flex-direction: column; gap: 10px; font-size: 14px; }
+        .chat-input { border-top: 1px solid #30363d; padding: 12px 14px; display: flex; gap: 8px; background: #161b22; }
+        .chat-input textarea { flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 4px; padding: 9px 12px; font-size: 13px; font-family: inherit; color: #e6edf3; resize: none; outline: none; height: 40px; line-height: 1.4; }
+        .chat-input textarea:focus { border-color: #3fb950; }
+        .chat-input textarea::placeholder { color: #484f58; }
+        .send-btn { background: #3fb950; color: white; border: 1px solid rgba(63,185,80,.4); border-radius: 4px; padding: 0 18px; cursor: pointer; font-size: 13px; font-weight: 700; font-family: inherit; transition: .2s; }
+        .send-btn:hover { background: #2ea043; box-shadow: 0 0 12px rgba(63,185,80,.3); }
+        .no-chat { flex: 1; display: flex; align-items: center; justify-content: center; color: #6e7681; flex-direction: column; gap: 10px; font-size: 13px; background: #0d1117; }
 
         /* ── 公共 Tab 栏 ── */
-        .tabs { display: flex; gap: 8px; margin-bottom: 18px; }
-        .tab { padding: 7px 20px; border-radius: 20px; font-size: 14px; cursor: pointer;
-               border: 1px solid #ddd; background: white; color: #666; text-decoration: none;
-               position: relative; transition: 0.2s; }
-        .tab.active, .tab:hover { background: #28a745; color: white; border-color: #28a745; }
-        .tab-badge { position: absolute; top: -6px; right: -6px; background: #e74c3c; color: white;
-                     border-radius: 10px; min-width: 17px; height: 17px; font-size: 11px;
+        .tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+        .tab { padding: 6px 16px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600;
+               border: 1px solid #30363d; background: #161b22; color: #8b949e; text-decoration: none;
+               position: relative; transition: .2s; }
+        .tab.active, .tab:hover { background: #3fb950; color: white; border-color: rgba(63,185,80,.4); }
+        .tab-badge { position: absolute; top: -6px; right: -6px; background: #f85149; color: white;
+                     border-radius: 8px; min-width: 16px; height: 16px; font-size: 10px;
                      display: flex; align-items: center; justify-content: center; padding: 0 4px; box-sizing: border-box; }
 
         /* ── 通知列表 ── */
-        .notif-card { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        .notif-item { display: flex; align-items: center; gap: 14px; padding: 16px 20px;
-                      border-bottom: 1px solid #f5f5f5; cursor: pointer; transition: background 0.2s; }
+        .notif-card { background: #161b22; border: 1px solid #30363d; border-radius: 6px; overflow: hidden; }
+        .notif-item { display: flex; align-items: center; gap: 12px; padding: 14px 18px;
+                      border-bottom: 1px solid #21262d; cursor: pointer; transition: background .2s; }
         .notif-item:last-child { border-bottom: none; }
-        .notif-item:hover { background: #f9fafb; }
-        .notif-item.unread { background: #f0fdf4; }
-        .notif-item.unread:hover { background: #e6f9ed; }
-        .notif-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
-        .notif-icon { width: 44px; height: 44px; border-radius: 50%; background: #f1f3f4;
-                      display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+        .notif-item:hover { background: rgba(63,185,80,.04); }
+        .notif-item.unread { background: rgba(63,185,80,.06); }
+        .notif-item.unread:hover { background: rgba(63,185,80,.09); }
+        .notif-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid #30363d; }
+        .notif-icon { width: 42px; height: 42px; border-radius: 4px; background: #1c2128; border: 1px solid #30363d;
+                      display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
         .notif-body { flex: 1; min-width: 0; }
-        .notif-text { font-size: 14px; color: #333; line-height: 1.5; }
-        .notif-text strong { color: #28a745; }
-        .notif-preview { font-size: 13px; color: #999; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .notif-time { font-size: 12px; color: #bbb; margin-top: 4px; }
-        .post-ref { color: #007bff; }
-        .mention-icon { background: #e8f4fd; color: #1565c0; font-weight: bold; border-radius: 3px; padding: 0 4px; font-size: 13px; }
-        .empty-state { text-align: center; padding: 70px 20px; background: white; border-radius: 10px; }
-        .empty-state p { color: #999; margin-top: 10px; }
+        .notif-text { font-size: 13px; color: #c9d1d9; line-height: 1.5; }
+        .notif-text strong { color: #3fb950; }
+        .notif-preview { font-size: 12px; color: #6e7681; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .notif-time { font-size: 11px; color: #484f58; margin-top: 3px; font-family: "Courier New", monospace; }
+        .post-ref { color: #58a6ff; }
+        .mention-icon { background: rgba(88,166,255,.15); color: #58a6ff; font-weight: bold; border-radius: 3px; padding: 0 4px; font-size: 12px; border: 1px solid rgba(88,166,255,.3); }
+        .empty-state { text-align: center; padding: 70px 20px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; }
+        .empty-state p { color: #6e7681; margin-top: 8px; font-size: 13px; }
     </style>
 </head>
 <body>

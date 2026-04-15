@@ -22,12 +22,14 @@ if ($is_logged_in && isset($conn)) {
     }
 }
 ?>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="<?= $base ?>style.css">
 <style>
     .main-navbar {
-        background: #ffffff;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        background: #0d1117;
+        border-bottom: 1px solid #30363d;
         padding: 0 20px;
-        height: 60px;
+        height: 56px;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -37,115 +39,224 @@ if ($is_logged_in && isset($conn)) {
         font-family: "Microsoft YaHei", sans-serif;
     }
     .nav-logo {
-        font-size: 22px;
-        font-weight: bold;
-        color: #28a745;
+        font-size: 18px;
+        font-weight: 700;
+        color: #3fb950;
         text-decoration: none;
         display: flex;
         align-items: center;
+        gap: 8px;
+        letter-spacing: .5px;
+        font-family: "Courier New", monospace;
+    }
+    .nav-logo:hover { color: #5fdd70; }
+    .nav-logo-icon {
+        width: 28px; height: 28px;
+        background: rgba(63,185,80,.15);
+        border: 1px solid rgba(63,185,80,.3);
+        border-radius: 4px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 14px;
     }
     .nav-links {
         display: flex;
-        gap: 20px;
+        gap: 16px;
         align-items: center;
     }
     .nav-item {
         text-decoration: none;
-        color: #555;
-        font-size: 14px;
-        transition: 0.3s;
+        color: #8b949e;
+        font-size: 13px;
+        transition: color .15s;
         display: flex;
         align-items: center;
-        gap: 5px;
+        gap: 4px;
         position: relative;
     }
-    .nav-item:hover { color: #28a745; }
+    .nav-item:hover { color: #e6edf3; }
     .admin-tag {
-        background: #fff0f0;
-        color: #d63031;
-        padding: 2px 8px;
+        background: rgba(248,81,73,.12);
+        color: #f85149;
+        padding: 3px 10px;
         border-radius: 4px;
-        border: 1px solid #ff7675;
-        font-weight: bold;
+        border: 1px solid rgba(248,81,73,.3);
+        font-weight: 700;
+        font-size: 12px;
     }
+    .admin-tag:hover { color: #f85149; background: rgba(248,81,73,.2); }
     .nav-search {
         display: flex;
-        background: #f1f3f4;
-        padding: 5px 12px;
-        border-radius: 20px;
+        align-items: center;
+        background: #161b22;
+        border: 1px solid #30363d;
+        padding: 4px 12px;
+        border-radius: 4px;
+        gap: 6px;
+        transition: border-color .2s;
     }
+    .nav-search:focus-within { border-color: #3fb950; }
     .nav-search input {
         border: none;
         background: transparent;
         outline: none;
         font-size: 13px;
-        width: 130px;
+        width: 140px;
+        color: #e6edf3;
+        font-family: inherit;
+        padding: 0;
     }
+    .nav-search button {
+        border: none; background: none; cursor: pointer;
+        color: #6e7681; font-size: 13px; padding: 0; line-height: 1;
+        transition: color .15s;
+    }
+    .nav-search button:hover { color: #3fb950; }
     .user-avatar-small {
-        width: 28px;
-        height: 28px;
-        border-radius: 50%;
-        object-fit: cover;
-        background: #eee;
+        width: 26px; height: 26px;
+        border-radius: 50%; object-fit: cover;
+        border: 1px solid #30363d;
     }
     .notif-badge {
         position: absolute;
-        top: -7px;
-        right: -10px;
-        background: #e74c3c;
-        color: white;
+        top: -6px; right: -8px;
+        background: #f85149;
+        color: #fff;
         border-radius: 10px;
-        min-width: 18px;
-        height: 18px;
-        font-size: 11px;
-        display: flex;
+        min-width: 16px; height: 16px;
+        font-size: 10px;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700;
+        padding: 0 3px;
+        font-family: "Courier New", monospace;
+    }
+    .nav-divider { width: 1px; height: 20px; background: #30363d; }
+
+    /* ── 汉堡按钮（仅移动端） ── */
+    .nav-hamburger {
+        display: none;
+        flex-direction: column;
+        gap: 5px;
+        cursor: pointer;
+        padding: 6px;
+        border-radius: 4px;
+        border: 1px solid #30363d;
+        background: transparent;
+        transition: border-color .15s;
+    }
+    .nav-hamburger:hover { border-color: #3fb950; }
+    .nav-hamburger span {
+        display: block; width: 20px; height: 2px;
+        background: #8b949e; border-radius: 2px; transition: .2s;
+    }
+    .nav-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); background: #3fb950; }
+    .nav-hamburger.open span:nth-child(2) { opacity: 0; }
+    .nav-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); background: #3fb950; }
+
+    /* 搜索图标按钮（移动端直接可见） */
+    .nav-search-icon {
+        display: none;
         align-items: center;
         justify-content: center;
-        font-weight: bold;
-        padding: 0 4px;
-        box-sizing: border-box;
-        line-height: 1;
+        width: 34px; height: 34px;
+        color: #8b949e; font-size: 17px;
+        border: 1px solid #30363d; border-radius: 4px;
+        text-decoration: none; transition: .15s;
+    }
+    .nav-search-icon:hover { border-color: #3fb950; color: #3fb950; }
+
+    @media (max-width: 768px) {
+        .nav-hamburger { display: flex; }
+        .nav-search-icon { display: flex; }
+        .nav-search { display: none !important; }
+        .nav-divider { display: none; }
+        .nav-links {
+            display: none;
+            position: absolute;
+            top: 56px; left: 0; right: 0;
+            background: #0d1117;
+            border-bottom: 1px solid #30363d;
+            padding: 12px 20px 16px;
+            flex-direction: column;
+            gap: 4px;
+            z-index: 999;
+        }
+        .nav-links.open { display: flex; }
+        .nav-item { padding: 10px 0; font-size: 14px; border-bottom: 1px solid #21262d; }
+        .nav-item:last-child { border-bottom: none; }
+        .btn-publish-nav { align-self: flex-start; margin: 6px 0; }
+        .admin-tag { align-self: flex-start; }
     }
 </style>
 
-<nav class="main-navbar">
+<nav class="main-navbar" style="position:relative;">
     <a href="<?= $base ?>index.php" class="nav-logo">
-        <span style="margin-right:8px;">🌟</span> 社区论坛
+        <span class="nav-logo-icon">♪</span> MUSE
     </a>
 
-    <div class="nav-links">
+    <!-- 移动端右侧按钮组 -->
+    <div style="display:flex;align-items:center;gap:6px;">
+        <a href="<?= $base ?>search.php" class="nav-search-icon" title="搜索">⌕</a>
+        <button class="nav-hamburger" id="nav-hamburger" aria-label="菜单" onclick="toggleNavMenu()">
+            <span></span><span></span><span></span>
+        </button>
+    </div>
 
+    <div class="nav-links" id="nav-links">
         <form action="<?= $base ?>search.php" method="GET" class="nav-search">
-            <input type="text" name="keyword" placeholder="搜索帖子...">
-            <button type="submit" style="border:none; background:none; cursor:pointer;">🔍</button>
+            <input type="text" name="keyword" placeholder="搜索...">
+            <button type="submit">⌕</button>
         </form>
 
+        <a href="<?= $base ?>categories.php" class="nav-item">分区</a>
+        <a href="<?= $base ?>square.php" class="nav-item">广场</a>
+        <div class="nav-divider"></div>
+
         <?php if ($current_role === 'admin'): ?>
-            <a href="<?= $base ?>pages/admin.php" class="nav-item admin-tag">🛠️ 管理
+            <a href="<?= $base ?>pages/admin_categories.php" class="nav-item" style="font-size:12px;color:#6e7681;">分区</a>
+            <a href="<?= $base ?>pages/admin.php" class="nav-item admin-tag">管理后台
                 <?php if ($pending_posts > 0): ?>
                     <span class="notif-badge"><?= $pending_posts > 99 ? '99+' : $pending_posts ?></span>
                 <?php endif; ?>
             </a>
         <?php endif; ?>
 
+        <div class="nav-divider"></div>
+
         <?php if ($is_logged_in): ?>
-            <a href="<?= $base ?>pages/notifications.php" class="nav-item" title="消息中心" style="font-size:20px;">
-                🔔
+            <a href="<?= $base ?>pages/publish.php" class="btn-publish-nav">+ 发帖</a>
+            <a href="<?= $base ?>pages/notifications.php" class="nav-item" title="消息中心" style="position:relative;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                 <?php if ($unread_count > 0): ?>
                     <span class="notif-badge"><?= $unread_count > 99 ? '99+' : $unread_count ?></span>
                 <?php endif; ?>
             </a>
-            <a href="<?= $base ?>pages/profile.php" class="nav-item" style="font-weight:bold;">
+            <a href="<?= $base ?>pages/profile.php" class="nav-item">
                 <img src="<?= $base ?>uploads/avatars/<?= htmlspecialchars($_SESSION['avatar'] ?? 'default.png') ?>"
                      class="user-avatar-small"
-                     onerror="this.onerror=null;this.src='uploads/avatars/default.png'">
-                <?= htmlspecialchars($_SESSION['username']) ?>
+                     onerror="this.onerror=null;this.src='<?= $base ?>uploads/avatars/default.png'">
+                <span style="color:#e6edf3; font-size:13px;"><?= htmlspecialchars($_SESSION['username']) ?></span>
             </a>
-            <a href="<?= $base ?>pages/logout.php" class="nav-item" style="color:#999;">退出</a>
+            <a href="<?= $base ?>pages/logout.php" class="nav-item" style="font-size:12px;">退出</a>
         <?php else: ?>
             <a href="<?= $base ?>pages/login.php" class="nav-item">登录</a>
-            <a href="<?= $base ?>pages/register.php" class="nav-item">注册</a>
+            <a href="<?= $base ?>pages/register.php" class="btn btn-green" style="padding:5px 14px; font-size:13px;">注册</a>
         <?php endif; ?>
-
     </div>
 </nav>
+<script>
+function toggleNavMenu() {
+    const btn   = document.getElementById('nav-hamburger');
+    const links = document.getElementById('nav-links');
+    btn.classList.toggle('open');
+    links.classList.toggle('open');
+}
+// 点击菜单外部关闭
+document.addEventListener('click', function(e) {
+    const btn   = document.getElementById('nav-hamburger');
+    const links = document.getElementById('nav-links');
+    if (btn && links && !btn.contains(e.target) && !links.contains(e.target)) {
+        btn.classList.remove('open');
+        links.classList.remove('open');
+    }
+});
+</script>

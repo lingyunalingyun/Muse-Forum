@@ -4,19 +4,42 @@
     <meta charset="UTF-8">
     <title>加入我们 - 注册</title>
     <style>
-        body { background: #f4f7f6; font-family: "Microsoft YaHei", sans-serif; margin: 0; }
-        .reg-wrap { display: flex; justify-content: center; padding: 50px 20px; }
-        .reg-card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 350px; }
-        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
-        button { width: 100%; background: #28a745; color: white; border: none; padding: 12px; border-radius: 5px; cursor: pointer; }
-        button:hover { background: #218838; }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+        .reg-wrap {
+            display:flex; justify-content:center; align-items:center;
+            min-height:calc(100vh - 56px); padding:20px;
+            background-image:
+                linear-gradient(rgba(63,185,80,.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(63,185,80,.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+        .reg-card {
+            background:#161b22; border:1px solid #30363d; border-radius:6px;
+            padding:36px 32px; width:360px;
+            animation: fadeUp .4s ease;
+            box-shadow: 0 0 40px rgba(0,0,0,.4);
+        }
+        .reg-card h2 { color:#e6edf3; margin-bottom:24px; font-size:18px; font-family:"Courier New",monospace; }
+        .reg-card h2 .accent { color:#3fb950; }
+        .reg-card h2 .cursor { color:#3fb950; animation: blink 1s infinite; }
+        .reg-card input { margin-bottom:12px; }
+        .reg-card button { width:100%; background:#3fb950; color:#fff; border:none; padding:11px; border-radius:4px;
+                           cursor:pointer; font-size:14px; font-weight:700; transition:.2s; font-family:inherit; margin-top:4px; }
+        .reg-card button:hover { background:#2ea043; box-shadow:0 0 16px rgba(63,185,80,.4); }
+        .reg-card p { margin-top:16px; font-size:13px; text-align:center; color:#6e7681; }
+        .reg-card a { color:#3fb950; }
+        @media(max-width:480px){
+            .reg-wrap { padding: 12px; align-items: flex-start; padding-top: 40px; }
+            .reg-card { width: 100%; padding: 28px 20px; }
+        }
     </style>
 </head>
 <body>
 <?php include __DIR__ . '/../includes/header.php'; ?>
 <div class="reg-wrap">
     <div class="reg-card">
-        <h2>创建新账号</h2>
+        <h2>&gt; <span class="accent">REGISTER</span><span class="cursor">_</span></h2>
         <form action="../actions/auth.php" method="POST">
             <input type="hidden" name="action" value="register">
             <input type="email" name="email" placeholder="注册邮箱" required>

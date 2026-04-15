@@ -29,24 +29,27 @@ if ($keyword !== '') {
     <meta charset="UTF-8">
     <title><?= $keyword ? htmlspecialchars($keyword) . ' - 搜索结果' : '搜索' ?></title>
     <style>
-        body { background: #f4f7f6; font-family: "Microsoft YaHei", sans-serif; margin: 0; padding-bottom: 40px; }
         .search-wrap { max-width: 800px; margin: 30px auto; padding: 0 15px; }
-        .search-bar { background: white; padding: 20px 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; display: flex; gap: 10px; }
-        .search-bar input { flex: 1; padding: 12px 16px; border: 1px solid #ddd; border-radius: 6px; font-size: 15px; outline: none; }
-        .search-bar input:focus { border-color: #28a745; }
-        .search-bar button { background: #28a745; color: white; border: none; padding: 12px 25px; border-radius: 6px; cursor: pointer; font-size: 15px; white-space: nowrap; }
-        .search-bar button:hover { background: #218838; }
-        .result-info { font-size: 14px; color: #999; margin-bottom: 15px; padding: 0 5px; }
-        .result-info strong { color: #28a745; }
-        .post-card { background: white; padding: 20px; border-radius: 8px; border: 1px solid #eee; margin-bottom: 15px; cursor: pointer; transition: all 0.3s; }
-        .post-card:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.08); border-color: #28a745; }
-        .post-title { font-size: 17px; font-weight: bold; color: #333; margin-bottom: 8px; }
-        .post-title mark { background: #fff3cd; color: #333; border-radius: 2px; padding: 0 2px; }
-        .post-excerpt { color: #666; font-size: 14px; line-height: 1.6; margin-bottom: 12px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-        .post-meta { font-size: 12px; color: #999; display: flex; justify-content: space-between; }
-        .author { color: #28a745; font-weight: bold; }
-        .empty-state { text-align: center; padding: 60px 20px; background: white; border-radius: 10px; }
-        .empty-state p { color: #999; margin-top: 10px; }
+        @media(max-width:600px){ .search-wrap { margin: 16px auto; padding: 0 10px; } }
+        .search-bar { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 16px 20px; margin-bottom: 16px; }
+        .search-bar form { display: flex; gap: 8px; }
+        .search-bar input { flex: 1; padding: 10px 14px; background: #0d1117; border: 1px solid #30363d; border-radius: 4px; font-size: 14px; color: #e6edf3; outline: none; font-family: "Courier New", monospace; }
+        .search-bar input:focus { border-color: #3fb950; box-shadow: 0 0 0 3px rgba(63,185,80,.15); }
+        .search-bar input::placeholder { color: #484f58; }
+        .search-bar button { background: #3fb950; color: #fff; border: 1px solid rgba(63,185,80,.4); padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 700; white-space: nowrap; font-family: inherit; transition: .2s; }
+        .search-bar button:hover { background: #2ea043; box-shadow: 0 0 12px rgba(63,185,80,.3); }
+        .result-info { font-size: 12px; color: #6e7681; margin-bottom: 14px; padding: 0 2px; font-family: "Courier New", monospace; }
+        .result-info strong { color: #3fb950; }
+        .post-card { background: #161b22; padding: 18px 20px; border-radius: 6px; border: 1px solid #30363d; margin-bottom: 10px; cursor: pointer; transition: border-color .2s, box-shadow .2s; }
+        .post-card:hover { border-color: #3fb950; box-shadow: 0 0 0 1px #3fb950; }
+        .post-title { font-size: 15px; font-weight: 600; color: #c9d1d9; margin-bottom: 8px; }
+        .post-title mark { background: rgba(63,185,80,.25); color: #3fb950; border-radius: 2px; padding: 0 2px; }
+        .post-excerpt { color: #8b949e; font-size: 13px; line-height: 1.6; margin-bottom: 10px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .post-meta { font-size: 11px; color: #6e7681; display: flex; justify-content: space-between; font-family: "Courier New", monospace; }
+        .author { color: #3fb950; font-weight: 600; }
+        .empty-state { text-align: center; padding: 60px 20px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; }
+        .empty-state p { color: #6e7681; margin-top: 8px; font-size: 13px; }
+        .empty-state .icon { font-size: 36px; }
     </style>
 </head>
 <body>

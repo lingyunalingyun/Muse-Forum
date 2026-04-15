@@ -60,23 +60,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <title>完善个人资料</title>
     <style>
-        body { background: #f4f7f6; font-family: "Microsoft YaHei", sans-serif; }
-        .edit-container { max-width: 600px; margin: 30px auto; background: white; padding: 40px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-        .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; margin-bottom: 8px; font-weight: bold; color: #444; }
+        .edit-container { max-width: 580px; margin: 30px auto; background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 36px 32px; }
+        @media(max-width:600px){
+            .edit-container { margin: 12px 10px; padding: 24px 18px; border-radius: 4px; }
+        }
+        .edit-container h2 { font-size: 13px; font-weight: 700; color: #3fb950; letter-spacing: 1.5px; text-transform: uppercase; font-family: "Courier New", monospace; margin: 0 0 28px; }
+        .edit-container h2::before { content: '// '; opacity: .6; }
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; margin-bottom: 6px; font-weight: 600; color: #8b949e; font-size: 12px; letter-spacing: .5px; text-transform: uppercase; font-family: "Courier New", monospace; }
 
         input[type="text"], input[type="date"], select, textarea {
-            width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px;
+            width: 100%; padding: 10px 12px; background: #0d1117; border: 1px solid #30363d; border-radius: 4px;
+            box-sizing: border-box; font-size: 14px; color: #e6edf3; font-family: inherit; outline: none; transition: border-color .2s;
         }
+        input[type="text"]:focus, input[type="date"]:focus, select:focus, textarea:focus {
+            border-color: #3fb950; box-shadow: 0 0 0 3px rgba(63,185,80,.15);
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(.6); }
+        select option { background: #161b22; }
         textarea { height: 80px; resize: vertical; }
 
-        .avatar-section { text-align: center; margin-bottom: 30px; }
-        .current-avatar { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #eee; cursor: pointer; }
+        .avatar-section { text-align: center; margin-bottom: 28px; }
+        .current-avatar { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 2px solid #30363d; cursor: pointer; transition: border-color .2s; }
+        .current-avatar:hover { border-color: #3fb950; }
+        .avatar-section p { font-size: 11px; color: #6e7681; margin-top: 8px; font-family: "Courier New", monospace; }
 
-        .btn-group { display: flex; gap: 10px; margin-top: 30px; }
-        .btn-save { flex: 2; background: #28a745; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 16px; }
-        .btn-cancel { flex: 1; background: #eee; color: #666; text-align: center; padding: 12px; border-radius: 8px; text-decoration: none; }
-        .btn-save:hover { background: #218838; }
+        .btn-group { display: flex; gap: 10px; margin-top: 28px; }
+        .btn-save { flex: 2; background: #3fb950; color: #fff; border: 1px solid rgba(63,185,80,.4); padding: 11px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 700; font-family: inherit; transition: .2s; }
+        .btn-save:hover { background: #2ea043; box-shadow: 0 0 12px rgba(63,185,80,.3); }
+        .btn-cancel { flex: 1; background: transparent; color: #8b949e; text-align: center; padding: 11px; border-radius: 4px; text-decoration: none; border: 1px solid #30363d; font-size: 14px; transition: .2s; display: flex; align-items: center; justify-content: center; }
+        .btn-cancel:hover { color: #e6edf3; border-color: #8b949e; }
     </style>
 </head>
 <body>
@@ -84,14 +97,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <?php include __DIR__ . '/../includes/header.php'; ?>
 
 <div class="edit-container">
-    <h2 style="text-align: center; margin-bottom: 30px; color: #333;">编辑个人资料</h2>
+    <h2>编辑个人资料</h2>
 
     <form action="" method="POST" enctype="multipart/form-data">
         <div class="avatar-section">
             <label for="avatar-input">
                 <img src="../uploads/avatars/<?php echo $user['avatar'] ?: 'default.png'; ?>" class="current-avatar" id="preview">
             </label>
-            <p style="font-size: 12px; color: #999;">点击图片更换头像</p>
+            <p style="font-size: 12px; color: #6e7681; font-family: 'Courier New', monospace;">// 点击图片更换头像</p>
             <input type="file" name="avatar" id="avatar-input" accept="image/*" style="display: none;" onchange="showPreview(this)">
         </div>
 

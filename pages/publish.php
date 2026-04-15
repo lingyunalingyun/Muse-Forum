@@ -18,6 +18,11 @@ if ($draft_id > 0) {
     $draft = ($dr && $dr->num_rows > 0) ? $dr->fetch_assoc() : null;
 }
 
+// 分区列表
+$cats_res = $conn->query("SELECT id, name, icon, color FROM categories ORDER BY sort_order ASC, id ASC");
+$categories = [];
+if ($cats_res) while ($c = $cats_res->fetch_assoc()) $categories[] = $c;
+
 // 其他草稿列表（排除当前打开的）
 $drafts_res = $conn->query("
     SELECT id, title, created_at FROM posts
@@ -34,199 +39,150 @@ if ($drafts_res) {
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title><?= $draft ? '编辑草稿' : '发布帖子' ?> - 社区论坛</title>
-    <link href="https://unpkg.com/@wangeditor/editor@latest/dist/css/style.css" rel="stylesheet">
+    <title><?= $draft ? '编辑草稿' : '发布帖子' ?> - 缪斯 MUSE</title>
+    <link href="https://cdn.jsdelivr.net/npm/@wangeditor/editor@5.1.23/dist/css/style.css" rel="stylesheet">
     <style>
-        * { box-sizing: border-box; }
-        body { background: #f0f2f5; font-family: "Microsoft YaHei", sans-serif; margin: 0; padding-bottom: 60px; }
-
-        /* ── 顶部操作栏 ── */
+        /* ── WangEditor 深色主题覆盖 ── */
+        .w-e-toolbar {
+            background: #0d1117 !important;
+            border-color: #30363d !important;
+        }
+        .w-e-bar-item button, .w-e-bar-item-group>button {
+            color: #8b949e !important;
+        }
+        .w-e-bar-item button:hover, .w-e-bar-item-group>button:hover,
+        .w-e-bar-item button.active {
+            background: #1c2128 !important;
+            color: #e6edf3 !important;
+        }
+        .w-e-text-container {
+            background: #161b22 !important;
+            color: #c9d1d9 !important;
+        }
+        .w-e-scroll { background: #161b22 !important; }
+        [data-slate-editor] { color: #c9d1d9 !important; }
+        .w-e-text-placeholder { color: #484f58 !important; }
+        /* 下拉面板 */
+        .w-e-drop-panel {
+            background: #161b22 !important;
+            border-color: #30363d !important;
+            box-shadow: 0 4px 16px rgba(0,0,0,.5) !important;
+        }
+        .w-e-select-list {
+            background: #161b22 !important;
+            border-color: #30363d !important;
+        }
+        .w-e-select-list ul li { color: #8b949e !important; }
+        .w-e-select-list ul li:hover,
+        .w-e-select-list ul li.selected {
+            background: #1c2128 !important;
+            color: #e6edf3 !important;
+        }
+        /* 颜色选择器、字号等面板 */
+        .w-e-panel-content-color button:hover { outline-color: #3fb950 !important; }
+        .w-e-modal { background: #161b22 !important; border-color: #30363d !important; }
+        .w-e-modal input { background: #0d1117 !important; border-color: #30363d !important; color: #e6edf3 !important; }
+        .w-e-modal button[type=button] { background: #3fb950 !important; border-color: #3fb950 !important; color: #fff !important; }
+        .w-e-bar-divider { background: #30363d !important; }
+    </style>
+    <style>
+        /* ── 发帖页专属 ── */
         .pub-topbar {
-            background: white;
-            border-bottom: 1px solid #eee;
-            padding: 0 24px;
-            height: 56px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            position: sticky;
-            top: 60px;
-            z-index: 100;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            background: #161b22; border-bottom: 1px solid #30363d;
+            padding: 0 24px; height: 50px;
+            display: flex; align-items: center; gap: 12px;
+            position: sticky; top: 56px; z-index: 100;
         }
-        .pub-back {
-            color: #888;
-            text-decoration: none;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            padding: 6px 10px;
-            border-radius: 6px;
-            transition: 0.2s;
-        }
-        .pub-back:hover { background: #f5f5f5; color: #333; }
-        .pub-topbar-title { font-size: 15px; font-weight: bold; color: #333; flex: 1; }
-        .autosave-tip { font-size: 12px; color: #bbb; }
-        .autosave-tip.saved { color: #28a745; }
+        .pub-back { color: #8b949e; text-decoration: none; font-size: 13px; display: flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 4px; transition: .15s; }
+        .pub-back:hover { background: #1c2128; color: #e6edf3; }
+        .pub-topbar-title { font-size: 14px; font-weight: 700; color: #e6edf3; flex: 1; font-family: "Courier New", monospace; }
+        .autosave-tip { font-size: 11px; color: #6e7681; font-family: "Courier New", monospace; }
+        .autosave-tip.saved { color: #3fb950; }
         .btn-draft {
-            background: white;
-            border: 1px solid #ddd;
-            color: #555;
-            padding: 7px 18px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-            transition: 0.2s;
+            background: transparent; border: 1px solid #30363d; color: #8b949e;
+            padding: 6px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; transition: .15s; font-family: inherit;
         }
-        .btn-draft:hover { border-color: #aaa; color: #333; }
+        .btn-draft:hover { border-color: #8b949e; color: #e6edf3; }
         .btn-publish {
-            background: #28a745;
-            border: none;
-            color: white;
-            padding: 8px 22px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: bold;
-            transition: 0.2s;
+            background: #3fb950; border: none; color: #fff;
+            padding: 7px 20px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 700; transition: .2s; font-family: inherit;
         }
-        .btn-publish:hover { background: #218838; }
-        .btn-publish:disabled { background: #aaa; cursor: not-allowed; }
+        .btn-publish:hover { background: #2ea043; box-shadow: 0 0 12px rgba(63,185,80,.3); }
+        .btn-publish:disabled { background: #1c2128; color: #6e7681; cursor: not-allowed; }
 
-        /* ── 主内容 ── */
-        .pub-layout { max-width: 960px; margin: 24px auto; padding: 0 16px; display: flex; gap: 20px; align-items: flex-start; }
+        .pub-layout { max-width: 960px; margin: 20px auto; padding: 0 16px; display: flex; gap: 18px; align-items: flex-start; }
         .pub-main { flex: 1; min-width: 0; }
 
-        /* ── 编辑卡片 ── */
-        .editor-card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-            overflow: hidden;
-        }
+        .editor-card { background: #161b22; border: 1px solid #30363d; border-radius: 6px; overflow: hidden; }
         .title-input {
-            width: 100%;
-            border: none;
-            outline: none;
-            font-size: 22px;
-            font-weight: bold;
-            color: #222;
-            padding: 24px 24px 16px;
-            font-family: inherit;
-            background: transparent;
+            width: 100%; border: none; outline: none;
+            font-size: 20px; font-weight: 700; color: #e6edf3;
+            padding: 20px 22px 14px; font-family: inherit; background: transparent;
         }
-        .title-input::placeholder { color: #ccc; }
-        .editor-divider { height: 1px; background: #f5f5f5; margin: 0 24px; }
-        #editor-toolbar {
-            border-bottom: 1px solid #f0f0f0;
-            padding: 0 12px;
-        }
-        #editor-text-area {
-            min-height: 380px;
-            padding: 4px 24px;
-        }
+        .title-input::placeholder { color: #6e7681; }
+        .editor-divider { height: 1px; background: #30363d; }
+        #editor-toolbar { border-bottom: 1px solid #30363d; padding: 0 10px; background: #0d1117; }
+        #editor-text-area { min-height: 360px; padding: 4px 22px; background: #161b22; color: #c9d1d9; }
 
-        /* ── 附件区 ── */
-        .attach-section {
-            border-top: 1px solid #f5f5f5;
-            padding: 16px 24px;
-        }
-        .attach-header {
-            font-size: 13px;
-            color: #888;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+        .attach-section { border-top: 1px solid #30363d; padding: 14px 22px; }
+        .attach-header { font-size: 12px; color: #6e7681; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; font-family: "Courier New", monospace; }
         .attach-dropzone {
-            border: 2px dashed #e0e0e0;
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            color: #bbb;
-            font-size: 13px;
-            cursor: pointer;
-            transition: 0.2s;
-            position: relative;
+            border: 1px dashed #30363d; border-radius: 4px; padding: 18px;
+            text-align: center; color: #6e7681; font-size: 13px; cursor: pointer; transition: .2s; position: relative;
         }
-        .attach-dropzone:hover, .attach-dropzone.drag-over { border-color: #28a745; color: #28a745; background: #f6fff8; }
+        .attach-dropzone:hover, .attach-dropzone.drag-over { border-color: #3fb950; color: #3fb950; background: rgba(63,185,80,.04); }
         .attach-dropzone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-        .attach-list { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
-        .attach-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: #fafafa;
-            border: 1px solid #eee;
-            border-radius: 6px;
-            padding: 8px 12px;
-            font-size: 13px;
-        }
-        .attach-icon { font-size: 18px; flex-shrink: 0; }
-        .attach-name { flex: 1; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .attach-size { color: #bbb; font-size: 12px; flex-shrink: 0; }
-        .attach-del { color: #ff7675; cursor: pointer; font-size: 16px; flex-shrink: 0; }
-        .attach-del:hover { color: #d63031; }
-        .attach-progress { flex-shrink: 0; font-size: 12px; color: #28a745; }
+        .attach-list { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+        .attach-item { display: flex; align-items: center; gap: 10px; background: #1c2128; border: 1px solid #30363d; border-radius: 4px; padding: 7px 12px; font-size: 13px; }
+        .attach-icon { font-size: 16px; flex-shrink: 0; }
+        .attach-name { flex: 1; color: #8b949e; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .attach-size { color: #6e7681; font-size: 11px; flex-shrink: 0; font-family: "Courier New", monospace; }
+        .attach-del  { color: #f85149; cursor: pointer; font-size: 15px; flex-shrink: 0; opacity: .7; }
+        .attach-del:hover { opacity: 1; }
+        .attach-progress { color: #3fb950; font-size: 11px; font-family: "Courier New", monospace; }
 
-        /* ── 设置卡片 ── */
-        .settings-card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-            padding: 20px;
-            margin-top: 16px;
+        /* 分区选择 */
+        .cat-select-card { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 16px 20px; margin-top: 14px; }
+        .cat-select-title { font-size: 11px; font-weight: 700; color: #6e7681; margin-bottom: 10px; letter-spacing: 1.5px; text-transform: uppercase; font-family: "Courier New", monospace; }
+        .cat-options { display: flex; flex-wrap: wrap; gap: 8px; }
+        .cat-option { display: none; }
+        .cat-option + label {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 5px 14px; border-radius: 20px; cursor: pointer;
+            font-size: 13px; border: 1px solid #30363d; color: #8b949e;
+            background: #0d1117; transition: .15s; user-select: none;
         }
-        .settings-title { font-size: 13px; font-weight: bold; color: #888; margin-bottom: 14px; letter-spacing: 1px; }
-        .setting-row {
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            padding: 10px 0;
-            border-bottom: 1px solid #f8f8f8;
-        }
+        .cat-option:checked + label { color: #e6edf3; border-color: var(--cat-color, #3fb950); background: rgba(63,185,80,.1); }
+        .cat-option + label:hover { border-color: #6e7681; color: #e6edf3; }
+
+        .settings-card { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 18px 20px; margin-top: 14px; }
+        .settings-title { font-size: 11px; font-weight: 700; color: #6e7681; margin-bottom: 12px; letter-spacing: 1.5px; text-transform: uppercase; font-family: "Courier New", monospace; }
+        .setting-row { display: flex; align-items: flex-start; gap: 12px; padding: 9px 0; border-bottom: 1px solid #21262d; }
         .setting-row:last-child { border-bottom: none; padding-bottom: 0; }
-        .setting-row input[type=checkbox] { width: 16px; height: 16px; margin-top: 2px; cursor: pointer; accent-color: #28a745; flex-shrink: 0; }
-        .setting-label { font-size: 14px; color: #444; }
-        .setting-desc  { font-size: 12px; color: #bbb; margin-top: 3px; }
+        .setting-row input[type=checkbox] { width: 15px; height: 15px; margin-top: 2px; cursor: pointer; accent-color: #3fb950; flex-shrink: 0; }
+        .setting-label { font-size: 13px; color: #e6edf3; }
+        .setting-desc  { font-size: 12px; color: #6e7681; margin-top: 3px; }
 
-        /* ── 草稿侧栏 ── */
-        .drafts-sidebar { width: 220px; flex-shrink: 0; }
-        .drafts-card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-            overflow: hidden;
-        }
-        .drafts-card-title {
-            font-size: 13px;
-            font-weight: bold;
-            color: #888;
-            padding: 14px 16px;
-            border-bottom: 1px solid #f5f5f5;
-            letter-spacing: 1px;
-        }
-        .draft-link {
-            display: block;
-            padding: 10px 16px;
-            text-decoration: none;
-            color: #444;
-            font-size: 13px;
-            border-bottom: 1px solid #f8f8f8;
-            transition: 0.15s;
-            overflow: hidden;
-        }
+        .drafts-sidebar { width: 210px; flex-shrink: 0; }
+        .drafts-card { background: #161b22; border: 1px solid #30363d; border-radius: 6px; overflow: hidden; }
+        .drafts-card-title { font-size: 11px; font-weight: 700; color: #6e7681; padding: 12px 14px; border-bottom: 1px solid #30363d; letter-spacing: 1.5px; text-transform: uppercase; font-family: "Courier New", monospace; }
+        .draft-link { display: block; padding: 9px 14px; text-decoration: none; color: #8b949e; font-size: 13px; border-bottom: 1px solid #21262d; transition: .15s; }
         .draft-link:last-child { border-bottom: none; }
-        .draft-link:hover { background: #f9f9f9; color: #28a745; }
+        .draft-link:hover { background: #1c2128; color: #3fb950; }
         .draft-link-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .draft-link-time  { font-size: 11px; color: #bbb; margin-top: 3px; }
-        .no-drafts { padding: 20px 16px; text-align: center; color: #ccc; font-size: 13px; }
+        .draft-link-time  { font-size: 11px; color: #6e7681; margin-top: 2px; font-family: "Courier New", monospace; }
+        .no-drafts { padding: 18px 14px; text-align: center; color: #6e7681; font-size: 12px; font-family: "Courier New", monospace; }
 
         @media (max-width: 720px) {
-            .pub-layout { flex-direction: column; }
-            .drafts-sidebar { width: 100%; }
+            .pub-layout { flex-direction: column; padding: 0 10px; }
+            .drafts-sidebar { width: 100%; order: -1; }
+            .pub-topbar { padding: 0 12px; gap: 8px; }
+            .pub-topbar-title { display: none; }
+            .autosave-tip { display: none; }
+        }
+        @media (max-width: 480px) {
+            .pub-topbar { height: auto; flex-wrap: wrap; padding: 8px 12px; }
+            .btn-draft, .btn-publish { font-size: 12px; padding: 5px 12px; }
         }
     </style>
 </head>
@@ -274,6 +230,26 @@ if ($drafts_res) {
             </div>
         </div>
 
+        <?php if (!empty($categories)): ?>
+        <!-- 分区选择 -->
+        <div class="cat-select-card">
+            <div class="cat-select-title">选择分区</div>
+            <div class="cat-options">
+                <input type="radio" class="cat-option" name="category_id" id="cat_0" value="0" checked>
+                <label for="cat_0">不限分区</label>
+                <?php foreach ($categories as $c): ?>
+                <input type="radio" class="cat-option" name="category_id"
+                       id="cat_<?= $c['id'] ?>" value="<?= $c['id'] ?>"
+                       style="--cat-color:<?= htmlspecialchars($c['color']) ?>"
+                       <?= ($draft && (int)$draft['category_id'] === (int)$c['id']) ? 'checked' : '' ?>>
+                <label for="cat_<?= $c['id'] ?>" style="--cat-color:<?= htmlspecialchars($c['color']) ?>">
+                    <?= htmlspecialchars($c['icon']) ?> <?= htmlspecialchars($c['name']) ?>
+                </label>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <?php if ($is_admin): ?>
         <!-- 管理员设置 -->
         <div class="settings-card">
@@ -294,8 +270,8 @@ if ($drafts_res) {
         <div class="drafts-card">
             <div class="drafts-card-title">📝 我的草稿</div>
             <?php if ($draft): ?>
-            <div style="padding:10px 16px; font-size:12px; color:#28a745; border-bottom:1px solid #f5f5f5;">
-                ✏️ 当前正在编辑此草稿
+            <div style="padding:10px 16px; font-size:12px; color:#3fb950; border-bottom:1px solid #30363d; font-family:'Courier New',monospace;">
+                // 当前正在编辑此草稿
             </div>
             <?php endif; ?>
             <?php if (!empty($other_drafts)): ?>
@@ -318,7 +294,7 @@ if ($drafts_res) {
 <!-- 草稿 ID（编辑模式） -->
 <input type="hidden" id="draft-id" value="<?= $draft ? $draft['id'] : 0 ?>">
 
-<script src="https://unpkg.com/@wangeditor/editor@latest/dist/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@wangeditor/editor@5.1.23/dist/index.js"></script>
 <script>
 const { createEditor, createToolbar } = window.wangEditor;
 
@@ -452,6 +428,9 @@ async function submitPost(isDraft) {
 
     const noticeEl = document.getElementById('is-notice');
     if (noticeEl) fd.append('is_notice', noticeEl.checked ? '1' : '0');
+
+    const catEl = document.querySelector('input[name="category_id"]:checked');
+    if (catEl) fd.append('category_id', catEl.value);
 
     try {
         const res  = await fetch('../actions/save.php', { method: 'POST', body: fd });
