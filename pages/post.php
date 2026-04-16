@@ -13,7 +13,7 @@ $sort = $_GET['sort'] ?? 'new';
 
 // --- 3. 获取帖子主体及作者详细信息 ---
 $post_query = "SELECT p.*,
-                u.id as author_id, u.username, u.avatar, u.role, u.level, u.is_banned,
+                u.id as author_id, u.username, u.avatar, u.role, u.level, u.is_banned, u.post_visibility,
                 (SELECT COUNT(*) FROM posts WHERE user_id = u.id) as post_count,
                 (SELECT COUNT(*) FROM follows WHERE followed_id = u.id) as fans_count,
                 (CASE WHEN $my_id = 0 THEN 0
@@ -32,6 +32,27 @@ $post = ($post_res && $post_res->num_rows > 0) ? $post_res->fetch_assoc() : null
 if (!$post) {
     $conn->close();
     die("帖子不存在或已被删除。 <a href='../index.php'>返回首页</a>");
+}
+
+// 拉黑检查
+$author_id = (int)$post['author_id'];
+if ($my_id && $my_id !== $author_id) {
+    // 作者拉黑了我
+    $blk = $conn->query("SELECT id FROM user_blocks WHERE blocker_id=$author_id AND blocked_id=$my_id");
+    if ($blk && $blk->num_rows > 0) {
+        $conn->close();
+        die("<!DOCTYPE html><html lang='zh-CN'><head><meta charset='UTF-8'><title>无权访问</title></head><body style='font-family:monospace;background:#0d1117;color:#e6edf3;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;'><div style='text-align:center;padding:32px;background:#161b22;border:1px solid #30363d;border-radius:6px;max-width:360px;'><p style='color:#f85149;margin:0 0 12px;'>无权访问此帖子</p><a href='../index.php' style='color:#3fb950;font-size:13px;'>返回首页</a></div></body></html>");
+    }
+}
+
+// 可见性检查
+require_once __DIR__ . '/../includes/exp_helper.php';
+$author_vis = $post['post_visibility'] ?? 'public';
+if (!can_see_posts($conn, $author_vis, $author_id, $my_id, $my_role)) {
+    $conn->close();
+    $vis_label = ['following'=>'我关注的人','followers'=>'关注我的人','mutual'=>'互相关注的人','private'=>'仅自己'];
+    $hint = $vis_label[$author_vis] ?? '特定用户';
+    die("<!DOCTYPE html><html lang='zh-CN'><head><meta charset='UTF-8'><title>无权访问</title></head><body style='font-family:monospace;background:#0d1117;color:#e6edf3;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;'><div style='text-align:center;padding:32px;background:#161b22;border:1px solid #30363d;border-radius:6px;max-width:360px;'><p style='color:#8b949e;font-size:13px;margin:0 0 6px;'>// 权限不足</p><p style='color:#e6edf3;margin:0 0 12px;'>该帖子仅对「{$hint}」可见</p><a href='../index.php' style='color:#3fb950;font-size:13px;'>返回首页</a></div></body></html>");
 }
 
 // --- 4. 楼层逻辑准备 ---

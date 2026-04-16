@@ -37,6 +37,35 @@ $fans_count = $fans_count_res ? $fans_count_res->fetch_assoc()['total'] : 0;
 // 当前访问者是否为页面主人
 $is_mine = (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $view_uid);
 
+// 拉黑状态（双向）
+$i_blocked_them = false;
+$they_blocked_me = false;
+if ($my_id > 0 && !$is_mine) {
+    $r = $conn->query("SELECT id FROM user_blocks WHERE blocker_id=$my_id AND blocked_id=$view_uid");
+    $i_blocked_them = $r && $r->num_rows > 0;
+    $r2 = $conn->query("SELECT id FROM user_blocks WHERE blocker_id=$view_uid AND blocked_id=$my_id");
+    $they_blocked_me = $r2 && $r2->num_rows > 0;
+}
+
+// 收藏夹 & 点赞夹（仅自己可见）
+$favs_list  = [];
+$likes_list = [];
+if ($is_mine) {
+    $r = $conn->query("SELECT p.id, p.title, p.created_at, u.username
+        FROM post_favs pf
+        JOIN posts p ON p.id = pf.post_id
+        JOIN users u ON u.id = p.user_id
+        WHERE pf.user_id = $view_uid ORDER BY pf.id DESC LIMIT 50");
+    if ($r) $favs_list = $r->fetch_all(MYSQLI_ASSOC);
+
+    $r = $conn->query("SELECT p.id, p.title, p.created_at, u.username
+        FROM post_likes pl
+        JOIN posts p ON p.id = pl.post_id
+        JOIN users u ON u.id = p.user_id
+        WHERE pl.user_id = $view_uid ORDER BY pl.id DESC LIMIT 50");
+    if ($r) $likes_list = $r->fetch_all(MYSQLI_ASSOC);
+}
+
 // --- 检查当前登录用户是否关注了正在查看的用户 ---
 $is_following = false;
 $my_id = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : 0;
@@ -166,16 +195,27 @@ if ($my_id > 0 && $my_id != $view_uid) {
 
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <?php if($is_mine): ?>
-                <a href="edit_profile.php" class="btn-edit">编辑个人资料</a>
+                <a href="settings.php" class="btn-edit">编辑个人资料</a>
             <?php else: ?>
+                <?php if (!$they_blocked_me): ?>
                 <button class="btn-edit <?php echo $is_following ? 'following' : ''; ?>"
                         id="follow-btn-profile"
                         onclick="toggleFollow(<?php echo $user['id']; ?>)"
                         style="cursor: pointer; border: none; font-family: inherit;">
                     <?php echo $is_following ? '已关注' : '+ 关注'; ?>
                 </button>
-                <?php if($my_id > 0): ?>
+                <?php endif; ?>
+                <?php if($my_id > 0 && !$they_blocked_me): ?>
                     <a href="notifications.php?tab=message&user_id=<?php echo $user['id']; ?>" class="btn-edit">私信</a>
+                <?php endif; ?>
+                <?php if($my_id > 0): ?>
+                <button id="block-btn"
+                        onclick="toggleBlock(<?= $user['id'] ?>)"
+                        style="cursor:pointer;border:1px solid <?= $i_blocked_them ? 'rgba(248,81,73,.4)' : '#30363d' ?>;
+                               background:none;color:<?= $i_blocked_them ? '#f85149' : '#6e7681' ?>;
+                               font-size:12px;padding:5px 12px;border-radius:4px;font-family:inherit;transition:.2s;">
+                    <?= $i_blocked_them ? '已拉黑' : '拉黑' ?>
+                </button>
                 <?php endif; ?>
             <?php endif; ?>
 
@@ -298,35 +338,140 @@ if ($my_id > 0 && $my_id != $view_uid) {
         <img id="full-image" src="" style="max-width:90%; max-height:90%; border-radius:8px; box-shadow:0 0 20px rgba(0,0,0,0.5); transform: scale(1); transition: transform 0.3s;">
     </div>
 
-    <div class="post-section">
-    <h3 style="margin:0;">📝 <?php echo $is_mine ? '我的帖子' : 'TA的帖子'; ?></h3>
-    <p style="font-size: 13px; color: #999; margin-top: 5px;">共发布了 <?php echo $post_count; ?> 篇内容</p>
+    <!-- Tab 区域 -->
+    <?php if ($they_blocked_me): ?>
+    <div class="post-section" style="padding:24px;text-align:center;color:#6e7681;font-family:'Courier New',monospace;font-size:13px;">
+        // 该用户已限制你查看其内容
+    </div>
+    <?php else: ?>
+    <div class="post-section" style="padding:0;overflow:hidden;">
 
-    <div class="post-list">
-        <?php if($user_posts_res && $user_posts_res->num_rows > 0): ?>
-            <?php while($p = $user_posts_res->fetch_assoc()): ?>
+        <!-- Tab 头 -->
+        <div style="display:flex;border-bottom:1px solid #21262d;">
+            <button class="prof-tab active" onclick="switchTab('posts')" id="tab-posts">
+                <?php echo $is_mine ? '我的帖子' : 'TA的帖子'; ?>
+                <span style="font-size:11px;color:#6e7681;margin-left:4px;"><?php echo $post_count; ?></span>
+            </button>
+            <?php if ($is_mine): ?>
+            <button class="prof-tab" onclick="switchTab('favs')" id="tab-favs">
+                收藏夹
+                <span style="font-size:11px;color:#6e7681;margin-left:4px;"><?php echo count($favs_list); ?></span>
+            </button>
+            <button class="prof-tab" onclick="switchTab('likes')" id="tab-likes">
+                点赞夹
+                <span style="font-size:11px;color:#6e7681;margin-left:4px;"><?php echo count($likes_list); ?></span>
+            </button>
+            <?php endif; ?>
+        </div>
+
+        <!-- 帖子 -->
+        <div id="panel-posts" class="prof-panel" style="padding:18px 20px;">
+            <div class="post-list">
+                <?php if($user_posts_res && $user_posts_res->num_rows > 0): ?>
+                    <?php while($p = $user_posts_res->fetch_assoc()): ?>
+                        <a href="post.php?id=<?php echo $p['id']; ?>" class="post-item">
+                            <h4><?php echo htmlspecialchars($p['title'] ?: mb_substr(strip_tags($p['content']), 0, 30) . '...'); ?></h4>
+                            <div class="post-meta">
+                                <span>点击查看详情</span>
+                                <span><?php echo date('Y-m-d', strtotime($p['created_at'])); ?></span>
+                            </div>
+                        </a>
+                    <?php endwhile; ?>
+                <?php else: ?>
+                    <div class="empty-panel">// 暂无帖子</div>
+                <?php endif; ?>
+                <?php if($is_mine): ?>
+                    <a href="publish.php" class="post-item" style="text-align:center;border-style:dashed;color:#3fb950;">
+                        <strong>+ 发布新帖子</strong>
+                    </a>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <?php if ($is_mine): ?>
+        <!-- 收藏夹 -->
+        <div id="panel-favs" class="prof-panel" style="display:none;padding:18px 20px;">
+            <?php if (empty($favs_list)): ?>
+                <div class="empty-panel">// 还没有收藏过帖子</div>
+            <?php else: ?>
+                <?php foreach ($favs_list as $p): ?>
                 <a href="post.php?id=<?php echo $p['id']; ?>" class="post-item">
-                    <h4><?php echo htmlspecialchars($p['title'] ?: mb_substr(strip_tags($p['content']), 0, 30) . '...'); ?></h4>
+                    <h4><?php echo htmlspecialchars($p['title']); ?></h4>
                     <div class="post-meta">
-                        <span>点击查看详情</span>
+                        <span><?php echo htmlspecialchars($p['username']); ?></span>
                         <span><?php echo date('Y-m-d', strtotime($p['created_at'])); ?></span>
                     </div>
                 </a>
-            <?php endwhile; ?>
-        <?php else: ?>
-            <div style="text-align: center; color: #6e7681; padding: 30px; font-family: 'Courier New', monospace; font-size: 13px;">
-                // 暂无帖子
-            </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+
+        <!-- 点赞夹 -->
+        <div id="panel-likes" class="prof-panel" style="display:none;padding:18px 20px;">
+            <?php if (empty($likes_list)): ?>
+                <div class="empty-panel">// 还没有点赞过帖子</div>
+            <?php else: ?>
+                <?php foreach ($likes_list as $p): ?>
+                <a href="post.php?id=<?php echo $p['id']; ?>" class="post-item">
+                    <h4><?php echo htmlspecialchars($p['title']); ?></h4>
+                    <div class="post-meta">
+                        <span><?php echo htmlspecialchars($p['username']); ?></span>
+                        <span><?php echo date('Y-m-d', strtotime($p['created_at'])); ?></span>
+                    </div>
+                </a>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
         <?php endif; ?>
 
-        <?php if($is_mine): ?>
-            <a href="publish.php" class="post-item" style="text-align: center; border-style: dashed; color: #3fb950;">
-                <strong>+ 发布新帖子</strong>
-            </a>
-        <?php endif; ?>
     </div>
 </div>
-</div>
+
+<style>
+.prof-tab {
+    background: none; border: none; cursor: pointer;
+    padding: 12px 20px; font-size: 13px; font-family: inherit;
+    color: #6e7681; border-bottom: 2px solid transparent;
+    transition: .15s; font-weight: 600;
+}
+.prof-tab:hover { color: #c9d1d9; }
+.prof-tab.active { color: #3fb950; border-bottom-color: #3fb950; }
+.prof-panel { }
+.empty-panel { text-align:center; color:#6e7681; font-size:13px; font-family:"Courier New",monospace; padding:28px 0; }
+.empty-panel::before { content:'// '; }
+</style>
+<script>
+function switchTab(name) {
+    ['posts','favs','likes'].forEach(function(t) {
+        var tab = document.getElementById('tab-' + t);
+        var panel = document.getElementById('panel-' + t);
+        if (tab)   tab.classList.toggle('active', t === name);
+        if (panel) panel.style.display = (t === name) ? '' : 'none';
+    });
+}
+function toggleBlock(uid) {
+    var btn = document.getElementById('block-btn');
+    var blocked = btn.textContent.trim() === '已拉黑';
+    if (!blocked && !confirm('确定要拉黑该用户吗？拉黑后将自动解除互相关注。')) return;
+    var fd = new FormData(); fd.append('target_id', uid);
+    fetch('../actions/block_user.php', { method:'POST', body:fd })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        if (d.status === 'blocked') {
+            btn.textContent = '已拉黑';
+            btn.style.color = '#f85149';
+            btn.style.borderColor = 'rgba(248,81,73,.4)';
+            var fb = document.getElementById('follow-btn-profile');
+            if (fb) fb.style.display = 'none';
+        } else {
+            btn.textContent = '拉黑';
+            btn.style.color = '#6e7681';
+            btn.style.borderColor = '#30363d';
+        }
+    });
+}
+</script>
+<?php endif; // they_blocked_me ?>
 
 <script>
 function toggleFollow(authorId) {

@@ -44,7 +44,30 @@ $page     = max(1, intval($_GET['page'] ?? 1));
 $per_page = 20;
 $offset   = ($page - 1) * $per_page;
 
-$total_res = $conn->query("SELECT COUNT(*) c FROM posts p WHERE p.status='已发布' $cat_where");
+// 可见性 & 黑名单过滤条件
+$my_role_sq = $_SESSION['role'] ?? 'user';
+$bypass_vis  = in_array($my_role_sq, ['admin', 'owner']);
+$uid = intval($_SESSION['user_id'] ?? 0);
+
+if ($bypass_vis) {
+    $vis_where = '';
+} elseif ($uid > 0) {
+    $vis_where = "AND (
+        u.post_visibility = 'public'
+        OR u.id = $uid
+        OR (u.post_visibility = 'followers' AND EXISTS (SELECT 1 FROM follows WHERE follower_id=$uid AND followed_id=u.id))
+        OR (u.post_visibility = 'following' AND EXISTS (SELECT 1 FROM follows WHERE follower_id=u.id AND followed_id=$uid))
+        OR (u.post_visibility = 'mutual'
+            AND EXISTS (SELECT 1 FROM follows WHERE follower_id=$uid AND followed_id=u.id)
+            AND EXISTS (SELECT 1 FROM follows WHERE follower_id=u.id AND followed_id=$uid))
+    )
+    AND NOT EXISTS (SELECT 1 FROM user_blocks WHERE blocker_id=u.id AND blocked_id=$uid)
+    AND NOT EXISTS (SELECT 1 FROM user_blocks WHERE blocker_id=$uid AND blocked_id=u.id)";
+} else {
+    $vis_where = "AND u.post_visibility = 'public'";
+}
+
+$total_res = $conn->query("SELECT COUNT(*) c FROM posts p JOIN users u ON p.user_id=u.id WHERE p.status='已发布' $cat_where $vis_where");
 $total     = (int)($total_res->fetch_assoc()['c'] ?? 0);
 $total_pages = max(1, ceil($total / $per_page));
 ?>
@@ -258,8 +281,8 @@ $total_pages = max(1, ceil($total / $per_page));
                        (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) as likes_count,
                        (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count
                 FROM posts p
-                LEFT JOIN users u ON p.user_id = u.id
-                WHERE p.status = '已发布' $cat_where
+                JOIN users u ON p.user_id = u.id
+                WHERE p.status = '已发布' $cat_where $vis_where
                 ORDER BY p.id DESC
                 LIMIT $per_page OFFSET $offset";
         $result = $conn->query($sql);

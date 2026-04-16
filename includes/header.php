@@ -254,6 +254,7 @@ if ($is_logged_in && isset($conn)) {
                      onerror="this.onerror=null;this.src='<?= $base ?>uploads/avatars/default.png'">
                 <span style="color:#e6edf3; font-size:13px;"><?= htmlspecialchars($_SESSION['username']) ?></span>
             </a>
+            <a href="<?= $base ?>pages/settings.php" class="nav-item" title="设置" style="font-size:12px;">设置</a>
             <a href="<?= $base ?>pages/logout.php" class="nav-item" style="font-size:12px;">退出</a>
         <?php else: ?>
             <a href="<?= $base ?>pages/login.php" class="nav-item">登录</a>

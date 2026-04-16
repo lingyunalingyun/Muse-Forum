@@ -84,6 +84,9 @@ function ensure_user_columns($conn): void {
         'last_login_date'      => 'DATE DEFAULT NULL',
         'is_banned'            => 'TINYINT(1) NOT NULL DEFAULT 0',
         'ban_reason'           => 'VARCHAR(255) DEFAULT NULL',
+        'show_followers'       => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'show_following'       => 'TINYINT(1) NOT NULL DEFAULT 1',
+        'post_visibility'      => "VARCHAR(20) NOT NULL DEFAULT 'public'",
     ];
     foreach ($cols as $col => $def) {
         $r = $conn->query("SHOW COLUMNS FROM users LIKE '$col'");
@@ -91,6 +94,50 @@ function ensure_user_columns($conn): void {
             $conn->query("ALTER TABLE users ADD COLUMN $col $def");
         }
     }
+
+    // 黑名单表
+    $conn->query("CREATE TABLE IF NOT EXISTS user_blocks (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        blocker_id INT NOT NULL,
+        blocked_id INT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_block (blocker_id, blocked_id)
+    )");
+}
+
+// 可见性检查：当前访问者能否看到 $author_id 的帖子
+// 返回 true = 可以看，false = 不能看
+function can_see_posts($conn, string $visibility, int $author_id, int $viewer_id, string $viewer_role = 'user'): bool {
+    if ($viewer_id === $author_id) return true;
+    if (in_array($viewer_role, ['admin', 'owner'])) return true;
+    if ($visibility === 'public') return true;
+    if ($visibility === 'private') return false;
+    if ($viewer_id === 0) return false; // 未登录
+
+    if ($visibility === 'followers') {
+        // 访问者需关注作者
+        $r = $conn->query("SELECT id FROM follows WHERE follower_id=$viewer_id AND followed_id=$author_id");
+        return $r && $r->num_rows > 0;
+    }
+    if ($visibility === 'following') {
+        // 作者需关注访问者
+        $r = $conn->query("SELECT id FROM follows WHERE follower_id=$author_id AND followed_id=$viewer_id");
+        return $r && $r->num_rows > 0;
+    }
+    if ($visibility === 'mutual') {
+        // 互相关注
+        $r1 = $conn->query("SELECT id FROM follows WHERE follower_id=$viewer_id AND followed_id=$author_id");
+        $r2 = $conn->query("SELECT id FROM follows WHERE follower_id=$author_id AND followed_id=$viewer_id");
+        return ($r1 && $r1->num_rows > 0) && ($r2 && $r2->num_rows > 0);
+    }
+    return true;
+}
+
+// 检查是否被拉黑（blocker 拉黑了 blocked）
+function is_blocked($conn, int $blocker_id, int $blocked_id): bool {
+    if ($blocker_id === 0 || $blocked_id === 0) return false;
+    $r = $conn->query("SELECT id FROM user_blocks WHERE blocker_id=$blocker_id AND blocked_id=$blocked_id");
+    return $r && $r->num_rows > 0;
 }
 
 // ─── 内部：构建 HTML 邮件模板 ───────────────────────────
