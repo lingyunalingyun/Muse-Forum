@@ -8,7 +8,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $uid      = (int)$_SESSION['user_id'];
-$is_admin = ($_SESSION['role'] ?? '') === 'admin';
+$is_admin = in_array($_SESSION['role'] ?? '', ['admin', 'owner']);
 
 // 加载指定草稿
 $draft_id = (int)($_GET['draft_id'] ?? 0);

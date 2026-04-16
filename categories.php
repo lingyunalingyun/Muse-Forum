@@ -192,7 +192,7 @@ $db_err = !$cr ? $conn->error : '';
     <?php elseif (empty($cats)): ?>
     <div class="empty-tip">
         <p>// 还没有分区</p>
-        <?php if (($_SESSION['role'] ?? '') === 'admin'): ?>
+        <?php if (in_array($_SESSION['role'] ?? '', ['admin', 'owner'])): ?>
         <a href="pages/admin_categories.php">→ 创建第一个分区</a>
         <?php endif; ?>
     </div>

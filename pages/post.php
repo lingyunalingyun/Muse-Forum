@@ -3,6 +3,7 @@ session_start();
 // --- 1. 数据库连接与配置 ---
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/text_format.php';
+require_once __DIR__ . '/../includes/exp_helper.php';
 
 // --- 2. 获取参数与身份 ---
 $my_id = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : 0;
@@ -12,7 +13,7 @@ $sort = $_GET['sort'] ?? 'new';
 
 // --- 3. 获取帖子主体及作者详细信息 ---
 $post_query = "SELECT p.*,
-                u.id as author_id, u.username, u.avatar, u.role, u.level,
+                u.id as author_id, u.username, u.avatar, u.role, u.level, u.is_banned,
                 (SELECT COUNT(*) FROM posts WHERE user_id = u.id) as post_count,
                 (SELECT COUNT(*) FROM follows WHERE followed_id = u.id) as fans_count,
                 (CASE WHEN $my_id = 0 THEN 0
@@ -362,11 +363,7 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
             </a>
 
             <div class="badge-row">
-                <?php if ($post['role'] === 'admin'): ?>
-                    <span class="user-title" style="background: #fff0f0; color: #d63031; border: 1px solid #ff7675;">管理员</span>
-                <?php else: ?>
-                    <span class="user-title" style="background: #e3f2fd; color: #1976d2;">普通用户</span>
-                <?php endif; ?>
+                <?= get_role_badge($post['role'] ?? 'user', !empty($post['is_banned']), 'font-size:10px;') ?>
                 <span class="user-level">Lv.<?php echo $post['level'] ?: 1; ?></span>
             </div>
 

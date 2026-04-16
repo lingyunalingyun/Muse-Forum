@@ -541,7 +541,7 @@ $active_users = $conn->query("
 <?php if (isset($_SESSION['login_reward'])): ?>
 <?php $reward = $_SESSION['login_reward']; unset($_SESSION['login_reward']); ?>
 <div class="reward-toast" id="reward-toast">
-    &gt; 登录奖励 <span class="accent">+<?= $reward['points'] ?> pts</span> &nbsp;|&nbsp; 连续登录 <span class="accent"><?= $reward['streak'] ?> 天</span>
+    &gt; 登录奖励 <span class="accent">+<?= $reward['exp'] ?> EXP</span> &nbsp;|&nbsp; 连续登录 <span class="accent"><?= $reward['streak'] ?> 天</span>
 </div>
 <script>
 (function(){

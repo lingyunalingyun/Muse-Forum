@@ -14,9 +14,27 @@ $unread_count = 0;
 $pending_posts = 0;
 if ($is_logged_in && isset($conn)) {
     $uid_h = intval($_SESSION['user_id']);
+
+    // 中途封禁检测
+    $ban_res = $conn->query("SELECT is_banned, ban_reason FROM users WHERE id=$uid_h");
+    if ($ban_res && $ban_row = $ban_res->fetch_assoc()) {
+        if (!empty($ban_row['is_banned'])) {
+            session_destroy();
+            $reason = htmlspecialchars($ban_row['ban_reason'] ?: '违反社区规范');
+            echo "<!DOCTYPE html><html lang='zh-CN'><head><meta charset='UTF-8'><title>账号已封禁</title></head>
+            <body style='font-family:monospace;background:#0d1117;color:#e6edf3;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;'>
+            <div style='text-align:center;max-width:420px;padding:32px;background:#161b22;border:1px solid #30363d;border-radius:6px;'>
+            <p style='color:#f85149;font-size:18px;margin:0 0 12px;'>&#128683; 账号已封禁</p>
+            <p style='color:#8b949e;font-size:13px;line-height:1.7;'>封禁原因：<b style='color:#e6edf3;'>{$reason}</b></p>
+            <p style='color:#6e7681;font-size:12px;margin-top:16px;'>如有异议，请联系管理员。</p>
+            </div></body></html>";
+            exit;
+        }
+    }
+
     $n_res = $conn->query("SELECT COUNT(*) as cnt FROM notifications WHERE user_id = $uid_h AND is_read = 0");
     if ($n_res) $unread_count = (int)$n_res->fetch_assoc()['cnt'];
-    if ($current_role === 'admin') {
+    if ($current_role === 'admin' || $current_role === 'owner') {
         $p_res = $conn->query("SELECT COUNT(*) as cnt FROM posts WHERE status='待审核'");
         if ($p_res) $pending_posts = (int)$p_res->fetch_assoc()['cnt'];
     }
@@ -211,7 +229,7 @@ if ($is_logged_in && isset($conn)) {
         <a href="<?= $base ?>square.php" class="nav-item">广场</a>
         <div class="nav-divider"></div>
 
-        <?php if ($current_role === 'admin'): ?>
+        <?php if (in_array($current_role, ['admin', 'owner'])): ?>
             <a href="<?= $base ?>pages/admin_categories.php" class="nav-item" style="font-size:12px;color:#6e7681;">分区</a>
             <a href="<?= $base ?>pages/admin.php" class="nav-item admin-tag">管理后台
                 <?php if ($pending_posts > 0): ?>

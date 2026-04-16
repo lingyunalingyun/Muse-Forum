@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['admin', 'owner'])) {
     header("Content-Type: text/html; charset=utf-8");
     die("<h3>🚫 权限不足</h3>你不是管理员，无法进入后台。 <a href='../index.php'>返回主页</a>");
 }

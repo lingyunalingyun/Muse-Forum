@@ -35,7 +35,7 @@ $category_id = $category_id > 0 ? $category_id : 'NULL';
 
 // 公告标记（仅管理员）
 $is_notice = 0;
-if (($_SESSION['role'] ?? '') === 'admin' && ($_POST['is_notice'] ?? '0') === '1') {
+if (in_array($_SESSION['role'] ?? '', ['admin', 'owner']) && ($_POST['is_notice'] ?? '0') === '1') {
     $is_notice = 1;
 }
 

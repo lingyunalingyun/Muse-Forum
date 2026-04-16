@@ -1,6 +1,8 @@
 <?php
 session_start();
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../includes/exp_helper.php';
+ensure_user_columns($conn);
 
 // --- 核心修复：动态获取要查看的用户 ID ---
 if (isset($_GET['id']) && intval($_GET['id']) > 0) {
@@ -115,11 +117,13 @@ if ($my_id > 0 && $my_id != $view_uid) {
         <div class="user-info">
             <h2>
                 <?php echo htmlspecialchars($user['username']); ?>
-                <?php if(isset($user['role']) && $user['role'] === 'admin'): ?>
-                    <span class="role-badge" style="background: rgba(248,81,73,.15); color: #f85149; border: 1px solid rgba(248,81,73,.3);">管理员</span>
-                <?php else: ?>
-                    <span class="role-badge" style="background: rgba(88,166,255,.15); color: #58a6ff; border: 1px solid rgba(88,166,255,.3);">普通用户</span>
-                <?php endif; ?>
+                <?= get_role_badge($user['role'] ?? 'user', !empty($user['is_banned'])) ?>
+                <?php
+                $lv = get_level_by_exp((int)($user['exp'] ?? 0));
+                $lc = get_level_color($lv);
+                $ln = get_level_name($lv);
+                ?>
+                <span class="role-badge" style="background:<?= $lc ?>22;color:<?= $lc ?>;border:1px solid <?= $lc ?>55;">Lv.<?= $lv ?> <?= $ln ?></span>
             </h2>
             <p><?php echo htmlspecialchars($user['signature'] ?: "// 这个人很懒，什么都没留下"); ?></p>
             <div class="user-meta-row">
@@ -127,6 +131,40 @@ if ($my_id > 0 && $my_id != $view_uid) {
                 <span class="user-meta-item">积分 <span style="color:#3fb950;"><?php echo $user['points']; ?></span></span>
                 <span class="user-meta-item">性别 <span><?php echo $user['gender'] ?: "未设置"; ?></span></span>
             </div>
+
+            <?php
+            // 经验条
+            $u_exp    = (int)($user['exp'] ?? 0);
+            $u_level  = get_level_by_exp($u_exp);
+            $u_color  = get_level_color($u_level);
+            $u_name   = get_level_name($u_level);
+            $prev_exp = get_prev_level_exp($u_level);
+            $next_exp = get_next_level_exp($u_level);
+            if ($next_exp !== null) {
+                $bar_pct   = ($u_exp - $prev_exp) / ($next_exp - $prev_exp) * 100;
+                $bar_pct   = max(0, min(100, $bar_pct));
+                $exp_label = $u_exp . ' / ' . $next_exp . ' EXP';
+                $exp_left  = '还差 ' . ($next_exp - $u_exp) . ' EXP 升级';
+            } else {
+                $bar_pct   = 100;
+                $exp_label = $u_exp . ' EXP（满级）';
+                $exp_left  = '';
+            }
+            ?>
+            <div style="margin:10px 0 12px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+                    <span style="font-size:12px;color:#8b949e;font-family:'Courier New',monospace;"><?= $exp_label ?></span>
+                    <?php if ($exp_left): ?>
+                    <span style="font-size:11px;color:#6e7681;"><?= $exp_left ?></span>
+                    <?php endif; ?>
+                </div>
+                <div style="height:5px;background:#21262d;border-radius:3px;overflow:hidden;">
+                    <div style="height:100%;width:<?= $bar_pct ?>%;background:<?= $u_color ?>;border-radius:3px;
+                                box-shadow:0 0 6px <?= $u_color ?>88;transition:width .6s ease;"></div>
+                </div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <?php if($is_mine): ?>
                 <a href="edit_profile.php" class="btn-edit">编辑个人资料</a>
             <?php else: ?>
@@ -137,27 +175,124 @@ if ($my_id > 0 && $my_id != $view_uid) {
                     <?php echo $is_following ? '已关注' : '+ 关注'; ?>
                 </button>
                 <?php if($my_id > 0): ?>
-                    <a href="notifications.php?tab=message&user_id=<?php echo $user['id']; ?>" class="btn-edit"
-                       style="margin-left: 8px;">私信</a>
+                    <a href="notifications.php?tab=message&user_id=<?php echo $user['id']; ?>" class="btn-edit">私信</a>
                 <?php endif; ?>
             <?php endif; ?>
+
+            <?php
+            // 封禁按钮：admin/owner 可见，但不能操作同级或更高级
+            $my_role     = $_SESSION['role'] ?? '';
+            $target_role = $user['role'] ?? 'user';
+            $can_ban = false;
+            if (!$is_mine) {
+                if ($my_role === 'owner') $can_ban = true;
+                elseif ($my_role === 'admin' && $target_role === 'user') $can_ban = true;
+            }
+            $is_target_banned = !empty($user['is_banned']);
+            if ($can_ban):
+            ?>
+                <button onclick="openBanModal(<?= $user['id'] ?>, <?= $is_target_banned ? 'true' : 'false' ?>, '<?= htmlspecialchars(addslashes($user['ban_reason'] ?? ''), ENT_QUOTES) ?>')"
+                        style="cursor:pointer;border:1px solid <?= $is_target_banned ? 'rgba(63,185,80,.4)' : 'rgba(248,81,73,.4)' ?>;
+                               background:transparent;color:<?= $is_target_banned ? '#3fb950' : '#f85149' ?>;
+                               padding:5px 14px;border-radius:4px;font-size:12px;font-weight:600;font-family:inherit;transition:.2s;">
+                    <?= $is_target_banned ? '解除封禁' : '封禁账号' ?>
+                </button>
+            <?php endif; ?>
+            </div>
         </div>
     </div>
 
+    <?php
+    $follows_res = $conn->query("SELECT u.id, u.username, u.avatar, u.role, u.exp, u.is_banned
+        FROM follows f JOIN users u ON u.id = f.followed_id
+        WHERE f.follower_id = $view_uid ORDER BY f.id DESC");
+    $fans_res = $conn->query("SELECT u.id, u.username, u.avatar, u.role, u.exp, u.is_banned
+        FROM follows f JOIN users u ON u.id = f.follower_id
+        WHERE f.followed_id = $view_uid ORDER BY f.id DESC");
+    $follows_list = $follows_res ? $follows_res->fetch_all(MYSQLI_ASSOC) : [];
+    $fans_list    = $fans_res    ? $fans_res->fetch_all(MYSQLI_ASSOC)    : [];
+    ?>
     <div class="stats-bar">
         <div class="stat-item">
             <strong><?php echo $post_count; ?></strong><br>
             <small>帖子</small>
         </div>
-        <div class="stat-item">
+        <div class="stat-item" onclick="openUserList('follows')" style="cursor:pointer;" title="查看关注列表">
             <strong><?php echo $follow_count; ?></strong><br>
-            <small>关注</small>
+            <small>关注 &#9654;</small>
         </div>
-        <div class="stat-item">
+        <div class="stat-item" onclick="openUserList('fans')" style="cursor:pointer;" title="查看粉丝列表">
             <strong id="fans-count"><?php echo $fans_count; ?></strong><br>
-            <small>粉丝</small>
+            <small>粉丝 &#9654;</small>
         </div>
     </div>
+
+    <?php if (true): ?>
+    <!-- 关注/粉丝列表弹窗 -->
+    <div id="userlist-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;align-items:center;justify-content:center;">
+        <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;width:360px;max-width:92vw;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;">
+            <div style="padding:16px 18px 12px;border-bottom:1px solid #21262d;display:flex;align-items:center;justify-content:space-between;">
+                <span id="userlist-title" style="font-size:14px;font-weight:700;color:#e6edf3;font-family:'Courier New',monospace;"></span>
+                <button onclick="closeUserList()" style="background:none;border:none;color:#6e7681;font-size:18px;cursor:pointer;line-height:1;">&times;</button>
+            </div>
+            <div id="userlist-body" style="overflow-y:auto;padding:10px 0;"></div>
+        </div>
+    </div>
+    <script>
+    const _followsData = <?= json_encode($follows_list) ?>;
+    const _fansData    = <?= json_encode($fans_list) ?>;
+    const _levelNames  = {1:'新手',2:'学徒',3:'成员',4:'精英',5:'大师',6:'传奇'};
+    const _levelColors = {1:'#8b949e',2:'#58a6ff',3:'#3fb950',4:'#d29922',5:'#f0883e',6:'#f85149'};
+    const _roleMap = {
+        owner:   {label:'★ 站长', color:'#f85149', border:'rgba(248,81,73,.4)'},
+        admin:   {label:'管理员', color:'#a78bfa', border:'rgba(167,139,250,.4)'},
+        sponsor: {label:'赞助者', color:'#3fb950', border:'rgba(63,185,80,.4)'},
+        user:    {label:'成员',   color:'#58a6ff', border:'rgba(88,166,255,.4)'},
+    };
+    function getLevelByExp(exp) {
+        if (exp >= 50000) return 6; if (exp >= 30000) return 5;
+        if (exp >= 15000) return 4; if (exp >= 5000)  return 3;
+        if (exp >= 1000)  return 2; return 1;
+    }
+    function roleTag(u) {
+        const banned = parseInt(u.is_banned||0);
+        const r = banned ? {label:'已封禁',color:'#6e7681',border:'rgba(110,118,129,.35)'}
+                         : (_roleMap[u.role] || _roleMap.user);
+        return `<span style="font-size:10px;color:${r.color};border:1px solid ${r.border};padding:1px 5px;border-radius:3px;">${r.label}</span>`;
+    }
+    function openUserList(type) {
+        const data = type === 'follows' ? _followsData : _fansData;
+        document.getElementById('userlist-title').textContent = type === 'follows' ? '关注列表' : '粉丝列表';
+        const body = document.getElementById('userlist-body');
+        if (!data.length) {
+            body.innerHTML = '<p style="text-align:center;color:#6e7681;font-size:13px;padding:24px 0;">暂无数据</p>';
+        } else {
+            body.innerHTML = data.map(u => {
+                const lv = getLevelByExp(parseInt(u.exp)||0);
+                const lc = _levelColors[lv], ln = _levelNames[lv];
+                return `<a href="profile.php?id=${u.id}" style="display:flex;align-items:center;gap:12px;padding:9px 18px;text-decoration:none;transition:.15s;" onmouseover="this.style.background='#21262d'" onmouseout="this.style.background='transparent'">
+                    <img src="../uploads/avatars/${u.avatar||'default.png'}" onerror="this.src='../uploads/avatars/default.png'"
+                         style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid #30363d;flex-shrink:0;">
+                    <div style="min-width:0;">
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                            <span style="color:#e6edf3;font-size:13px;font-weight:600;">${u.username}</span>
+                            ${roleTag(u)}
+                            <span style="font-size:10px;color:${lc};border:1px solid ${lc}55;padding:1px 5px;border-radius:3px;">Lv.${lv} ${ln}</span>
+                        </div>
+                    </div>
+                </a>`;
+            }).join('');
+        }
+        document.getElementById('userlist-modal').style.display = 'flex';
+    }
+    function closeUserList() {
+        document.getElementById('userlist-modal').style.display = 'none';
+    }
+    document.getElementById('userlist-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeUserList();
+    });
+    </script>
+    <?php endif; ?>
 
     <div id="image-overlay" onclick="this.style.display='none'" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; cursor:zoom-out; align-items:center; justify-content:center;">
         <img id="full-image" src="" style="max-width:90%; max-height:90%; border-radius:8px; box-shadow:0 0 20px rgba(0,0,0,0.5); transform: scale(1); transition: transform 0.3s;">
@@ -235,6 +370,77 @@ document.addEventListener('keydown', function(e) {
     if (e.key === "Escape") {
         document.getElementById('image-overlay').style.display = 'none';
     }
+});
+</script>
+
+<!-- 封禁弹窗 -->
+<div id="ban-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;align-items:center;justify-content:center;">
+    <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:28px 28px 24px;width:360px;max-width:90vw;font-family:'Courier New',monospace;">
+        <p id="ban-modal-title" style="color:#f85149;font-size:15px;margin:0 0 16px;font-weight:700;"></p>
+        <div id="ban-reason-wrap">
+            <label style="font-size:12px;color:#8b949e;display:block;margin-bottom:6px;">封禁原因</label>
+            <input id="ban-reason-input" type="text" placeholder="请输入封禁原因（必填）" maxlength="200"
+                   style="width:100%;box-sizing:border-box;background:#0d1117;border:1px solid #30363d;color:#e6edf3;
+                          padding:8px 10px;border-radius:4px;font-size:13px;font-family:inherit;outline:none;">
+        </div>
+        <div style="display:flex;gap:10px;margin-top:18px;">
+            <button id="ban-confirm-btn"
+                    style="flex:1;padding:9px;border-radius:4px;border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;transition:.2s;"></button>
+            <button onclick="closeBanModal()"
+                    style="flex:1;padding:9px;border-radius:4px;border:1px solid #30363d;background:transparent;
+                           color:#8b949e;cursor:pointer;font-size:13px;font-family:inherit;">取消</button>
+        </div>
+    </div>
+</div>
+<script>
+let _banTargetId = 0, _banIsCurrentlyBanned = false;
+function openBanModal(uid, isBanned, curReason) {
+    _banTargetId = uid;
+    _banIsCurrentlyBanned = isBanned;
+    const modal = document.getElementById('ban-modal');
+    const title = document.getElementById('ban-modal-title');
+    const reasonWrap = document.getElementById('ban-reason-wrap');
+    const confirmBtn = document.getElementById('ban-confirm-btn');
+    const input = document.getElementById('ban-reason-input');
+    if (isBanned) {
+        title.textContent = '确认解除该账号的封禁？';
+        title.style.color = '#3fb950';
+        reasonWrap.style.display = 'none';
+        confirmBtn.textContent = '确认解封';
+        confirmBtn.style.cssText = 'flex:1;padding:9px;border-radius:4px;border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;background:#3fb950;color:#fff;';
+    } else {
+        title.textContent = '封禁该账号？封禁后用户将无法登录。';
+        title.style.color = '#f85149';
+        reasonWrap.style.display = 'block';
+        input.value = '';
+        confirmBtn.textContent = '确认封禁';
+        confirmBtn.style.cssText = 'flex:1;padding:9px;border-radius:4px;border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;background:#f85149;color:#fff;';
+    }
+    confirmBtn.onclick = submitBan;
+    modal.style.display = 'flex';
+}
+function closeBanModal() {
+    document.getElementById('ban-modal').style.display = 'none';
+}
+function submitBan() {
+    const reason = document.getElementById('ban-reason-input').value.trim();
+    if (!_banIsCurrentlyBanned && !reason) {
+        alert('请填写封禁原因');
+        return;
+    }
+    const fd = new FormData();
+    fd.append('user_id', _banTargetId);
+    fd.append('action', _banIsCurrentlyBanned ? 'unban' : 'ban');
+    fd.append('reason', reason);
+    fetch('../actions/ban_user.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(d => {
+            if (d.ok) location.reload();
+            else alert(d.msg || '操作失败');
+        });
+}
+document.getElementById('ban-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeBanModal();
 });
 </script>
 </body>

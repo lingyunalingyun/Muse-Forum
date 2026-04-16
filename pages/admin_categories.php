@@ -2,7 +2,7 @@
 session_start();
 require_once __DIR__ . '/../config.php';
 
-if (($_SESSION['role'] ?? '') !== 'admin') {
+if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
     header("Location: ../index.php"); exit;
 }
 

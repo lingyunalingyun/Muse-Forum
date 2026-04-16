@@ -1,3 +1,7 @@
+<?php
+session_start();
+$flash_msg = htmlspecialchars($_GET['msg'] ?? '');
+?>
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -40,6 +44,11 @@
 <div class="login-wrap">
     <div class="login-card">
         <h2>&gt; <span class="accent">LOGIN</span><span class="cursor">_</span></h2>
+        <?php if ($flash_msg): ?>
+            <div style="background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);border-radius:4px;padding:9px 12px;margin-bottom:14px;color:#3fb950;font-size:13px;">
+                &#10003; <?= $flash_msg ?>
+            </div>
+        <?php endif; ?>
         <form action="../actions/auth.php" method="POST">
             <input type="hidden" name="action" value="login">
             <input type="text" name="identity" placeholder="邮箱 / 系统ID / 用户名" required>
@@ -47,6 +56,8 @@
             <button type="submit">进入社区</button>
         </form>
         <div class="footer-links">
+            <a href="forgot_password.php">忘记密码？</a>
+            &nbsp;·&nbsp;
             还没有账号？ <a href="register.php">立即注册</a>
         </div>
     </div>
