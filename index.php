@@ -560,71 +560,14 @@ $active_users = $conn->query("
 </div>
 <?php endif; ?>
 
-<!-- 彩蛋：长按空格10秒激活 -->
-<div id="egg-overlay" style="display:none;position:fixed;inset:0;background:#000;z-index:99999;align-items:center;justify-content:center;cursor:text;">
-    <div id="egg-text" style="color:#fff;font-size:7vw;font-weight:bold;letter-spacing:.05em;text-align:center;width:90%;line-height:1.2;word-break:break-all;">有什么放不下的？</div>
-</div>
-<script>
-(function(){
-    let pressTimer = null, holding = false;
-    let typed = '';
-    const HINT = '有什么放不下的？';
-
-    let active = false;
-
-    document.addEventListener('keydown', function(e){
-        if(active){ e.preventDefault(); return; }
-        if(e.code !== 'Space' || holding) return;
-        if(document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
-        e.preventDefault();
-        holding = true;
-        pressTimer = setTimeout(activate, 10000);
-    });
-    document.addEventListener('keyup', function(e){
-        if(e.code !== 'Space') return;
-        holding = false;
-        clearTimeout(pressTimer);
-    });
-
-    function activate(){
-        const overlay = document.getElementById('egg-overlay');
-        const text = document.getElementById('egg-text');
-        typed = '';
-        text.textContent = HINT;
-        overlay.style.display = 'flex';
-        active = true;
-
-        function onKey(e){
-            e.preventDefault();
-            if(e.key === 'Escape'){
-                overlay.style.display = 'none';
-                typed = '';
-                active = false;
-                document.removeEventListener('keydown', onKey);
-                return;
-            }
-            if(e.code === 'Space') return;
-            if(e.key === 'Enter'){
-                const val = typed.trim();
-                if(val === 'PLX'){
-                    text.textContent = '兰谷自逢欣，有缘再相遇';
-                } else if(val !== ''){
-                    text.textContent = '爱一个人是发自内心的';
-                }
-                typed = '';
-                return;
-            }
-            if(e.key === 'Backspace'){
-                typed = typed.slice(0, -1);
-            } else if(e.key.length === 1){
-                typed += e.key;
-            }
-            text.textContent = typed || HINT;
-        }
-        document.addEventListener('keydown', onKey);
-    }
-})();
-</script>
+<style>
+#_x9k2{display:none;position:fixed;inset:0;background:#000;z-index:99999;align-items:center;justify-content:center;cursor:text;opacity:0;transition:opacity 1.2s ease}
+#_m7q1{font-size:7vw;font-weight:bold;letter-spacing:.05em;text-align:center;width:90%;line-height:1.2;word-break:break-all;background:linear-gradient(to bottom,#fff 30%,transparent 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;opacity:0;transform:translateY(-12px);transition:opacity 1s ease .4s,transform 1s ease .4s}
+#_x9k2._v{opacity:1}
+#_x9k2._v #_m7q1{opacity:1;transform:translateY(0)}
+</style>
+<div id="_x9k2"><div id="_m7q1">有什么放不下的？</div></div>
+<script>function _0x10be(_0x298f05,_0xe99b22){_0x298f05=_0x298f05-0x6d;const _0x5b466e=_0x5b46();let _0x10be78=_0x5b466e[_0x298f05];return _0x10be78;}function _0x5b46(){const _0x2d46c4=['有什么放不下的？','removeEventListener','key','flex','none','opacity\x201s\x20ease,\x20transform\x201s\x20ease','remove','activeElement','display','2iANfgi','817968FdwzDJ','code','2694882ieuflK','getElementById','1076921DzVoov','preventDefault','10pGBlAd','Enter','length','keyup','trim','tagName','Backspace','2154609qJrSZA','1141TxjMzm','classList','transition','TEXTAREA','_x9k2','opacity','addEventListener','transform','style','INPUT','248PxqYwJ','Escape','爱一个人是发自内心的','44504dFPswT','Space','PLX','兰谷自逢欣，有缘再相遇','textContent','84140dvuRvW','add','5753704aRLOyf'];_0x5b46=function(){return _0x2d46c4;};return _0x5b46();}(function(_0xebb072,_0x1e5b92){const _0x13b825=_0x10be,_0x2202c7=_0xebb072();while(!![]){try{const _0x3a4bd9=-parseInt(_0x13b825(0x80))/0x1*(-parseInt(_0x13b825(0x7b))/0x2)+parseInt(_0x13b825(0x7c))/0x3+parseInt(_0x13b825(0x94))/0x4*(-parseInt(_0x13b825(0x6f))/0x5)+parseInt(_0x13b825(0x7e))/0x6+parseInt(_0x13b825(0x8a))/0x7*(-parseInt(_0x13b825(0x97))/0x8)+parseInt(_0x13b825(0x89))/0x9*(parseInt(_0x13b825(0x82))/0xa)+parseInt(_0x13b825(0x71))/0xb;if(_0x3a4bd9===_0x1e5b92)break;else _0x2202c7['push'](_0x2202c7['shift']());}catch(_0x43ca55){_0x2202c7['push'](_0x2202c7['shift']());}}}(_0x5b46,0x9530c),(function(){const _0x3c8c5c=_0x10be;let _0x298c95=null,_0x457d8c=![],_0x282372='';const _0x107277=_0x3c8c5c(0x72);let _0xd01193=![];document[_0x3c8c5c(0x90)]('keydown',function(_0x8bc5dc){const _0xeda7bc=_0x3c8c5c;if(_0xd01193){_0x8bc5dc[_0xeda7bc(0x81)]();return;}if(_0x8bc5dc[_0xeda7bc(0x7d)]!=='Space'||_0x457d8c)return;if(document[_0xeda7bc(0x79)]['tagName']===_0xeda7bc(0x93)||document[_0xeda7bc(0x79)][_0xeda7bc(0x87)]===_0xeda7bc(0x8d))return;_0x8bc5dc[_0xeda7bc(0x81)](),_0x457d8c=!![],_0x298c95=setTimeout(_0x2a6dcc,0x2710);}),document['addEventListener'](_0x3c8c5c(0x85),function(_0x580c77){const _0x52958e=_0x3c8c5c;if(_0x580c77['code']!==_0x52958e(0x98))return;_0x457d8c=![],clearTimeout(_0x298c95);});function _0x2a6dcc(){const _0x28b23c=_0x3c8c5c,_0x16080c=document[_0x28b23c(0x7f)](_0x28b23c(0x8e)),_0x2b87ac=document[_0x28b23c(0x7f)]('_m7q1');_0x282372='',_0x2b87ac['textContent']=_0x107277,_0x16080c[_0x28b23c(0x92)]['display']=_0x28b23c(0x75),requestAnimationFrame(()=>requestAnimationFrame(()=>{const _0x1ac8c8=_0x28b23c;_0x16080c[_0x1ac8c8(0x8b)][_0x1ac8c8(0x70)]('_v');})),_0xd01193=!![];function _0x54667d(_0x40322d){const _0x188304=_0x28b23c;_0x40322d['preventDefault']();if(_0x40322d[_0x188304(0x74)]===_0x188304(0x95)){_0x16080c[_0x188304(0x8b)][_0x188304(0x78)]('_v'),setTimeout(()=>{const _0x44875c=_0x188304;_0x16080c[_0x44875c(0x92)][_0x44875c(0x7a)]=_0x44875c(0x76);},0x4b0),_0x282372='',_0xd01193=![],document[_0x188304(0x73)]('keydown',_0x54667d);return;}if(_0x40322d[_0x188304(0x7d)]===_0x188304(0x98))return;if(_0x40322d['key']===_0x188304(0x83)){const _0x548b81=_0x282372[_0x188304(0x86)]();let _0x59a177='';if(_0x548b81===_0x188304(0x99))_0x59a177=_0x188304(0x6d);else{if(_0x548b81!=='')_0x59a177=_0x188304(0x96);}_0x59a177&&(_0x2b87ac[_0x188304(0x92)]['transition']='none',_0x2b87ac[_0x188304(0x92)][_0x188304(0x8f)]='0',_0x2b87ac[_0x188304(0x92)][_0x188304(0x91)]='translateY(-12px)',setTimeout(()=>{const _0x59c9d8=_0x188304;_0x2b87ac[_0x59c9d8(0x6e)]=_0x59a177,_0x2b87ac['style'][_0x59c9d8(0x8c)]=_0x59c9d8(0x77),_0x2b87ac['style']['opacity']='1',_0x2b87ac['style'][_0x59c9d8(0x91)]='translateY(0)';},0xc8));_0x282372='';return;}if(_0x40322d[_0x188304(0x74)]===_0x188304(0x88))_0x282372=_0x282372['slice'](0x0,-0x1);else{if(_0x40322d[_0x188304(0x74)][_0x188304(0x84)]===0x1)_0x282372+=_0x40322d[_0x188304(0x74)];}_0x2b87ac[_0x188304(0x6e)]=_0x282372||_0x107277;}document[_0x28b23c(0x90)]('keydown',_0x54667d);}}()));</script>
 
 </body>
 </html>
