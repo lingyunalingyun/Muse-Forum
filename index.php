@@ -560,6 +560,72 @@ $active_users = $conn->query("
 </div>
 <?php endif; ?>
 
+<!-- 彩蛋：长按空格10秒激活 -->
+<div id="egg-overlay" style="display:none;position:fixed;inset:0;background:#000;z-index:99999;align-items:center;justify-content:center;cursor:text;">
+    <div id="egg-text" style="color:#fff;font-size:7vw;font-weight:bold;letter-spacing:.05em;text-align:center;width:90%;line-height:1.2;word-break:break-all;">有什么放不下的？</div>
+</div>
+<script>
+(function(){
+    let pressTimer = null, holding = false;
+    let typed = '';
+    const HINT = '有什么放不下的？';
+
+    let active = false;
+
+    document.addEventListener('keydown', function(e){
+        if(active){ e.preventDefault(); return; }
+        if(e.code !== 'Space' || holding) return;
+        if(document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+        e.preventDefault();
+        holding = true;
+        pressTimer = setTimeout(activate, 10000);
+    });
+    document.addEventListener('keyup', function(e){
+        if(e.code !== 'Space') return;
+        holding = false;
+        clearTimeout(pressTimer);
+    });
+
+    function activate(){
+        const overlay = document.getElementById('egg-overlay');
+        const text = document.getElementById('egg-text');
+        typed = '';
+        text.textContent = HINT;
+        overlay.style.display = 'flex';
+        active = true;
+
+        function onKey(e){
+            e.preventDefault();
+            if(e.key === 'Escape'){
+                overlay.style.display = 'none';
+                typed = '';
+                active = false;
+                document.removeEventListener('keydown', onKey);
+                return;
+            }
+            if(e.code === 'Space') return;
+            if(e.key === 'Enter'){
+                const val = typed.trim();
+                if(val === 'PLX'){
+                    text.textContent = '兰谷自逢欣，有缘再相遇';
+                } else if(val !== ''){
+                    text.textContent = '爱一个人是发自内心的';
+                }
+                typed = '';
+                return;
+            }
+            if(e.key === 'Backspace'){
+                typed = typed.slice(0, -1);
+            } else if(e.key.length === 1){
+                typed += e.key;
+            }
+            text.textContent = typed || HINT;
+        }
+        document.addEventListener('keydown', onKey);
+    }
+})();
+</script>
+
 </body>
 </html>
 <?php $conn->close(); ?>
