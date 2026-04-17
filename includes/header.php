@@ -15,6 +15,14 @@ $pending_posts = 0;
 if ($is_logged_in && isset($conn)) {
     $uid_h = intval($_SESSION['user_id']);
 
+    if (empty($_SESSION['mid'])) {
+        $mid_res = $conn->query("SELECT mid, is_cs FROM users WHERE id=$uid_h");
+        if ($mid_res && $mid_row = $mid_res->fetch_assoc()) {
+            $_SESSION['mid']   = $mid_row['mid'] ?? '';
+            $_SESSION['is_cs'] = !empty($mid_row['is_cs']) ? 1 : 0;
+        }
+    }
+
     // 中途封禁检测
     $ban_res = $conn->query("SELECT is_banned, ban_reason FROM users WHERE id=$uid_h");
     if ($ban_res && $ban_row = $ban_res->fetch_assoc()) {
