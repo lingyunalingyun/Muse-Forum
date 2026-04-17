@@ -1,4 +1,17 @@
 <?php
+/**
+ * pages/register.php — 注册页
+ *
+ * 字段：email / username / password / password_confirm
+ * 表单 POST → actions/auth.php（action=register）
+ *
+ * GET 参数：
+ *   status=pending  邮箱待验证状态（EMAIL_VERIFY_REQUIRED=true 时显示）
+ *   email           用于显示"已向此邮箱发送验证邮件"
+ *   resent=1        重发验证邮件成功提示
+ *   cooldown=N      重发冷却剩余秒数提示
+ *   error           注册失败错误信息
+ */
 session_start();
 $status        = $_GET['status']   ?? '';
 $pending_email = htmlspecialchars($_GET['email']    ?? '');

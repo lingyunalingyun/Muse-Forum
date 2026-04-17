@@ -1,4 +1,17 @@
 <?php
+/**
+ * actions/comment_save.php — 提交评论 / 回复
+ *
+ * POST 参数：post_id, parent_id（0 = 顶级评论；>0 = 回复某条评论）, content
+ *
+ * 通知逻辑（避免重复通知）：
+ *   1. 通知帖子作者（类型：parent_id>0 时为 reply，否则为 comment）
+ *   2. 若是回复，额外通知被回复评论的作者（前提：与帖主不同且不是自己）
+ *   3. 扫描 content 中的 @username，向被提及用户发送 mention 通知
+ *
+ * 返回：纯文本 "success" 或错误说明
+ * 读写表：comments, notifications
+ */
 // comment_save.php - 处理评论与回复
 header('Content-Type: text/plain; charset=utf-8');
 session_start();

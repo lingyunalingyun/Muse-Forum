@@ -1,4 +1,29 @@
 <?php
+/**
+ * index.php — 首页
+ *
+ * 布局：Hero 横幅 + 两栏（主内容 + 右侧栏）
+ *
+ * 主内容区：
+ *   - 仅展示 is_recommend=1 的推荐帖，2 列正方形大图网格
+ *   - 提取帖子内容中第一张 <img> 作为封面缩略图
+ *   - 底部「前往广场」横幅入口
+ *
+ * 右侧栏（三个 Widget）：
+ *   - 热门帖子（按点赞数降序 Top 5）
+ *   - 社区公告（is_notice=1 最新 3 条）
+ *   - 活跃用户（按发帖数降序 Top 5）
+ *
+ * Hero 特效：
+ *   - 背景图鼠标 X 轴视差（±24px，平滑插值）
+ *   - 滚动 Y 轴视差（系数 0.35）
+ *
+ * 登录奖励 Toast：
+ *   - 登录成功后 $_SESSION['login_reward'] 写入奖励数据
+ *   - 首页消费一次后 unset，不会重复显示
+ *
+ * 读表：posts, users, post_likes, comments
+ */
 session_start();
 require_once __DIR__ . '/config.php';
 

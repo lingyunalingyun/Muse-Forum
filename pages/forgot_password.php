@@ -1,4 +1,13 @@
 <?php
+/**
+ * pages/forgot_password.php — 忘记密码（输入邮箱）
+ *
+ * 表单 POST → actions/auth.php（action=forgot_password）
+ * GET 参数：
+ *   status=sent  提交后显示"已发送"（无论邮箱是否存在，防止枚举）
+ *   email        显示发送目标邮箱
+ *   error        错误信息（如邮箱格式不正确）
+ */
 session_start();
 $status    = $_GET['status'] ?? '';
 $error_msg = htmlspecialchars($_GET['error'] ?? '');

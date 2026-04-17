@@ -1,4 +1,13 @@
 <?php
+/**
+ * actions/follow_toggle.php — 关注 / 取消关注（toggle，AJAX JSON）
+ *
+ * POST 参数：following_id（目标用户 ID）
+ * 返回：{"status": "followed"|"unfollowed", "new_count": 最新粉丝数}
+ *
+ * 关注时向目标用户发送 follow 类型通知
+ * 读写表：follows, notifications
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 

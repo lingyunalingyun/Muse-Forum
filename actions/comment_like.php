@@ -1,4 +1,15 @@
 <?php
+/**
+ * actions/comment_like.php — 评论点赞 / 取消点赞（toggle）
+ *
+ * POST 参数：cid（评论 ID）
+ * 返回：纯文本 "liked" 或 "unliked"
+ * 点赞时：
+ *   - comments.likes 计数 +1
+ *   - 向评论作者发送 like_comment 通知（不通知自己）
+ * 取消时：comments.likes 计数 -1，删除点赞记录
+ * 读写表：comment_likes, comments（likes）, notifications
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 

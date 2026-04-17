@@ -1,4 +1,13 @@
 <?php
+/**
+ * actions/user_handler.php — 旧版用户接口（保留兼容，实际已废弃）
+ *
+ * ⚠️  此文件为早期遗留代码，功能已被 actions/auth.php 等取代，不应在生产环境调用。
+ *     - register 分支直接拼接 SQL 且无安全处理（无密码哈希、无去重、无验证）
+ *     - get_profile 分支查询了 user_inventory 表（当前版本未使用）
+ *
+ * 如无特殊需求请勿修改或依赖此文件。
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 

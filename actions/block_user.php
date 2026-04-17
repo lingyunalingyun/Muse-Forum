@@ -1,4 +1,15 @@
 <?php
+/**
+ * actions/block_user.php — 拉黑 / 取消拉黑（AJAX JSON，toggle）
+ *
+ * POST 参数：target_id（目标用户 ID）
+ *
+ * 逻辑：
+ *   - 已拉黑 → 删除记录，返回 {"status": "unblocked"}
+ *   - 未拉黑 → 插入记录 + 自动解除双向关注，返回 {"status": "blocked"}
+ *
+ * 读写表：user_blocks, follows
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 header('Content-Type: application/json; charset=utf-8');

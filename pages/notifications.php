@@ -1,4 +1,23 @@
 <?php
+/**
+ * pages/notifications.php — 消息中心
+ *
+ * 登录后可见，打开页面时将所有未读通知标记为已读（is_read=1）。
+ *
+ * 通知类型（type 字段值）：
+ *   comment      — 有人评论了你的帖子
+ *   reply        — 有人回复了你的评论
+ *   mention      — 有人在评论中 @了你
+ *   like_post    — 有人点赞了你的帖子
+ *   fav_post     — 有人收藏了你的帖子
+ *   like_comment — 有人点赞了你的评论
+ *   follow       — 有人关注了你
+ *   message      — 有人给你发了私信
+ *   post_review  — 你的帖子待审核（通知管理员）
+ *   post_approved — 你的帖子已通过审核
+ *
+ * 读写表：notifications（is_read）, users, posts, comments
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 

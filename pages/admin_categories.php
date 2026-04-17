@@ -1,4 +1,21 @@
 <?php
+/**
+ * pages/admin_categories.php — 分区管理（管理员）
+ *
+ * 权限：admin / owner
+ *
+ * 功能：
+ *   - 列出所有分区（含帖子数统计）
+ *   - 创建 / 编辑分区（名称、描述、颜色、图标、封面图必填）
+ *   - 删除分区
+ *   - 封面图上传存放：uploads/categories/
+ *
+ * 自动补列：
+ *   posts.category_id（INT DEFAULT NULL）
+ *   categories.cover_image（VARCHAR(255) DEFAULT NULL）
+ *
+ * 读写表：categories, posts（仅统计 category_id）
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 

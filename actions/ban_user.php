@@ -1,4 +1,16 @@
 <?php
+/**
+ * actions/ban_user.php — 封禁 / 解封用户（AJAX JSON）
+ *
+ * POST 参数：action=ban|unban, user_id, reason（ban 时必填）
+ *
+ * 权限规则：
+ *   admin  只能操作 role='user' 的普通成员
+ *   owner  可以操作 admin 和 user（不能操作自己）
+ *
+ * 返回：{"ok": true} 或 {"ok": false, "msg": "错误说明"}
+ * 读写表：users（is_banned, ban_reason）
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 

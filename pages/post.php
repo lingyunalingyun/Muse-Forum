@@ -1,4 +1,26 @@
 <?php
+/**
+ * pages/post.php — 帖子详情页
+ *
+ * GET 参数：id（帖子 ID）
+ *
+ * 访问控制（按优先级）：
+ *   1. 帖子不存在或未发布 → 404 提示
+ *   2. 访问者被作者拉黑 → 拒绝访问
+ *   3. 帖子可见性不符合当前访问者身份 → 提示范围限制
+ *   admin/owner 绕过 2、3
+ *
+ * 功能：
+ *   - 渲染富文本内容（format_post_content：#话题 / @提及 → 超链接）
+ *   - 附件下载列表（存储为 JSON 的 attachments 字段）
+ *   - 评论区：支持嵌套回复，置顶评论（is_top=1）优先展示
+ *   - 点赞 / 收藏 / 关注作者 / 私信按钮（AJAX）
+ *   - 帖子编辑（10 分钟冷却，仅作者可见）
+ *   - 推荐切换按钮（admin/owner 可见）
+ *
+ * 读写表：posts, users, comments, comment_likes, post_likes, post_favs,
+ *         follows, user_blocks, notifications
+ */
 session_start();
 // --- 1. 数据库连接与配置 ---
 require_once __DIR__ . '/../config.php';

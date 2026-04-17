@@ -1,5 +1,21 @@
 <?php
 /**
+ * includes/text_format.php — 文本格式化函数库
+ *
+ * 提供帖子内容和评论的 #话题 / @提及 渲染，以及话题标签持久化。
+ *
+ * 函数列表：
+ *   format_post_content($html, $conn)
+ *     — 渲染富文本帖子内容中的 #话题 和 @提及，跳过 HTML 标签内部
+ *   format_comment($text, $conn)
+ *     — 渲染已经过 htmlspecialchars 存储的评论文本中的 #话题 和 @提及
+ *   save_post_hashtags($conn, $post_id, $title, $content)
+ *     — 解析帖子标题+内容中的 #话题，写入 topics / post_topics 表
+ *     — 自动建表（首次运行）；先删旧关联再重新插入
+ *   _resolve_mentions($names, $conn)  [内部]
+ *     — 批量将 username 数组解析为 [username => id] 映射
+ */
+/**
  * format_post_content — 渲染帖子 HTML 内容中的 #话题 和 @提及
  * 使用分组正则，跳过 HTML 标签内部，只替换文本节点中的内容
  */

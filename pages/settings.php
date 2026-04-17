@@ -1,4 +1,18 @@
 <?php
+/**
+ * pages/settings.php — 个人设置页
+ *
+ * 分三栏：
+ *   1. 个人资料   — 跳转 edit_profile.php
+ *   2. 隐私设置   — POST action=privacy 提交
+ *        show_followers     粉丝列表是否公开（1=公开）
+ *        show_following     关注列表是否公开
+ *        post_visibility    帖子可见性（public/following/followers/mutual/private）
+ *   3. 黑名单     — 列出已拉黑用户，可 AJAX 调用 actions/block_user.php 解除
+ *
+ * 兼容处理：自动建表 post_favs / post_likes（旧库可能缺失）
+ * 读写表：users（show_followers, show_following, post_visibility）, user_blocks
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/exp_helper.php';

@@ -1,4 +1,26 @@
 <?php
+/**
+ * pages/profile.php — 用户主页
+ *
+ * GET 参数：id（目标用户 ID；缺省时查看自己，未登录则跳转登录页）
+ *
+ * 用户卡片区：
+ *   - 头像 / 角色徽章 / Lv 等级 / 经验进度条 / 签名
+ *   - 关注数 / 粉丝数（可点击弹窗查看列表，受 show_followers/show_following 隐私设置控制）
+ *   - 非本人：关注 / 私信 / 拉黑 按钮
+ *
+ * 帖子区 Tab（JS switchTab 切换）：
+ *   - 我的帖子（所有人可见，受 post_visibility 隐私控制）
+ *   - 收藏夹（仅本人可见，来自 post_favs 表）
+ *   - 点赞夹（仅本人可见，来自 post_likes 表）
+ *
+ * 被拉黑处理：
+ *   - 我拉黑了对方 → 帖子区显示已拉黑提示，关注/私信按钮隐藏
+ *   - 对方拉黑了我 → 同上效果
+ *
+ * 读写表：users, posts, follows, user_blocks, post_favs, post_likes
+ *         （user_inventory 字段查询存在但当前未展示背包功能）
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/exp_helper.php';

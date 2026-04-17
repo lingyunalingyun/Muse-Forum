@@ -1,4 +1,13 @@
 <?php
+/**
+ * pages/verify.php — 邮箱验证
+ *
+ * GET 参数：token（verify_token）
+ * 逻辑：
+ *   - token 有效且未过期（verify_token_expires > NOW()）→ 将 email_verified 置 1，清除 token，跳转登录页
+ *   - token 无效或已过期 → 显示失败提示，提供重发入口
+ * 读写表：users
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/exp_helper.php';

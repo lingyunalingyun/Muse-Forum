@@ -1,4 +1,17 @@
 <?php
+/**
+ * actions/upload_image.php — WangEditor 富文本图片上传接口（AJAX JSON）
+ *
+ * POST FILES：wangeditor-uploaded-image 或 image（兼容两种字段名）
+ * 限制：
+ *   - 仅允许 JPG / PNG / GIF / WEBP（用 finfo 验证 MIME，防止伪造扩展名）
+ *   - 最大 5MB
+ * 文件存放：uploads/posts/（日期_uniqid.ext）
+ *
+ * 返回（WangEditor 协议）：
+ *   成功：{"errno":0,"data":{"url":"../uploads/posts/..."}}
+ *   失败：{"errno":1,"message":"..."}
+ */
 // WangEditor 图片上传接口
 // 返回格式: {"errno":0,"data":{"url":"..."}}
 ob_start();

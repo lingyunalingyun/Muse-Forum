@@ -1,4 +1,14 @@
 <?php
+/**
+ * search.php — 全站搜索
+ *
+ * GET 参数：keyword
+ * 搜索范围：已发布帖子（status='已发布'）的 title 和 content（LIKE '%keyword%'）
+ * 结果按 id DESC 排序，当前无分页（全量返回）
+ *
+ * ⚠️ 大数据量时 LIKE 全文搜索效率较低，如帖子量大可考虑后续引入全文索引。
+ * 读表：posts, users
+ */
 session_start();
 require_once __DIR__ . '/config.php';
 

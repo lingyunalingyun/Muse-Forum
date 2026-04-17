@@ -1,4 +1,29 @@
 <?php
+/**
+ * actions/auth.php — 账号认证统一入口
+ *
+ * POST action 参数决定执行哪个分支：
+ *
+ *   register        注册新账号
+ *                   - EMAIL_VERIFY_REQUIRED=true 时发验证邮件并跳等待页
+ *                   - false 时直接激活，跳转登录页
+ *
+ *   login           登录（支持 email / userid / username 三种身份）
+ *                   - 封禁检测 → 未验证检测 → 写 session
+ *                   - 每日登录经验奖励（连续签到 × 10 EXP，上限 100）
+ *                   - 奖励数据写入 $_SESSION['login_reward']，由 index.php Toast 消费
+ *
+ *   resend_verify   重发邮箱验证链接（60s 冷却，verify_resend_at 字段控制）
+ *
+ *   forgot_password 发送密码重置邮件
+ *                   - 防枚举：无论邮箱是否存在都显示"已发送"
+ *
+ *   reset_password  用 reset_token 设置新密码（token 1h 有效）
+ *                   - 重置成功后清空 reset_token / reset_token_expires
+ *
+ * 依赖：exp_helper.php（ensure_user_columns / add_exp / send_verify_email / send_reset_email）
+ * 读写表：users
+ */
 // auth.php
 session_start();
 require_once __DIR__ . '/../config.php';

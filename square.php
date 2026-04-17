@@ -1,4 +1,18 @@
 <?php
+/**
+ * square.php — 广场（全部帖子列表）
+ *
+ * GET 参数：cat（分区 ID，0 = 全部）, page（分页，默认 1）
+ *
+ * 功能：
+ *   - 分页（20 条/页）
+ *   - 分区 Tab 筛选（?cat=ID）
+ *   - 帖子可见性过滤（post_visibility 字段）：
+ *       admin/owner 绕过；登录用户按关注关系过滤；未登录只看 public
+ *   - 黑名单过滤：隐藏被当前用户拉黑的人的帖子
+ *
+ * 读表：posts, users, categories, post_likes, comments, follows, user_blocks
+ */
 session_start();
 require_once __DIR__ . '/config.php';
 

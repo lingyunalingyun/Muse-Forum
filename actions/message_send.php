@@ -1,4 +1,14 @@
 <?php
+/**
+ * actions/message_send.php — 发送私信（AJAX JSON）
+ *
+ * POST 参数：to_id（收信人 ID）, content
+ * 返回：{"status": "success", "message": {含 username / avatar 的完整消息记录}}
+ *       前端收到后可直接追加到聊天气泡，无需刷新页面。
+ *
+ * 副作用：向收信方写入 message 类型通知（触发消息铃角标）
+ * 读写表：messages, notifications, users
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 header('Content-Type: application/json');

@@ -1,4 +1,17 @@
 <?php
+/**
+ * actions/post_action.php — 帖子点赞 / 收藏 toggle（AJAX JSON）
+ *
+ * POST 参数：pid（帖子 ID）, type=like|fav
+ * 返回：{"status": "success", "active": true|false, "new_count": 当前总数}
+ *
+ * 首次操作（新增）时向帖子作者发通知：
+ *   like → like_post 通知
+ *   fav  → fav_post 通知
+ *   不通知自己的操作
+ *
+ * 读写表：post_likes 或 post_favs, notifications
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 

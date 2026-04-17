@@ -1,4 +1,11 @@
 <?php
+/**
+ * pages/reset_password.php — 重置密码（使用 token 链接访问）
+ *
+ * GET 参数：token（reset_token，1 小时有效）
+ * 先验证 token 是否有效，无效则跳转回 forgot_password.php 并提示重新申请。
+ * 表单 POST → actions/auth.php（action=reset_password）
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/exp_helper.php';

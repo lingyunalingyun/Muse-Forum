@@ -1,4 +1,17 @@
 <?php
+/**
+ * actions/upload_attachment.php — 附件上传（AJAX JSON）
+ *
+ * POST FILES：file
+ * 限制：
+ *   - 禁止 php/php3/php4/php5/phtml/phar/exe/sh/bat/cmd/msi/vbs/ps1 等可执行扩展
+ *   - 最大 20MB
+ * 文件命名：日期_uniqid_原始文件名（特殊字符替换为 _）
+ * 文件存放：uploads/attachments/
+ *
+ * 返回：{"status":"ok","filename":...,"original":...,"size":...,"ext":...,"url":...}
+ *       或 {"status":"error","msg":"..."}
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 header('Content-Type: application/json');

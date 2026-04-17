@@ -1,4 +1,11 @@
 <?php
+/**
+ * categories.php — 分区入口页
+ *
+ * PS5 游戏库风格大图卡片网格（16:10 比例），左侧彩色竖条（分区自定义颜色）。
+ * 点击分区卡片跳转到 square.php?cat=ID 查看该分区帖子。
+ * 读表：categories（id, name, description, color, icon, cover_image）
+ */
 session_start();
 require_once __DIR__ . '/config.php';
 

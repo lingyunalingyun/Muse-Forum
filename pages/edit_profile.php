@@ -1,4 +1,13 @@
 <?php
+/**
+ * pages/edit_profile.php — 编辑个人资料
+ *
+ * 功能：修改昵称（username）/ 个人签名（bio）/ 上传头像
+ * 头像上传限制：JPG/PNG/GIF/WEBP，最大 2MB
+ * 头像存放：uploads/avatars/（日期_uniqid.ext），旧文件不自动删除
+ * 提交后同步更新 $_SESSION['username'] / $_SESSION['avatar']
+ * 读写表：users
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 

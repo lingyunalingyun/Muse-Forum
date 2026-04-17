@@ -1,4 +1,11 @@
 <?php
+/**
+ * topic.php — 话题页（#标签聚合）
+ *
+ * GET 参数：tag（话题名称，如 "原神"）
+ * 通过 post_topics 关联表展示使用了该 #标签 的所有已发布帖子
+ * 读表：topics, post_topics, posts, users, post_likes, comments
+ */
 session_start();
 require_once __DIR__ . '/config.php';
 

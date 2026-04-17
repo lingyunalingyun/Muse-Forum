@@ -1,4 +1,35 @@
 <?php
+/**
+ * includes/exp_helper.php — 核心辅助函数库
+ *
+ * 被绝大多数页面 require_once。包含以下功能组：
+ *
+ * 经验 & 等级
+ *   get_level_by_exp / get_next_level_exp / get_prev_level_exp
+ *   get_level_color / get_level_name / calc_login_exp / add_exp
+ *   阈值：Lv2=1000 / Lv3=5000 / Lv4=15000 / Lv5=30000 / Lv6=50000
+ *
+ * 角色显示
+ *   get_role_info($role, $is_banned)  → 返回颜色/背景/边框数组
+ *   get_role_badge(...)               → 返回 HTML <span> 角色徽章
+ *   角色值：owner / admin / sponsor / user / is_banned
+ *
+ * 数据库迁移
+ *   ensure_user_columns($conn)  — 自动补全 users 表所有扩展字段
+ *                                 + 创建 user_blocks 表（首次运行时执行）
+ *   ⚠️ MySQL 7.x 不支持 ADD COLUMN IF NOT EXISTS，改用 SHOW COLUMNS 判断
+ *
+ * 可见性与黑名单
+ *   can_see_posts($conn, $visibility, $author_id, $viewer_id, $viewer_role)
+ *   is_blocked($conn, $blocker_id, $blocked_id)
+ *
+ * 邮件发送
+ *   send_verify_email  — 发送邮箱验证链接（token 24h 有效）
+ *   send_reset_email   — 发送密码重置链接（token 1h 有效）
+ *   内部：_build_email_html / _send_html_mail
+ *
+ * ⚠️ PHP 7.x 兼容，不使用 match() 表达式，用数组映射代替。
+ */
 // 经验 & 等级辅助函数
 
 function get_level_by_exp(int $exp): int {

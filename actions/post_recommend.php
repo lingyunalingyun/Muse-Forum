@@ -1,4 +1,14 @@
 <?php
+/**
+ * actions/post_recommend.php — 推荐 / 取消推荐帖子（toggle，AJAX JSON）
+ *
+ * POST 参数：pid（帖子 ID）
+ * 权限：admin / owner
+ * 返回：{"status": "success", "is_recommend": 0|1}
+ *
+ * is_recommend=1 的帖子显示在首页推荐网格中
+ * 读写表：posts（is_recommend）
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 header('Content-Type: application/json');

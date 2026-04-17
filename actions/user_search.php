@@ -1,4 +1,13 @@
 <?php
+/**
+ * actions/user_search.php — @提及用户名前缀搜索（AJAX JSON）
+ *
+ * 供发帖/评论框的 @mention 自动补全下拉菜单调用。
+ *
+ * GET 参数：q（搜索前缀，至少 1 个字符）
+ * 返回：[{"id":...,"username":...,"avatar":...}]，最多 8 条，未登录返回 []
+ * 读表：users
+ */
 ob_start();
 error_reporting(0);
 session_start();

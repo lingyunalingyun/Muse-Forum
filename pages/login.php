@@ -1,4 +1,11 @@
 <?php
+/**
+ * pages/login.php — 登录页
+ *
+ * 支持用 email / userid / username 三种身份标识登录。
+ * 表单 POST → actions/auth.php（action=login）
+ * GET 参数 msg：显示来自其他页面的提示消息（如"注册成功，请登录"）
+ */
 session_start();
 $flash_msg = htmlspecialchars($_GET['msg'] ?? '');
 ?>

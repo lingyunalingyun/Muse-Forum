@@ -1,4 +1,20 @@
 <?php
+/**
+ * pages/publish.php — 发帖页（富文本编辑器）
+ *
+ * 编辑器：WangEditor（WYSIWYG 富文本，支持图片、代码块等）
+ *
+ * 功能：
+ *   - 选择分区（categories 下拉）
+ *   - 图片上传（AJAX → actions/upload_image.php，WangEditor 协议）
+ *   - 附件上传（AJAX → actions/upload_attachment.php，支持多文件）
+ *   - @提及自动补全（keyup → actions/user_search.php）
+ *   - 保存草稿 / 发布（AJAX → actions/save.php）
+ *   - 公告标记复选框（仅 admin/owner 可见，勾选后跳过审核直接发布）
+ *
+ * URL 参数：draft_id（续写草稿时传入，页面会预加载草稿内容）
+ * 读表：posts（草稿预加载）, categories
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 

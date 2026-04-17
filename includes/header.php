@@ -1,4 +1,24 @@
 <?php
+/**
+ * includes/header.php — 全局导航栏（HTML 片段 + CSS + JS）
+ *
+ * 被所有面向用户的页面 include（在 <head> 之前引入，自身输出 <meta viewport> 和 style.css 链接）。
+ *
+ * 功能：
+ *   - 渲染顶部 sticky 导航：Logo / 分区 / 广场 / 搜索框 / 通知铃（未读数） / 用户头像
+ *   - admin/owner 专属：管理后台入口 + 待审核帖子数角标
+ *   - 中途封禁检测：每次页面加载查询 users.is_banned，
+ *     被封禁时销毁 session 并渲染封禁提示页（exit 终止后续输出）
+ *   - 响应式：移动端折叠为汉堡菜单，搜索框变图标按钮
+ *
+ * 依赖：
+ *   $conn（来自 config.php）、$_SESSION
+ *   $base 路径前缀由 $in_subdir 自动判断（pages/ 子目录 = '../'，根目录 = ''）
+ *
+ * 读表：users（is_banned, ban_reason）
+ *       notifications（is_read = 0，统计未读数）
+ *       posts（status = '待审核'，仅管理员查询）
+ */
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }

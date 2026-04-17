@@ -1,4 +1,11 @@
 <?php
+/**
+ * pages/notices.php — 社区公告列表
+ *
+ * 显示所有 is_notice=1 且 status='已发布' 的帖子，按 id DESC 排序。
+ * 点击标题跳转到 post.php?id=...
+ * 读表：posts, users
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 

@@ -1,4 +1,23 @@
 <?php
+/**
+ * actions/save.php — 发帖 / 保存草稿（AJAX JSON）
+ *
+ * POST 参数：
+ *   title, content, category_id
+ *   is_draft=0|1         保存草稿而非发布
+ *   draft_id             续写草稿时传入（续写时 UPDATE 而非 INSERT）
+ *   is_notice=0|1        发布为公告（admin/owner 专用，跳过审核）
+ *   attachments          附件 JSON 字符串（由前端拼装）
+ *
+ * 状态决策：
+ *   is_draft=1  → '草稿'（不通知管理员）
+ *   is_notice=1 → '已发布'（跳过审核，管理员操作）
+ *   普通帖子    → '待审核'，同时向所有 admin 发 post_review 通知
+ *
+ * 发布后调用 save_post_hashtags() 将 #话题 写入 topics / post_topics 表
+ *
+ * 读写表：posts, topics, post_topics, notifications
+ */
 ob_start();                      // 缓冲所有输出，防止 notice/warning 混入 JSON
 error_reporting(0);              // 屏蔽 PHP 提示，避免污染 JSON
 session_start();
