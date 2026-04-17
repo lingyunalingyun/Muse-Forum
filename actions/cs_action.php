@@ -16,7 +16,7 @@ $conn->query("CREATE TABLE IF NOT EXISTS cs_tickets (
     next_comp_at DATETIME DEFAULT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     resolved_at DATETIME DEFAULT NULL
-)");
+) DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_unicode_ci");
 $conn->query("CREATE TABLE IF NOT EXISTS cs_messages (
     id INT AUTO_INCREMENT PRIMARY KEY,
     ticket_id INT NOT NULL,
@@ -24,7 +24,9 @@ $conn->query("CREATE TABLE IF NOT EXISTS cs_messages (
     is_cs TINYINT(1) DEFAULT 0,
     content TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-)");
+) DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_unicode_ci");
+$conn->query("ALTER TABLE cs_tickets  CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+$conn->query("ALTER TABLE cs_messages CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 
 $uid      = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
 $role     = $_SESSION['role'] ?? 'user';
