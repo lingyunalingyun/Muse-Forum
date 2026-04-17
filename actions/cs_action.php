@@ -1,20 +1,4 @@
 <?php
-/**
- * cs_action.php — 客服系统 AJAX 接口
- *
- * 处理客服工单的创建、消息收发、客服接入、工单解决等所有操作。
- * 支持积分补偿机制：工单激活后每 12 小时无客服回应自动奖励用户 100 积分。
- *
- * Actions（POST/GET action 参数）：
- *   create_ticket   — 用户提交新工单
- *   send_message    — 发送聊天消息（用户或客服）
- *   poll_messages   — 轮询新消息及工单状态
- *   join_ticket     — 客服接入待处理工单（仅 admin/owner）
- *   resolve_ticket  — 客服标记工单为已解决（仅 admin/owner）
- *   get_my_ticket   — 获取当前用户进行中工单
- *   list_pending    — 获取所有待接入工单（仅 admin/owner）
- *   list_my_active  — 获取客服自己的进行中工单（仅 admin/owner）
- */
 session_start();
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/exp_helper.php';
@@ -42,10 +26,11 @@ $conn->query("CREATE TABLE IF NOT EXISTS cs_messages (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )");
 
-$uid    = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
-$role   = $_SESSION['role'] ?? 'user';
-$is_cs  = in_array($role, ['admin', 'owner']);
-$action = $_POST['action'] ?? $_GET['action'] ?? '';
+$uid      = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
+$role     = $_SESSION['role'] ?? 'user';
+$is_owner = ($role === 'owner');
+$is_cs    = in_array($role, ['admin', 'owner']) || !empty($_SESSION['is_cs']);
+$action   = $_POST['action'] ?? $_GET['action'] ?? '';
 
 function maybe_award_comp($conn, array $ticket): void {
     if ($ticket['status'] !== 'active') return;
@@ -152,6 +137,33 @@ switch ($action) {
         $list = [];
         while ($row = $r->fetch_assoc()) $list[] = $row;
         echo json_encode(['status'=>'ok','tickets'=>$list]);
+        break;
+
+    case 'add_cs_agent':
+        if (!$uid || !$is_owner) { echo json_encode(['status'=>'error','msg'=>'无权限']); exit; }
+        $mid = $conn->real_escape_string(trim($_POST['mid'] ?? ''));
+        if (!preg_match('/^\d{8}$/', $mid)) { echo json_encode(['status'=>'error','msg'=>'MID 格式不正确']); exit; }
+        $r = $conn->query("SELECT id, username, role FROM users WHERE mid='$mid'");
+        if (!$r || $r->num_rows === 0) { echo json_encode(['status'=>'error','msg'=>'未找到该 MID 对应的用户']); exit; }
+        $target = $r->fetch_assoc();
+        if (in_array($target['role'], ['owner'])) { echo json_encode(['status'=>'error','msg'=>'无法修改站长权限']); exit; }
+        $conn->query("UPDATE users SET is_cs=1 WHERE mid='$mid'");
+        echo json_encode(['status'=>'ok','username'=>$target['username'],'user_id'=>(int)$target['id']]);
+        break;
+
+    case 'remove_cs_agent':
+        if (!$uid || !$is_owner) { echo json_encode(['status'=>'error','msg'=>'无权限']); exit; }
+        $target_id = (int)($_POST['target_id'] ?? 0);
+        $conn->query("UPDATE users SET is_cs=0 WHERE id=$target_id AND role NOT IN ('owner')");
+        echo json_encode(['status' => $conn->affected_rows > 0 ? 'ok' : 'error']);
+        break;
+
+    case 'list_cs_agents':
+        if (!$uid || !$is_owner) { echo json_encode(['status'=>'error']); exit; }
+        $r = $conn->query("SELECT id, username, mid, role FROM users WHERE is_cs=1 ORDER BY id ASC");
+        $list = [];
+        while ($row = $r->fetch_assoc()) $list[] = $row;
+        echo json_encode(['status'=>'ok','agents'=>$list]);
         break;
 
     default:

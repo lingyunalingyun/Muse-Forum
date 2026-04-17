@@ -1,18 +1,4 @@
 <?php
-/**
- * pages/settings.php — 个人设置页
- *
- * 分三栏：
- *   1. 个人资料   — 跳转 edit_profile.php
- *   2. 隐私设置   — POST action=privacy 提交
- *        show_followers     粉丝列表是否公开（1=公开）
- *        show_following     关注列表是否公开
- *        post_visibility    帖子可见性（public/following/followers/mutual/private）
- *   3. 黑名单     — 列出已拉黑用户，可 AJAX 调用 actions/block_user.php 解除
- *
- * 兼容处理：自动建表 post_favs / post_likes（旧库可能缺失）
- * 读写表：users（show_followers, show_following, post_visibility）, user_blocks
- */
 session_start();
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/exp_helper.php';
@@ -244,6 +230,9 @@ $saved = isset($_GET['saved']);
                 <div class="info">
                     <strong><?php echo htmlspecialchars($user['username']); ?></strong>
                     <span><?php echo htmlspecialchars($user['email'] ?? ''); ?></span>
+                    <?php if (!empty($user['mid'])): ?>
+                    <span style="font-size:11px;color:#6e7681;font-family:'Courier New',monospace;margin-top:2px;display:block;">MID: <?= htmlspecialchars($user['mid']) ?></span>
+                    <?php endif; ?>
                 </div>
                 <a href="edit_profile.php" class="btn-edit-profile">编辑资料</a>
             </div>

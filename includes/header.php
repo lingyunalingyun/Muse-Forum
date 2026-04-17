@@ -253,6 +253,9 @@ if ($is_logged_in && isset($conn)) {
                      class="user-avatar-small"
                      onerror="this.onerror=null;this.src='<?= $base ?>uploads/avatars/default.png'">
                 <span style="color:#e6edf3; font-size:13px;"><?= htmlspecialchars($_SESSION['username']) ?></span>
+                <?php if (!empty($_SESSION['mid'])): ?>
+                <span style="font-size:10px;color:#6e7681;font-family:'Courier New',monospace;letter-spacing:.5px;">·<?= htmlspecialchars($_SESSION['mid']) ?></span>
+                <?php endif; ?>
             </a>
             <a href="<?= $base ?>pages/settings.php" class="nav-item" title="设置" style="font-size:12px;">设置</a>
             <a href="<?= $base ?>pages/logout.php" class="nav-item" style="font-size:12px;">退出</a>

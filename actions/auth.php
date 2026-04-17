@@ -1,29 +1,4 @@
 <?php
-/**
- * actions/auth.php — 账号认证统一入口
- *
- * POST action 参数决定执行哪个分支：
- *
- *   register        注册新账号
- *                   - EMAIL_VERIFY_REQUIRED=true 时发验证邮件并跳等待页
- *                   - false 时直接激活，跳转登录页
- *
- *   login           登录（支持 email / userid / username 三种身份）
- *                   - 封禁检测 → 未验证检测 → 写 session
- *                   - 每日登录经验奖励（连续签到 × 10 EXP，上限 100）
- *                   - 奖励数据写入 $_SESSION['login_reward']，由 index.php Toast 消费
- *
- *   resend_verify   重发邮箱验证链接（60s 冷却，verify_resend_at 字段控制）
- *
- *   forgot_password 发送密码重置邮件
- *                   - 防枚举：无论邮箱是否存在都显示"已发送"
- *
- *   reset_password  用 reset_token 设置新密码（token 1h 有效）
- *                   - 重置成功后清空 reset_token / reset_token_expires
- *
- * 依赖：exp_helper.php（ensure_user_columns / add_exp / send_verify_email / send_reset_email）
- * 读写表：users
- */
 // auth.php
 session_start();
 require_once __DIR__ . '/../config.php';
@@ -81,10 +56,15 @@ if ($action === 'register') {
     $password_hash = password_hash($password_raw, PASSWORD_DEFAULT);
     $token         = bin2hex(random_bytes(32));
 
+    do {
+        $new_mid = (string)random_int(10000000, 99999999);
+        $mid_chk = $conn->query("SELECT id FROM users WHERE mid='$new_mid'");
+    } while ($mid_chk && $mid_chk->num_rows > 0);
+
     $verified = EMAIL_VERIFY_REQUIRED ? 0 : 1;
-    $sql = "INSERT INTO users (userid, email, password, username, points, role, avatar, level, exp, email_verified, verify_token, verify_token_expires)
+    $sql = "INSERT INTO users (userid, email, password, username, points, role, avatar, level, exp, email_verified, verify_token, verify_token_expires, mid)
             VALUES ('$new_userid', '$safe_email', '$password_hash', '$safe_username',
-                    100, 'user', 'default.png', 1, 0, $verified, '$token', DATE_ADD(NOW(), INTERVAL 24 HOUR))";
+                    100, 'user', 'default.png', 1, 0, $verified, '$token', DATE_ADD(NOW(), INTERVAL 24 HOUR), '$new_mid')";
 
     if ($conn->query($sql)) {
         if (EMAIL_VERIFY_REQUIRED) {
@@ -150,6 +130,8 @@ if ($action === 'login') {
             $_SESSION['username']      = $user['username'];
             $_SESSION['role']          = $user['role'];
             $_SESSION['avatar']        = $user['avatar'];
+            $_SESSION['mid']           = $user['mid'] ?? '';
+            $_SESSION['is_cs']         = !empty($user['is_cs']) ? 1 : 0;
 
             // ── 每日登录经验奖励 ──
             $uid_db = (int)$user['id'];

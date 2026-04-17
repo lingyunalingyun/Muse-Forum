@@ -1,15 +1,12 @@
 <?php
-/**
- * cs_panel.php — 客服后台管理面板
- *
- * 仅限 admin/owner 访问。展示待接入工单列表与我的进行中会话，
- * 支持接入工单、与用户实时对话、标记解决。
- * 用户身份在面板内匿名显示（用户 #匿名ID），保护隐私。
- */
 session_start();
 require_once __DIR__ . '/../config.php';
 
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
+$cs_role     = $_SESSION['role'] ?? 'user';
+$is_owner    = ($cs_role === 'owner');
+$has_cs_access = in_array($cs_role, ['admin', 'owner']) || !empty($_SESSION['is_cs']);
+
+if (!isset($_SESSION['user_id']) || !$has_cs_access) {
     header("Location: login.php");
     exit;
 }
@@ -62,6 +59,12 @@ $my_active = [];
 $ar = $conn->query("SELECT id, type, description, created_at FROM cs_tickets WHERE cs_id=$cs_id AND status='active' ORDER BY id ASC");
 while ($row = $ar->fetch_assoc()) $my_active[] = $row;
 
+$cs_agents = [];
+if ($is_owner) {
+    $agr = $conn->query("SELECT id, username, mid, role FROM users WHERE is_cs=1 ORDER BY id ASC");
+    while ($row = $agr->fetch_assoc()) $cs_agents[] = $row;
+}
+
 $issue_types = [
     'account'    => '账号问题',
     'content'    => '内容投诉',
@@ -112,6 +115,31 @@ $type_colors = [
         .btn-join:hover { background:rgba(63,185,80,.1); }
         .empty-list { padding:20px 16px; font-size:12px; color:#6e7681; font-family:"Courier New",monospace; text-align:center; }
         .empty-list::before { content:'// '; }
+
+        .cs-mgmt-input { display:flex; gap:8px; padding:12px 14px; border-bottom:1px solid #21262d; }
+        .mid-input {
+            flex:1; background:#0d1117; border:1px solid #30363d; border-radius:4px;
+            color:#e6edf3; font-size:13px; font-family:"Courier New",monospace;
+            padding:7px 10px; outline:none; transition:.2s; letter-spacing:1px;
+        }
+        .mid-input:focus { border-color:#3fb950; }
+        .btn-add-cs {
+            background:#3fb950; color:#fff; border:none; border-radius:4px;
+            padding:0 14px; font-size:12px; font-weight:700; cursor:pointer;
+            font-family:inherit; transition:.2s; white-space:nowrap;
+        }
+        .btn-add-cs:hover { background:#2ea043; }
+        .agent-item { display:flex; align-items:center; gap:10px; padding:9px 14px; border-bottom:1px solid #21262d; }
+        .agent-item:last-child { border-bottom:none; }
+        .agent-name { flex:1; font-size:13px; color:#c9d1d9; }
+        .agent-mid  { font-size:11px; color:#6e7681; font-family:"Courier New",monospace; }
+        .btn-remove-cs {
+            font-size:11px; color:#f85149; border:1px solid rgba(248,81,73,.35);
+            background:none; border-radius:3px; padding:3px 10px; cursor:pointer;
+            font-family:inherit; transition:.2s;
+        }
+        .btn-remove-cs:hover { background:rgba(248,81,73,.1); }
+        .cs-mgmt-msg { padding:8px 14px; font-size:12px; font-family:"Courier New",monospace; }
 
         .chat-panel { background:#161b22; border:1px solid #30363d; border-radius:6px; overflow:hidden; animation:fadeUp .3s ease; }
         .chat-panel-head { padding:12px 16px; border-bottom:1px solid #21262d; display:flex; align-items:center; justify-content:space-between; gap:10px; }
@@ -177,6 +205,35 @@ $type_colors = [
 <div class="panel-wrap">
 
     <div class="panel-left">
+
+        <?php if ($is_owner): ?>
+        <!-- CS team management (owner only) -->
+        <div class="cs-section">
+            <div class="cs-sec-head">
+                <h3>客服团队管理</h3>
+                <span class="cs-count" id="agentCount"><?= count($cs_agents) ?> 人</span>
+            </div>
+            <div class="cs-mgmt-input">
+                <input class="mid-input" id="addMidInput" type="text" maxlength="8" placeholder="输入用户 MID（8位）">
+                <button class="btn-add-cs" onclick="addCsAgent()">添加客服</button>
+            </div>
+            <div id="agentMsg" class="cs-mgmt-msg" style="display:none;"></div>
+            <div id="agentList">
+                <?php if (empty($cs_agents)): ?>
+                    <div class="empty-list" id="agentEmpty">暂无客服人员</div>
+                <?php else: foreach ($cs_agents as $ag): ?>
+                    <div class="agent-item" id="ag-<?= $ag['id'] ?>">
+                        <div>
+                            <div class="agent-name"><?= htmlspecialchars($ag['username']) ?></div>
+                            <div class="agent-mid">MID <?= htmlspecialchars($ag['mid'] ?? '—') ?></div>
+                        </div>
+                        <button class="btn-remove-cs" onclick="removeCsAgent(<?= $ag['id'] ?>, this)">移除</button>
+                    </div>
+                <?php endforeach; endif; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- Pending tickets -->
         <div class="cs-section">
             <div class="cs-sec-head">
@@ -277,6 +334,67 @@ $type_colors = [
 var ticketId  = <?= $active_tid ?>;
 var lastId    = <?= $last_msg_id ?>;
 var anonId    = <?= $active_ticket ? ((int)$active_ticket['id'] * 7 % 9973) : 0 ?>;
+var isOwner   = <?= $is_owner ? 'true' : 'false' ?>;
+
+function addCsAgent() {
+    var mid = document.getElementById('addMidInput').value.trim();
+    if (!/^\d{8}$/.test(mid)) { showAgentMsg('MID 必须是 8 位数字', '#d29922'); return; }
+    var fd = new FormData();
+    fd.append('action', 'add_cs_agent');
+    fd.append('mid', mid);
+    fetch('../actions/cs_action.php', {method:'POST', body:fd})
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        if (d.status === 'ok') {
+            document.getElementById('addMidInput').value = '';
+            var empty = document.getElementById('agentEmpty');
+            if (empty) { empty.remove(); }
+            var list = document.getElementById('agentList');
+            var div = document.createElement('div');
+            div.className = 'agent-item'; div.id = 'ag-' + d.user_id;
+            div.innerHTML = '<div><div class="agent-name">' + escHtml(d.username) + '</div>'
+                + '<div class="agent-mid">MID ' + escHtml(mid) + '</div></div>'
+                + '<button class="btn-remove-cs" onclick="removeCsAgent(' + d.user_id + ', this)">移除</button>';
+            list.appendChild(div);
+            var cnt = document.getElementById('agentCount');
+            if (cnt) cnt.textContent = (parseInt(cnt.textContent) + 1) + ' 人';
+            showAgentMsg('已添加客服：' + escHtml(d.username), '#3fb950');
+        } else {
+            showAgentMsg(d.msg || '添加失败', '#f85149');
+        }
+    });
+}
+
+function removeCsAgent(uid, btn) {
+    if (!confirm('确认移除该客服权限？')) return;
+    btn.disabled = true;
+    var fd = new FormData();
+    fd.append('action', 'remove_cs_agent');
+    fd.append('target_id', uid);
+    fetch('../actions/cs_action.php', {method:'POST', body:fd})
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+        if (d.status === 'ok') {
+            var row = document.getElementById('ag-' + uid);
+            if (row) row.remove();
+            var cnt = document.getElementById('agentCount');
+            if (cnt) { var n = parseInt(cnt.textContent) - 1; cnt.textContent = n + ' 人'; }
+            var list = document.getElementById('agentList');
+            if (list && list.children.length === 0) {
+                list.innerHTML = '<div class="empty-list" id="agentEmpty">暂无客服人员</div>';
+            }
+        } else {
+            btn.disabled = false;
+        }
+    });
+}
+
+function showAgentMsg(msg, color) {
+    var el = document.getElementById('agentMsg');
+    if (!el) return;
+    el.style.color = color; el.textContent = msg; el.style.display = 'block';
+    setTimeout(function(){ el.style.display = 'none'; }, 3000);
+}
 
 function joinTicket(tid, btn) {
     btn.disabled = true; btn.textContent = '接入中…';
