@@ -237,6 +237,9 @@ if ($is_logged_in && isset($conn)) {
                 <?php endif; ?>
             </a>
         <?php endif; ?>
+        <?php if (in_array($current_role, ['admin', 'owner']) || !empty($_SESSION['is_cs'])): ?>
+            <a href="<?= $base ?>pages/cs_panel.php" class="nav-item" style="font-size:12px;color:#a78bfa;">客服后台</a>
+        <?php endif; ?>
 
         <div class="nav-divider"></div>
 
