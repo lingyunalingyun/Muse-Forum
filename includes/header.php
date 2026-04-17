@@ -1,24 +1,4 @@
 <?php
-/**
- * includes/header.php — 全局导航栏（HTML 片段 + CSS + JS）
- *
- * 被所有面向用户的页面 include（在 <head> 之前引入，自身输出 <meta viewport> 和 style.css 链接）。
- *
- * 功能：
- *   - 渲染顶部 sticky 导航：Logo / 分区 / 广场 / 搜索框 / 通知铃（未读数） / 用户头像
- *   - admin/owner 专属：管理后台入口 + 待审核帖子数角标
- *   - 中途封禁检测：每次页面加载查询 users.is_banned，
- *     被封禁时销毁 session 并渲染封禁提示页（exit 终止后续输出）
- *   - 响应式：移动端折叠为汉堡菜单，搜索框变图标按钮
- *
- * 依赖：
- *   $conn（来自 config.php）、$_SESSION
- *   $base 路径前缀由 $in_subdir 自动判断（pages/ 子目录 = '../'，根目录 = ''）
- *
- * 读表：users（is_banned, ban_reason）
- *       notifications（is_read = 0，统计未读数）
- *       posts（status = '待审核'，仅管理员查询）
- */
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -299,3 +279,53 @@ document.addEventListener('click', function(e) {
     }
 });
 </script>
+<?php if ($is_logged_in): ?>
+<style>
+.cs-fab {
+    position: fixed;
+    bottom: 24px;
+    left: 20px;
+    z-index: 900;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #161b22;
+    border: 1px solid #30363d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: #6e7681;
+    font-size: 18px;
+    transition: .2s;
+    box-shadow: 0 2px 12px rgba(0,0,0,.4);
+}
+.cs-fab:hover {
+    border-color: #3fb950;
+    color: #3fb950;
+    box-shadow: 0 0 14px rgba(63,185,80,.2);
+}
+.cs-fab-tip {
+    position: absolute;
+    left: 50px;
+    bottom: 50%;
+    transform: translateY(50%);
+    background: #161b22;
+    border: 1px solid #30363d;
+    color: #8b949e;
+    font-size: 11px;
+    font-family: "Courier New", monospace;
+    padding: 4px 10px;
+    border-radius: 4px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .15s;
+}
+.cs-fab:hover .cs-fab-tip { opacity: 1; }
+</style>
+<a href="<?= $base ?>pages/cs_chat.php" class="cs-fab" title="联系客服">
+    💬
+    <span class="cs-fab-tip">联系客服</span>
+</a>
+<?php endif; ?>
