@@ -1,19 +1,4 @@
 <?php
-/**
- * pages/admin.php — 管理后台主页
- *
- * 权限：admin / owner（其他人访问直接 die）
- *
- * 功能：
- *   - 统计卡片：总帖 / 待审核 / 已发布 / 草稿数量
- *   - Tab 筛选帖子列表（全部 / 待审核 / 已发布 / 草稿）
- *   - GET action=approve：发布帖子，设置 approved_by/approved_at，通知帖子作者
- *   - GET action=delete：直接删除帖子
- *   - AJAX 封禁/解封用户（调用 actions/ban_user.php）
- *
- * 自动补列：posts.approved_by, posts.approved_at
- * 读写表：posts, users, notifications
- */
 session_start();
 
 if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['admin', 'owner'])) {
@@ -23,9 +8,10 @@ if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['admin', 'owner']
 
 require_once __DIR__ . '/../config.php';
 
-// 确保 approved_by / approved_at 列存在
-$conn->query("ALTER TABLE posts ADD COLUMN approved_by INT DEFAULT NULL");
-$conn->query("ALTER TABLE posts ADD COLUMN approved_at DATETIME DEFAULT NULL");
+$r = $conn->query("SHOW COLUMNS FROM posts LIKE 'approved_by'");
+if ($r && $r->num_rows === 0) $conn->query("ALTER TABLE posts ADD COLUMN approved_by INT DEFAULT NULL");
+$r = $conn->query("SHOW COLUMNS FROM posts LIKE 'approved_at'");
+if ($r && $r->num_rows === 0) $conn->query("ALTER TABLE posts ADD COLUMN approved_at DATETIME DEFAULT NULL");
 
 $admin_id   = intval($_SESSION['user_id']);
 $admin_name = htmlspecialchars($_SESSION['username'] ?? '管理员');
