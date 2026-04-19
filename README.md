@@ -109,8 +109,7 @@
 │   ├── upload_image.php        WangEditor 图片上传（返回 errno/url JSON）
 │   ├── upload_attachment.php   附件上传
 │   ├── user_search.php         @提及用户名搜索（返回 JSON）
-│   ├── cs_action.php           客服 action 端点
-│   └── user_handler.php        ⚠️ 废弃旧接口，勿调用
+│   └── cs_action.php           客服 action 端点
 │
 ├── uploads/
 │   ├── avatars/                用户头像
