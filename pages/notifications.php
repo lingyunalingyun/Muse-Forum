@@ -1,25 +1,14 @@
 <?php
 /**
- * pages/notifications.php — 消息中心
+ * notifications.php — 消息中心
  *
- * 登录后可见，打开页面时将所有未读通知标记为已读（is_read=1）。
- *
- * 通知类型（type 字段值）：
- *   comment      — 有人评论了你的帖子
- *   reply        — 有人回复了你的评论
- *   mention      — 有人在评论中 @了你
- *   like_post    — 有人点赞了你的帖子
- *   fav_post     — 有人收藏了你的帖子
- *   like_comment — 有人点赞了你的评论
- *   follow       — 有人关注了你
- *   message      — 有人给你发了私信
- *   post_review  — 你的帖子待审核（通知管理员）
- *   post_approved — 你的帖子已通过审核
- *
- * 读写表：notifications（is_read）, users, posts, comments
+ * 功能：展示关注/点赞/评论/回复等通知，支持帖子引用卡片；标记消息已读
+ * 读写表：读写 notifications、messages
+ * 权限：需登录
  */
 session_start();
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../includes/repost_card.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
@@ -27,16 +16,15 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $my_id    = intval($_SESSION['user_id']);
-$tab      = $_GET['tab'] ?? 'all';       // all | message | interact
+$tab      = $_GET['tab'] ?? 'all';       
 $other_id = intval($_GET['user_id'] ?? 0);
 
-// ── 私信 Tab：加载收件箱和会话数据 ──
 $inbox      = [];
 $messages   = [];
 $other_user = null;
 
 if ($tab === 'message') {
-    // 收件箱
+    
     $inbox_res = $conn->query("
         SELECT u.id, u.username, u.avatar,
                last_msg.content AS last_content,
@@ -57,7 +45,7 @@ if ($tab === 'message') {
     ");
     if ($inbox_res) while ($r = $inbox_res->fetch_assoc()) $inbox[] = $r;
 
-    // 当前会话
+    
     if ($other_id > 0) {
         $ou_res = $conn->query("SELECT id, username, avatar FROM users WHERE id = $other_id");
         $other_user = $ou_res ? $ou_res->fetch_assoc() : null;
@@ -75,7 +63,7 @@ if ($tab === 'message') {
         }
     }
 } else {
-    // ── 通知 Tab：标记已读并查询 ──
+    
     if ($tab === 'interact') {
         $conn->query("UPDATE notifications SET is_read=1 WHERE user_id=$my_id AND type!='message' AND is_read=0");
     } else {
@@ -97,7 +85,6 @@ if ($tab === 'message') {
     if ($res) while ($row = $res->fetch_assoc()) $notifications[] = $row;
 }
 
-// Tab 未读数
 $unread_msg      = (int)$conn->query("SELECT COUNT(*) as c FROM notifications WHERE user_id=$my_id AND type='message'  AND is_read=0")->fetch_assoc()['c'];
 $unread_interact = (int)$conn->query("SELECT COUNT(*) as c FROM notifications WHERE user_id=$my_id AND type!='message' AND is_read=0")->fetch_assoc()['c'];
 
@@ -120,81 +107,82 @@ $type_config = [
     <meta charset="UTF-8">
     <title>消息中心</title>
     <style>
-        /* ── 通知布局 ── */
+        
         .notif-wrap { max-width: 700px; margin: 24px auto; padding: 0 15px; }
-        .notif-wrap h2 { font-size: 13px; font-weight: 700; color: #3fb950; letter-spacing: 1.5px; text-transform: uppercase; font-family: "Courier New", monospace; margin: 0 0 18px; }
+        .notif-wrap h2 { font-size: 13px; font-weight: 700; color: 
         .notif-wrap h2::before { content: '// '; opacity: .6; }
 
-        /* ── 私信布局 ── */
+        
         .msg-layout { max-width: 1000px; margin: 0 auto; padding: 0 15px; display: flex; gap: 12px; height: calc(100vh - 260px); }
-        .inbox { width: 270px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; overflow-y: auto; flex-shrink: 0; }
+        .inbox { width: 270px; background: 
         @media(max-width:700px){
             .msg-layout { flex-direction: column; height: auto; padding: 0 10px; }
             .inbox { width: 100%; max-height: 220px; }
             .chat-area { height: 420px; }
             .notif-wrap { padding: 0 10px; }
         }
-        .inbox-title { padding: 14px 18px; font-weight: 700; font-size: 12px; color: #3fb950; border-bottom: 1px solid #30363d; letter-spacing: 1px; text-transform: uppercase; font-family: "Courier New", monospace; }
+        .inbox-title { padding: 14px 18px; font-weight: 700; font-size: 12px; color: 
         .inbox-title::before { content: '// '; opacity: .6; }
-        .inbox-item { display: flex; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer; transition: background .2s; border-bottom: 1px solid #21262d; text-decoration: none; color: #c9d1d9; }
+        .inbox-item { display: flex; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer; transition: background .2s; border-bottom: 1px solid 
         .inbox-item:hover, .inbox-item.active { background: rgba(63,185,80,.06); }
-        .inbox-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid #30363d; }
+        .inbox-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid 
         .inbox-info { flex: 1; min-width: 0; }
-        .inbox-name { font-weight: 600; font-size: 13px; display: flex; justify-content: space-between; color: #e6edf3; }
-        .inbox-preview { font-size: 11px; color: #6e7681; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 3px; }
-        .unread-dot { background: #f85149; color: white; border-radius: 8px; padding: 1px 6px; font-size: 10px; font-family: "Courier New", monospace; }
-        .inbox-empty { padding: 30px 20px; text-align: center; color: #6e7681; font-size: 13px; }
-        .chat-area { flex: 1; display: flex; flex-direction: column; background: #161b22; border: 1px solid #30363d; border-radius: 6px; overflow: hidden; }
-        .chat-header { padding: 14px 18px; border-bottom: 1px solid #30363d; display: flex; align-items: center; gap: 12px; }
-        .chat-header img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid #30363d; }
-        .chat-header strong { font-size: 14px; color: #e6edf3; }
-        .chat-messages { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 12px; background: #0d1117; }
+        .inbox-name { font-weight: 600; font-size: 13px; display: flex; justify-content: space-between; color: 
+        .inbox-preview { font-size: 11px; color: 
+        .unread-dot { background: 
+        .inbox-empty { padding: 30px 20px; text-align: center; color: 
+        .chat-area { flex: 1; display: flex; flex-direction: column; background: 
+        .chat-header { padding: 14px 18px; border-bottom: 1px solid 
+        .chat-header img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid 
+        .chat-header strong { font-size: 14px; color: 
+        .chat-messages { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 12px; background: 
         .msg-row { display: flex; align-items: flex-end; gap: 8px; }
         .msg-row.sent { flex-direction: row-reverse; }
-        .msg-avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid #30363d; }
-        .msg-bubble { max-width: 65%; padding: 9px 13px; border-radius: 4px; font-size: 13px; line-height: 1.5; word-break: break-word; }
-        .msg-row.received .msg-bubble { background: #161b22; color: #c9d1d9; border: 1px solid #30363d; border-bottom-left-radius: 2px; }
-        .msg-row.sent .msg-bubble { background: rgba(63,185,80,.2); color: #e6edf3; border: 1px solid rgba(63,185,80,.4); border-bottom-right-radius: 2px; }
-        .msg-time { font-size: 10px; color: #484f58; margin-top: 3px; text-align: right; font-family: "Courier New", monospace; }
+        .msg-avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid 
+        .msg-col { display: flex; flex-direction: column; max-width: 65%; }
+        .msg-bubble { max-width: 100%; padding: 9px 13px; border-radius: 4px; font-size: 13px; line-height: 1.5; word-break: break-word; }
+        .msg-row.received .msg-bubble { background: 
+        .msg-row.sent .msg-bubble { background: rgba(63,185,80,.2); color: 
+        .msg-time { font-size: 10px; color: 
         .msg-row.received .msg-time { text-align: left; }
-        .chat-input { border-top: 1px solid #30363d; padding: 12px 14px; display: flex; gap: 8px; background: #161b22; }
-        .chat-input textarea { flex: 1; background: #0d1117; border: 1px solid #30363d; border-radius: 4px; padding: 9px 12px; font-size: 13px; font-family: inherit; color: #e6edf3; resize: none; outline: none; height: 40px; line-height: 1.4; }
-        .chat-input textarea:focus { border-color: #3fb950; }
-        .chat-input textarea::placeholder { color: #484f58; }
-        .send-btn { background: #3fb950; color: white; border: 1px solid rgba(63,185,80,.4); border-radius: 4px; padding: 0 18px; cursor: pointer; font-size: 13px; font-weight: 700; font-family: inherit; transition: .2s; }
-        .send-btn:hover { background: #2ea043; box-shadow: 0 0 12px rgba(63,185,80,.3); }
-        .no-chat { flex: 1; display: flex; align-items: center; justify-content: center; color: #6e7681; flex-direction: column; gap: 10px; font-size: 13px; background: #0d1117; }
+        .chat-input { border-top: 1px solid 
+        .chat-input textarea { flex: 1; background: 
+        .chat-input textarea:focus { border-color: 
+        .chat-input textarea::placeholder { color: 
+        .send-btn { background: 
+        .send-btn:hover { background: 
+        .no-chat { flex: 1; display: flex; align-items: center; justify-content: center; color: 
 
-        /* ── 公共 Tab 栏 ── */
+        
         .tabs { display: flex; gap: 6px; margin-bottom: 16px; }
         .tab { padding: 6px 16px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600;
-               border: 1px solid #30363d; background: #161b22; color: #8b949e; text-decoration: none;
+               border: 1px solid 
                position: relative; transition: .2s; }
-        .tab.active, .tab:hover { background: #3fb950; color: white; border-color: rgba(63,185,80,.4); }
-        .tab-badge { position: absolute; top: -6px; right: -6px; background: #f85149; color: white;
+        .tab.active, .tab:hover { background: 
+        .tab-badge { position: absolute; top: -6px; right: -6px; background: 
                      border-radius: 8px; min-width: 16px; height: 16px; font-size: 10px;
                      display: flex; align-items: center; justify-content: center; padding: 0 4px; box-sizing: border-box; }
 
-        /* ── 通知列表 ── */
-        .notif-card { background: #161b22; border: 1px solid #30363d; border-radius: 6px; overflow: hidden; }
+        
+        .notif-card { background: 
         .notif-item { display: flex; align-items: center; gap: 12px; padding: 14px 18px;
-                      border-bottom: 1px solid #21262d; cursor: pointer; transition: background .2s; }
+                      border-bottom: 1px solid 
         .notif-item:last-child { border-bottom: none; }
         .notif-item:hover { background: rgba(63,185,80,.04); }
         .notif-item.unread { background: rgba(63,185,80,.06); }
         .notif-item.unread:hover { background: rgba(63,185,80,.09); }
-        .notif-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid #30363d; }
-        .notif-icon { width: 42px; height: 42px; border-radius: 4px; background: #1c2128; border: 1px solid #30363d;
+        .notif-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid 
+        .notif-icon { width: 42px; height: 42px; border-radius: 4px; background: 
                       display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
         .notif-body { flex: 1; min-width: 0; }
-        .notif-text { font-size: 13px; color: #c9d1d9; line-height: 1.5; }
-        .notif-text strong { color: #3fb950; }
-        .notif-preview { font-size: 12px; color: #6e7681; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .notif-time { font-size: 11px; color: #484f58; margin-top: 3px; font-family: "Courier New", monospace; }
-        .post-ref { color: #58a6ff; }
-        .mention-icon { background: rgba(88,166,255,.15); color: #58a6ff; font-weight: bold; border-radius: 3px; padding: 0 4px; font-size: 12px; border: 1px solid rgba(88,166,255,.3); }
-        .empty-state { text-align: center; padding: 70px 20px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; }
-        .empty-state p { color: #6e7681; margin-top: 8px; font-size: 13px; }
+        .notif-text { font-size: 13px; color: 
+        .notif-text strong { color: 
+        .notif-preview { font-size: 12px; color: 
+        .notif-time { font-size: 11px; color: 
+        .post-ref { color: 
+        .mention-icon { background: rgba(88,166,255,.15); color: 
+        .empty-state { text-align: center; padding: 70px 20px; background: 
+        .empty-state p { color: 
     </style>
 </head>
 <body>
@@ -202,7 +190,7 @@ $type_config = [
 <?php include __DIR__ . '/../includes/header.php'; ?>
 
 <?php
-// Tab 栏（两种布局都需要）
+
 $tab_html = '
 <div class="tabs">
     <a href="notifications.php?tab=all" class="tab ' . ($tab==='all'?'active':'') . '">全部'
@@ -268,8 +256,15 @@ $tab_html = '
                         <img src="../uploads/avatars/<?= htmlspecialchars($m['avatar'] ?: 'default.png') ?>"
                              class="msg-avatar" onerror="this.onerror=null;this.src='../uploads/avatars/default.png'">
                     <?php endif; ?>
-                    <div>
-                        <div class="msg-bubble"><?= htmlspecialchars($m['content']) ?></div>
+                    <div class="msg-col">
+                        <div class="msg-bubble">
+                            <?php if ($m['content'] !== ''): ?>
+                            <?= htmlspecialchars($m['content']) ?>
+                            <?php endif; ?>
+                            <?php if (!empty($m['ref_post_id'])): ?>
+                            <?= render_repost_card($conn, (int)$m['ref_post_id'], '../') ?>
+                            <?php endif; ?>
+                        </div>
                         <div class="msg-time"><?= $time_str ?></div>
                     </div>
                 </div>
@@ -309,7 +304,7 @@ function appendMsg(m) {
     const t = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
     const div = document.createElement('div');
     div.className = 'msg-row sent';
-    div.innerHTML = `<div><div class="msg-bubble">${escHtml(m.content)}</div><div class="msg-time">${t}</div></div>`;
+    div.innerHTML = `<div class="msg-col"><div class="msg-bubble">${escHtml(m.content)}</div><div class="msg-time">${t}</div></div>`;
     list.appendChild(div);
     list.scrollTop = list.scrollHeight;
 }

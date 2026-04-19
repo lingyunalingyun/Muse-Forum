@@ -1,39 +1,22 @@
 <?php
 /**
- * pages/post.php — 帖子详情页
+ * post.php — 帖子详情页
  *
- * GET 参数：id（帖子 ID）
- *
- * 访问控制（按优先级）：
- *   1. 帖子不存在或未发布 → 404 提示
- *   2. 访问者被作者拉黑 → 拒绝访问
- *   3. 帖子可见性不符合当前访问者身份 → 提示范围限制
- *   admin/owner 绕过 2、3
- *
- * 功能：
- *   - 渲染富文本内容（format_post_content：#话题 / @提及 → 超链接）
- *   - 附件下载列表（存储为 JSON 的 attachments 字段）
- *   - 评论区：支持嵌套回复，置顶评论（is_top=1）优先展示
- *   - 点赞 / 收藏 / 关注作者 / 私信按钮（AJAX）
- *   - 帖子编辑（10 分钟冷却，仅作者可见）
- *   - 推荐切换按钮（admin/owner 可见）
- *
- * 读写表：posts, users, comments, comment_likes, post_likes, post_favs,
- *         follows, user_blocks, notifications
+ * 功能：展示帖子内容及评论树，含可见性检查，支持举报弹窗
+ * 读写表：读 posts、comments、comment_likes、users、post_likes、post_favs
+ * 权限：可见性由 can_see_posts() 控制
  */
 session_start();
-// --- 1. 数据库连接与配置 ---
+
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/text_format.php';
 require_once __DIR__ . '/../includes/exp_helper.php';
 
-// --- 2. 获取参数与身份 ---
 $my_id = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : 0;
 $pid = isset($_GET['id']) ? intval($_GET['id']) : 0;
 $my_role = $_SESSION['role'] ?? 'user';
 $sort = $_GET['sort'] ?? 'new';
 
-// --- 3. 获取帖子主体及作者详细信息 ---
 $post_query = "SELECT p.*,
                 u.id as author_id, u.username, u.avatar, u.role, u.level, u.is_banned, u.post_visibility,
                 (SELECT COUNT(*) FROM posts WHERE user_id = u.id) as post_count,
@@ -56,10 +39,9 @@ if (!$post) {
     die("帖子不存在或已被删除。 <a href='../index.php'>返回首页</a>");
 }
 
-// 拉黑检查
 $author_id = (int)$post['author_id'];
 if ($my_id && $my_id !== $author_id) {
-    // 作者拉黑了我
+    
     $blk = $conn->query("SELECT id FROM user_blocks WHERE blocker_id=$author_id AND blocked_id=$my_id");
     if ($blk && $blk->num_rows > 0) {
         $conn->close();
@@ -67,7 +49,6 @@ if ($my_id && $my_id !== $author_id) {
     }
 }
 
-// 可见性检查
 require_once __DIR__ . '/../includes/exp_helper.php';
 $author_vis = $post['post_visibility'] ?? 'public';
 if (!can_see_posts($conn, $author_vis, $author_id, $my_id, $my_role)) {
@@ -77,7 +58,21 @@ if (!can_see_posts($conn, $author_vis, $author_id, $my_id, $my_role)) {
     die("<!DOCTYPE html><html lang='zh-CN'><head><meta charset='UTF-8'><title>无权访问</title></head><body style='font-family:monospace;background:#0d1117;color:#e6edf3;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;'><div style='text-align:center;padding:32px;background:#161b22;border:1px solid #30363d;border-radius:6px;max-width:360px;'><p style='color:#8b949e;font-size:13px;margin:0 0 6px;'>// 权限不足</p><p style='color:#e6edf3;margin:0 0 12px;'>该帖子仅对「{$hint}」可见</p><a href='../index.php' style='color:#3fb950;font-size:13px;'>返回首页</a></div></body></html>");
 }
 
-// --- 4. 楼层逻辑准备 ---
+ensure_user_columns($conn);
+$viewer_key = $my_id ? 'u_' . $my_id : 'ip_' . md5($_SERVER['REMOTE_ADDR'] ?? '');
+$vk_safe    = $conn->real_escape_string($viewer_key);
+$ten_ago    = date('Y-m-d H:i:s', time() - 600);
+$vr = $conn->query("SELECT viewed_at FROM post_view_logs WHERE post_id=$pid AND viewer_key='$vk_safe'");
+$vrow = $vr ? $vr->fetch_assoc() : null;
+if (!$vrow || strtotime($vrow['viewed_at']) < time() - 600) {
+    $now_str = date('Y-m-d H:i:s');
+    $conn->query("INSERT INTO post_view_logs (post_id, viewer_key, viewed_at)
+                  VALUES ($pid, '$vk_safe', '$now_str')
+                  ON DUPLICATE KEY UPDATE viewed_at='$now_str'");
+    $conn->query("UPDATE posts SET views = views + 1 WHERE id=$pid");
+    $post['views'] = ($post['views'] ?? 0) + 1;
+}
+
 $floor_map = [];
 $floor_res = $conn->query("SELECT id FROM comments WHERE post_id = $pid ORDER BY id ASC");
 $f_idx = 1;
@@ -87,7 +82,6 @@ if ($floor_res) {
     }
 }
 
-// --- 5. 获取评论列表 ---
 $order_sql = ($sort === 'hot') ? "c.likes DESC, c.id DESC" : "c.id DESC";
 $comment_sql = "SELECT c.*, u.username as author_name, u.avatar,
                 u2.username as target_name,
@@ -107,10 +101,10 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
     <meta charset="UTF-8">
     <title><?php echo htmlspecialchars(!empty($post['title']) ? $post['title'] : $post['username'] . ' 的动态'); ?></title>
     <style>
-        /* ── 帖子页布局 ── */
+        
         .container { max-width:1100px; margin:24px auto; display:flex; gap:20px; padding:0 16px; align-items:flex-start; }
-        .post-main  { flex:1; background:#161b22; border:1px solid #30363d; border-radius:6px; padding:28px 30px; overflow:hidden; min-width:0; }
-        .post-header{ display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid #30363d; padding-bottom:16px; gap:12px; }
+        .post-main  { flex:1; background:
+        .post-header{ display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid 
         @media(max-width:768px){
             .container { flex-direction:column; margin:12px auto; padding:0 10px; gap:12px; }
             .post-main { padding:18px 16px; }
@@ -123,106 +117,106 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
             .post-main { padding:14px 12px; }
             .post-content { font-size:14px; }
         }
-        .post-main.is-notice    { border-top:3px solid #f0883e; }
-        .post-main.is-recommend { border-top:3px solid #e3b341; }
+        .post-main.is-notice    { border-top:3px solid 
+        .post-main.is-recommend { border-top:3px solid 
 
-        /* 公告/推荐 bar */
+        
         .notice-top-bar {
             display:flex; align-items:center; gap:10px;
             background:rgba(240,136,62,.08); border:1px solid rgba(240,136,62,.25);
             border-radius:4px; padding:10px 14px; margin-bottom:20px;
-            font-size:13px; color:#f0883e;
+            font-size:13px; color:
         }
-        .notice-top-bar .top-badge { color:#fff; font-size:11px; padding:2px 8px; border-radius:4px; font-weight:700; letter-spacing:.5px; flex-shrink:0; }
-        .notice-top-bar .top-badge.orange { background:#f0883e; }
-        .notice-top-bar .top-badge.gold   { background:#e3b341; }
-        .notice-top-bar a { margin-left:auto; color:#f0883e; font-size:12px; }
-        .post-main.is-recommend .notice-top-bar { background:rgba(227,179,65,.08); border-color:rgba(227,179,65,.25); color:#e3b341; }
-        .post-main.is-recommend .notice-top-bar a { color:#e3b341; }
+        .notice-top-bar .top-badge { color:
+        .notice-top-bar .top-badge.orange { background:
+        .notice-top-bar .top-badge.gold   { background:
+        .notice-top-bar a { margin-left:auto; color:
+        .post-main.is-recommend .notice-top-bar { background:rgba(227,179,65,.08); border-color:rgba(227,179,65,.25); color:
+        .post-main.is-recommend .notice-top-bar a { color:
 
-        /* 帖子标题区 */
-        .post-header h2 { color:#e6edf3; margin:0 0 6px; font-size:20px; }
-        .post-meta-line { font-size:12px; color:#6e7681; font-family:"Courier New",monospace; }
-        .post-meta-line a { color:#3fb950; }
-        .edited-at-tag  { font-size:11px; color:#6e7681; margin-top:3px; font-family:"Courier New",monospace; }
+        
+        .post-header h2 { color:
+        .post-meta-line { font-size:12px; color:
+        .post-meta-line a { color:
+        .edited-at-tag  { font-size:11px; color:
 
-        /* 管理操作 */
+        
         .admin-actions { display:flex; gap:8px; align-items:center; flex-shrink:0; }
-        .btn-recommend { background:transparent; color:#e3b341; border:1px solid rgba(227,179,65,.4); padding:5px 12px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:700; transition:.2s; }
+        .btn-recommend { background:transparent; color:
         .btn-recommend:hover { background:rgba(227,179,65,.1); }
-        .btn-recommend.active { background:rgba(227,179,65,.2); border-color:#e3b341; }
-        .btn-edit-post { background:transparent; color:#3fb950; border:1px solid rgba(63,185,80,.4); padding:5px 12px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:700; transition:.2s; }
+        .btn-recommend.active { background:rgba(227,179,65,.2); border-color:
+        .btn-edit-post { background:transparent; color:
         .btn-edit-post:hover { background:rgba(63,185,80,.1); }
-        .btn-edit-post:disabled { color:#6e7681; border-color:#30363d; cursor:not-allowed; }
-        .btn-post-del { background:transparent; color:#f85149; border:1px solid rgba(248,81,73,.4); padding:5px 12px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:700; transition:.2s; }
+        .btn-edit-post:disabled { color:
+        .btn-post-del { background:transparent; color:
         .btn-post-del:hover { background:rgba(248,81,73,.1); }
 
-        /* 帖子内容 */
-        .post-content { font-size:15px; line-height:1.9; margin:24px 0; color:#c9d1d9; min-height:80px; }
-        .post-content h1,.post-content h2,.post-content h3 { color:#e6edf3; border-bottom:1px solid #30363d; padding-bottom:8px; }
-        .post-content a { color:#58a6ff; }
-        .post-content code { background:#1c2128; color:#3fb950; padding:2px 6px; border-radius:4px; font-size:13px; font-family:"Courier New",monospace; }
-        .post-content pre { background:#1c2128; border:1px solid #30363d; border-radius:4px; padding:14px; overflow-x:auto; }
-        .post-content blockquote { border-left:3px solid #30363d; margin:0; padding:4px 16px; color:#8b949e; }
+        
+        .post-content { font-size:15px; line-height:1.9; margin:24px 0; color:
+        .post-content h1,.post-content h2,.post-content h3 { color:
+        .post-content a { color:
+        .post-content code { background:
+        .post-content pre { background:
+        .post-content blockquote { border-left:3px solid 
         .post-content img {
             max-width:240px; max-height:180px; object-fit:cover;
-            border-radius:4px; cursor:zoom-in; border:1px solid #30363d;
+            border-radius:4px; cursor:zoom-in; border:1px solid 
             transition:.2s; display:inline-block; vertical-align:middle; margin:4px;
         }
-        .post-content img:hover { border-color:#3fb950; box-shadow:0 0 12px rgba(63,185,80,.2); }
+        .post-content img:hover { border-color:
 
-        /* 灯箱 */
+        
         .img-lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,.88); z-index:9999; align-items:center; justify-content:center; cursor:zoom-out; }
         .img-lightbox.open { display:flex; }
         .img-lightbox img { max-width:92vw; max-height:90vh; object-fit:contain; border-radius:4px; box-shadow:0 8px 40px rgba(0,0,0,.6); animation:lbIn .2s ease-out; }
         @keyframes lbIn { from{transform:scale(.88);opacity:0} to{transform:scale(1);opacity:1} }
 
-        /* 互动按钮 */
-        .action-item { font-size:14px; color:#8b949e; transition:.2s; cursor:pointer; display:flex; align-items:center; gap:6px; padding:6px 14px; border:1px solid #30363d; border-radius:4px; background:#1c2128; }
-        .action-item:hover { border-color:#3fb950; color:#3fb950; }
-        .action-item.active { color:#f85149; border-color:rgba(248,81,73,.4); }
-        .action-item.fav.active { color:#e3b341; border-color:rgba(227,179,65,.4); }
+        
+        .action-item { font-size:14px; color:
+        .action-item:hover { border-color:
+        .action-item.active { color:
+        .action-item.fav.active { color:
 
-        /* 评论区 */
+        
         .comment-section { margin-top:32px; }
         .filter-bar { margin:14px 0; display:flex; gap:12px; font-size:13px; }
-        .filter-bar a { text-decoration:none; color:#6e7681; padding-bottom:4px; }
-        .filter-bar a.active { color:#3fb950; font-weight:700; border-bottom:2px solid #3fb950; }
-        .comment-item { display:flex; gap:12px; padding:16px 0; border-bottom:1px solid #21262d; }
+        .filter-bar a { text-decoration:none; color:
+        .filter-bar a.active { color:
+        .comment-item { display:flex; gap:12px; padding:16px 0; border-bottom:1px solid 
         .comment-item:last-child { border-bottom:none; }
-        .is-top-style { background:rgba(227,179,65,.05); border-left:3px solid #e3b341; padding-left:13px; }
-        .top-badge { background:rgba(227,179,65,.2); color:#e3b341; padding:1px 6px; border-radius:4px; font-size:10px; margin-right:4px; font-weight:700; font-family:"Courier New",monospace; border:1px solid rgba(227,179,65,.3); }
-        .reply-target { color:#58a6ff; margin-left:6px; font-size:12px; }
-        .floor-tag  { color:#6e7681; font-size:11px; margin-left:8px; font-family:"Courier New",monospace; }
-        .c-avatar   { width:38px; height:38px; border-radius:50%; object-fit:cover; border:1px solid #30363d; }
+        .is-top-style { background:rgba(227,179,65,.05); border-left:3px solid 
+        .top-badge { background:rgba(227,179,65,.2); color:
+        .reply-target { color:
+        .floor-tag  { color:
+        .c-avatar   { width:38px; height:38px; border-radius:50%; object-fit:cover; border:1px solid 
         .c-body     { flex:1; min-width:0; }
         .c-header   { display:flex; justify-content:space-between; margin-bottom:5px; align-items:center; }
-        .c-user     { font-weight:700; color:#3fb950; font-size:13px; text-decoration:none; }
-        .c-user:hover { color:#5fdd70; }
-        .c-text     { color:#8b949e; font-size:14px; line-height:1.7; margin:4px 0; word-break:break-word; }
-        .btn-action { cursor:pointer; font-size:12px; color:#6e7681; margin-left:12px; transition:.15s; }
-        .btn-action:hover { color:#3fb950; }
-        .like-btn.active { color:#f85149; font-weight:700; }
-        .reply-input-box textarea { background:#1c2128; color:#e6edf3; border-color:#30363d; }
+        .c-user     { font-weight:700; color:
+        .c-user:hover { color:
+        .c-text     { color:
+        .btn-action { cursor:pointer; font-size:12px; color:
+        .btn-action:hover { color:
+        .like-btn.active { color:
+        .reply-input-box textarea { background:
 
-        /* 侧边作者卡片 */
+        
         .post-sidebar   { width:260px; position:sticky; top:76px; flex-shrink:0; }
-        .author-card    { background:#161b22; border:1px solid #30363d; border-radius:6px; padding:22px 18px; text-align:center; }
-        .author-avatar  { width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid #30363d; cursor:pointer; transition:.2s; margin:0 auto; }
-        .author-avatar:hover { border-color:#3fb950; box-shadow:0 0 14px rgba(63,185,80,.25); }
-        .author-name    { display:block; font-size:16px; font-weight:700; color:#e6edf3; margin:12px 0 8px; text-decoration:none; }
-        .author-name:hover { color:#3fb950; }
+        .author-card    { background:
+        .author-avatar  { width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid 
+        .author-avatar:hover { border-color:
+        .author-name    { display:block; font-size:16px; font-weight:700; color:
+        .author-name:hover { color:
         .badge-row      { display:flex; justify-content:center; gap:6px; margin-bottom:16px; flex-wrap:wrap; }
         .user-title     { font-size:11px; padding:2px 8px; border-radius:4px; font-weight:700; }
-        .user-level     { background:rgba(227,179,65,.15); color:#e3b341; border:1px solid rgba(227,179,65,.3); font-size:11px; padding:2px 8px; border-radius:4px; font-weight:700; font-family:"Courier New",monospace; }
-        .stats-row      { display:flex; border-top:1px solid #30363d; padding-top:14px; margin-top:4px; }
+        .user-level     { background:rgba(227,179,65,.15); color:
+        .stats-row      { display:flex; border-top:1px solid 
         .stat-item      { flex:1; text-align:center; }
-        .stat-num       { display:block; font-size:18px; font-weight:700; color:#e6edf3; font-family:"Courier New",monospace; }
-        .stat-label     { font-size:11px; color:#6e7681; letter-spacing:.5px; text-transform:uppercase; font-family:"Courier New",monospace; }
+        .stat-num       { display:block; font-size:18px; font-weight:700; color:
+        .stat-label     { font-size:11px; color:
         .btn-follow     { width:100%; margin-top:16px; padding:9px; border:none; border-radius:4px; cursor:pointer; font-size:13px; font-weight:700; transition:.2s; }
-        .follow-add     { background:#3fb950; color:#fff; }
-        .follow-add:hover { background:#2ea043; box-shadow:0 0 12px rgba(63,185,80,.3); }
-        .follow-yet     { background:#1c2128; color:#6e7681; border:1px solid #30363d; }
+        .follow-add     { background:
+        .follow-add:hover { background:
+        .follow-yet     { background:
     </style>
 </head>
 <body>
@@ -257,6 +251,7 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
                     <div class="post-meta-line">
                         <a href="profile.php?id=<?php echo $post['author_id']; ?>"><?php echo htmlspecialchars($post['username']); ?></a>
                         · <?php echo date('Y-m-d H:i', strtotime($post['created_at'])); ?>
+                        · <span style="color:#484f58;">👁 <?= number_format((int)($post['views'] ?? 0)) ?></span>
                     </div>
                 <?php else: ?>
                     <h2 style="margin:0;"><?php echo htmlspecialchars($post['username']); ?> 的动态</h2>
@@ -267,7 +262,7 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
                 <?php endif; ?>
             </div>
             <div class="admin-actions">
-                <?php if($my_role == 'admin'): ?>
+                <?php if($my_role == 'admin' || $my_role == 'owner'): ?>
                     <button id="rec-btn"
                             class="btn-recommend <?= $post['is_recommend'] ? 'active' : '' ?>"
                             onclick="toggleRecommend(<?= $pid ?>)">
@@ -277,8 +272,17 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
                 <?php if($post['user_id'] == $my_id): ?>
                     <button id="edit-btn" class="btn-edit-post" onclick="toggleEditMode()">✏️ 编辑</button>
                 <?php endif; ?>
-                <?php if($post['user_id'] == $my_id || $my_role == 'admin'): ?>
+                <?php if($post['user_id'] == $my_id || $my_role == 'admin' || $my_role == 'owner'): ?>
                     <button class="btn-post-del" onclick="deletePost(<?php echo $pid; ?>)">删除帖子</button>
+                <?php endif; ?>
+                <?php if($my_id && $post['user_id'] != $my_id): ?>
+                    <button onclick="openReportModal('post',<?= $pid ?>)"
+                            style="padding:4px 10px;border-radius:4px;border:1px solid #30363d;background:transparent;
+                                   color:#6e7681;font-size:12px;cursor:pointer;font-family:inherit;transition:.15s;"
+                            onmouseover="this.style.borderColor='#f85149';this.style.color='#f85149';"
+                            onmouseout="this.style.borderColor='#30363d';this.style.color='#6e7681';">
+                        举报
+                    </button>
                 <?php endif; ?>
             </div>
         </div>
@@ -287,9 +291,8 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
             <?php echo format_post_content($post['content'], $conn); ?>
         </div>
 
-
         <?php
-        // 附件展示
+        
         $att_data = [];
         if (!empty($post['attachments'])) {
             $att_data = json_decode($post['attachments'], true) ?: [];
@@ -332,11 +335,17 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
                 onclick="togglePostAction('fav')" style="cursor:pointer;">
                 <span id="fav-icon"><?php echo $post['my_fav'] ? '⭐' : '☆'; ?></span> 收藏 (<span id="fav-count"><?php echo $post['favs_count']; ?></span>)
             </div>
+
+            <?php if ($my_id && empty($_SESSION['is_banned'])): ?>
+            <div class="action-item" onclick="openRepostModal()" style="cursor:pointer;">
+                ↻ 转发
+            </div>
+            <?php endif; ?>
         </div>
 
         <div class="comment-section">
             <div style="font-size:11px;font-weight:700;color:#6e7681;letter-spacing:1.5px;text-transform:uppercase;font-family:'Courier New',monospace;margin-bottom:14px;display:flex;align-items:center;gap:8px;">
-                <span style="color:#3fb950">//</span> 评论 <span style="color:#3fb950;font-family:'Courier New',monospace;"><?php echo $total_comments; ?></span>
+                <span style="color:#3fb950">
                 <span style="flex:1;height:1px;background:#30363d;"></span>
             </div>
             <div style="margin-bottom:20px;">
@@ -530,7 +539,7 @@ function togglePostAction(type) {
         $remaining_cooldown = max(0, 600 - (time() - strtotime($post['edited_at'])));
     }
 ?>
-// ── 编辑模式 ──
+
 const postOriginalTitle   = <?= json_encode($post['title'] ?? '') ?>;
 const postOriginalContent = <?= json_encode($post['content']) ?>;
 let remainingCooldown = <?= $remaining_cooldown ?>;
@@ -623,7 +632,6 @@ async function saveEdit() {
 }
 <?php endif; ?>
 
-// ── @提及 自动补全 ──
 (function() {
     let dropdown = null, activeTA = null, atPos = -1;
 
@@ -724,11 +732,11 @@ async function saveEdit() {
         }
     }
 
-    // 绑定主评论框
+    
     const main = document.getElementById('main-input');
     if (main) bindTA(main);
 
-    // 绑定所有回复框（包括动态生成的）
+    
     document.body.addEventListener('click', function(e) {
         const ta = document.querySelector('textarea:focus');
         if (ta) bindTA(ta);
@@ -736,7 +744,6 @@ async function saveEdit() {
     document.querySelectorAll('textarea').forEach(bindTA);
 })();
 
-// 图片灯箱
 (function() {
     const lb = document.createElement('div');
     lb.className = 'img-lightbox';
@@ -771,6 +778,170 @@ async function saveEdit() {
         </div>
     </div>
 </div>
+<?php endif; ?>
+
+<?php if ($my_id && $post['user_id'] != $my_id): ?>
+<?php include __DIR__ . '/report_modal.php'; ?>
+<?php endif; ?>
+
+<?php if ($my_id && empty($_SESSION['is_banned'])): ?>
+<?php
+require_once __DIR__ . '/../includes/repost_card.php';
+$_rc_preview = render_repost_card($conn, $pid, '../');
+$_post_title_safe = htmlspecialchars(addslashes($post['title'] ?: ($post['username'] . ' 的分享')), ENT_QUOTES);
+
+$_dm_following = [];
+$_fq = $conn->query("SELECT u.id, u.username, u.avatar FROM follows f JOIN users u ON u.id=f.followed_id WHERE f.follower_id=$my_id ORDER BY u.username ASC");
+if ($_fq) while ($_fr = $_fq->fetch_assoc()) $_dm_following[] = $_fr;
+?>
+<!-- 转发弹窗 -->
+<div id="repost-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9400;align-items:center;justify-content:center;">
+<div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:22px 24px;width:460px;max-width:95vw;font-family:'Microsoft YaHei',sans-serif;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <span style="font-size:14px;font-weight:700;color:#c9d1d9;">↻ 转发帖子</span>
+        <button onclick="closeRepostModal()" style="background:none;border:none;color:#6e7681;font-size:18px;cursor:pointer;">✕</button>
+    </div>
+
+    <!-- Tab -->
+    <div style="display:flex;gap:0;border-bottom:1px solid #30363d;margin-bottom:16px;">
+        <button id="rt-tab-moments" onclick="switchRepostTab('moments')"
+                style="flex:1;padding:8px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:700;color:#3fb950;border-bottom:2px solid #3fb950;font-family:inherit;">
+            发到动态
+        </button>
+        <button id="rt-tab-dm" onclick="switchRepostTab('dm')"
+                style="flex:1;padding:8px;border:none;background:none;cursor:pointer;font-size:13px;color:#6e7681;border-bottom:2px solid transparent;font-family:inherit;">
+            发私信
+        </button>
+    </div>
+
+    <!-- 发到动态 -->
+    <div id="rt-panel-moments">
+        <textarea id="rt-moments-text" placeholder="说点什么…（选填）" maxlength="500"
+                  style="width:100%;box-sizing:border-box;background:#0d1117;border:1px solid #30363d;color:#c9d1d9;
+                         padding:9px 12px;border-radius:5px;font-size:13px;font-family:inherit;resize:vertical;
+                         min-height:72px;outline:none;margin-bottom:10px;"></textarea>
+        <div style="font-size:11px;color:#6e7681;font-family:'Courier New',monospace;margin-bottom:6px;">
+        <?= $_rc_preview ?>
+        <div id="rt-moments-msg" style="font-size:12px;margin-top:8px;min-height:14px;"></div>
+        <button onclick="submitRepostMoments()"
+                style="width:100%;margin-top:12px;padding:9px;border:none;border-radius:5px;
+                       background:#3fb950;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">
+            发布到动态
+        </button>
+    </div>
+
+    <!-- 发私信 -->
+    <div id="rt-panel-dm" style="display:none;">
+        <div style="font-size:12px;color:#8b949e;margin-bottom:7px;">选择收件人（我的关注）</div>
+        <?php if (empty($_dm_following)): ?>
+        <div style="font-size:12px;color:#6e7681;padding:10px 0;">你还没有关注任何人，私信只能发给关注的用户。</div>
+        <?php else: ?>
+        <div id="rt-dm-list" style="max-height:160px;overflow-y:auto;border:1px solid #30363d;border-radius:5px;margin-bottom:2px;">
+            <?php foreach ($_dm_following as $_dmf):
+                $dmfAv = htmlspecialchars($_dmf['avatar'] ?: 'default.png');
+                $dmfName = htmlspecialchars($_dmf['username']);
+                $dmfNameJs = htmlspecialchars(addslashes($_dmf['username']), ENT_QUOTES);
+                $dmfAvJs = htmlspecialchars($_dmf['avatar'] ?: 'default.png', ENT_QUOTES);
+            ?>
+            <div onclick="selectDmUser(<?= (int)$_dmf['id'] ?>,'<?= $dmfNameJs ?>','<?= $dmfAvJs ?>')"
+                 style="display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;transition:.12s;"
+                 onmouseover="this.style.background='#21262d'" onmouseout="this.style.background='transparent'">
+                <img src="../uploads/avatars/<?= $dmfAv ?>" style="width:28px;height:28px;border-radius:50%;object-fit:cover;"
+                     onerror="this.onerror=null;this.src='../uploads/avatars/default.png'">
+                <span style="font-size:13px;color:#c9d1d9;"><?= $dmfName ?></span>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+        <div id="rt-dm-selected" style="display:none;align-items:center;gap:8px;margin-top:8px;
+             background:#0f1e12;border:1px solid rgba(63,185,80,.3);border-radius:5px;padding:7px 10px;">
+            <img id="rt-dm-sel-av" style="width:24px;height:24px;border-radius:50%;object-fit:cover;">
+            <span id="rt-dm-sel-name" style="font-size:13px;color:#3fb950;"></span>
+            <span onclick="clearDmUser()" style="margin-left:auto;font-size:11px;color:#6e7681;cursor:pointer;">✕</span>
+        </div>
+        <textarea id="rt-dm-text" placeholder="附言…（选填）" maxlength="300"
+                  style="width:100%;box-sizing:border-box;background:#0d1117;border:1px solid #30363d;color:#c9d1d9;
+                         padding:9px 12px;border-radius:5px;font-size:13px;font-family:inherit;resize:vertical;
+                         min-height:58px;outline:none;margin-top:10px;margin-bottom:10px;"></textarea>
+        <div style="font-size:11px;color:#6e7681;font-family:'Courier New',monospace;margin-bottom:6px;">
+        <?= $_rc_preview ?>
+        <div id="rt-dm-msg" style="font-size:12px;margin-top:8px;min-height:14px;"></div>
+        <button onclick="submitRepostDm()"
+                style="width:100%;margin-top:12px;padding:9px;border:none;border-radius:5px;
+                       background:#58a6ff;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">
+            发送私信
+        </button>
+    </div>
+</div>
+</div>
+<script>
+const _REPOST_PID = <?= $pid ?>;
+
+function openRepostModal() { document.getElementById('repost-modal').style.display='flex'; }
+function closeRepostModal() { document.getElementById('repost-modal').style.display='none'; }
+document.getElementById('repost-modal').addEventListener('click', e => { if(e.target===document.getElementById('repost-modal')) closeRepostModal(); });
+
+function switchRepostTab(tab) {
+    const isMoments = tab === 'moments';
+    document.getElementById('rt-panel-moments').style.display = isMoments ? 'block' : 'none';
+    document.getElementById('rt-panel-dm').style.display      = isMoments ? 'none'  : 'block';
+    const btnM = document.getElementById('rt-tab-moments');
+    const btnD = document.getElementById('rt-tab-dm');
+    btnM.style.color = isMoments ? '#3fb950' : '#6e7681';
+    btnM.style.borderBottomColor = isMoments ? '#3fb950' : 'transparent';
+    btnD.style.color = isMoments ? '#6e7681' : '#58a6ff';
+    btnD.style.borderBottomColor = isMoments ? 'transparent' : '#58a6ff';
+}
+
+function submitRepostMoments() {
+    const text = document.getElementById('rt-moments-text').value.trim();
+    const fd = new FormData();
+    fd.append('title', '');
+    fd.append('content', text);
+    fd.append('repost_id', _REPOST_PID);
+    fetch('../actions/save.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(d => {
+            const msg = document.getElementById('rt-moments-msg');
+            if (d.status === 'ok' || d.status === 'draft') {
+                msg.textContent = '已发布到动态！'; msg.style.color = '#3fb950';
+                setTimeout(closeRepostModal, 1000);
+            } else {
+                msg.textContent = d.msg || '发布失败'; msg.style.color = '#f85149';
+            }
+        });
+}
+
+let _dmUid = 0;
+function selectDmUser(id, name, av) {
+    _dmUid = id;
+    const list = document.getElementById('rt-dm-list');
+    if (list) list.querySelectorAll('div').forEach(el => el.style.background = 'transparent');
+    const sel = document.getElementById('rt-dm-selected');
+    sel.style.display = 'flex';
+    document.getElementById('rt-dm-sel-av').src = '../uploads/avatars/' + av;
+    document.getElementById('rt-dm-sel-name').textContent = name;
+}
+function clearDmUser() {
+    _dmUid = 0;
+    document.getElementById('rt-dm-selected').style.display = 'none';
+}
+function submitRepostDm() {
+    if (!_dmUid) { const m=document.getElementById('rt-dm-msg'); m.textContent='请选择收件人'; m.style.color='#f85149'; return; }
+    const text = document.getElementById('rt-dm-text').value.trim();
+    const fd = new FormData();
+    fd.append('to_id', _dmUid);
+    fd.append('content', text);
+    fd.append('ref_post_id', _REPOST_PID);
+    fetch('../actions/message_send.php', { method: 'POST', body: fd })
+        .then(r => r.json()).then(d => {
+            const msg = document.getElementById('rt-dm-msg');
+            if (d.status === 'success') { msg.textContent='已发送！'; msg.style.color='#3fb950'; setTimeout(closeRepostModal,1000); }
+            else { msg.textContent = d.msg||'发送失败'; msg.style.color='#f85149'; }
+        });
+}
+function escH(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+</script>
 <?php endif; ?>
 
 </body>

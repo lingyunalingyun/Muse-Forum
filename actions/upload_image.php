@@ -1,19 +1,14 @@
 <?php
 /**
- * actions/upload_image.php — WangEditor 富文本图片上传接口（AJAX JSON）
+ * upload_image.php — WangEditor 富文本编辑器图片上传
  *
- * POST FILES：wangeditor-uploaded-image 或 image（兼容两种字段名）
- * 限制：
- *   - 仅允许 JPG / PNG / GIF / WEBP（用 finfo 验证 MIME，防止伪造扩展名）
- *   - 最大 5MB
- * 文件存放：uploads/posts/（日期_uniqid.ext）
- *
- * 返回（WangEditor 协议）：
- *   成功：{"errno":0,"data":{"url":"../uploads/posts/..."}}
- *   失败：{"errno":1,"message":"..."}
+ * 功能：接收 WangEditor 上传的图片并保存，返回符合编辑器规范的 JSON 响应
+ * POST 参数：file（multipart/form-data）
+ * 读写表：写入 uploads/posts/ 目录
+ * 权限：需登录
+ * 返回格式：{"errno":0,"data":{"url":"..."}}
  */
-// WangEditor 图片上传接口
-// 返回格式: {"errno":0,"data":{"url":"..."}}
+
 ob_start();
 error_reporting(0);
 session_start();
@@ -25,11 +20,14 @@ if (!isset($_SESSION['user_id'])) {
     echo json_encode(['errno' => 1, 'message' => '请先登录']);
     exit;
 }
+if (!empty($_SESSION['is_banned'])) {
+    echo json_encode(['errno' => 1, 'message' => '账号已被限制']);
+    exit;
+}
 
 $upload_dir = __DIR__ . '/../uploads/posts/';
 if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
 
-// WangEditor 默认字段名为 wangeditor-uploaded-image，也兼容 image
 $file = $_FILES['wangeditor-uploaded-image'] ?? $_FILES['image'] ?? null;
 
 if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
@@ -37,7 +35,6 @@ if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
     exit;
 }
 
-// 验证是图片
 $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 $finfo = finfo_open(FILEINFO_MIME_TYPE);
 $mime  = finfo_file($finfo, $file['tmp_name']);

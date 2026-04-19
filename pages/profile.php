@@ -1,32 +1,17 @@
 <?php
 /**
- * pages/profile.php — 用户主页
+ * profile.php — 用户主页
  *
- * GET 参数：id（目标用户 ID；缺省时查看自己，未登录则跳转登录页）
- *
- * 用户卡片区：
- *   - 头像 / 角色徽章 / Lv 等级 / 经验进度条 / 签名
- *   - 关注数 / 粉丝数（可点击弹窗查看列表，受 show_followers/show_following 隐私设置控制）
- *   - 非本人：关注 / 私信 / 拉黑 按钮
- *
- * 帖子区 Tab（JS switchTab 切换）：
- *   - 我的帖子（所有人可见，受 post_visibility 隐私控制）
- *   - 收藏夹（仅本人可见，来自 post_favs 表）
- *   - 点赞夹（仅本人可见，来自 post_likes 表）
- *
- * 被拉黑处理：
- *   - 我拉黑了对方 → 帖子区显示已拉黑提示，关注/私信按钮隐藏
- *   - 对方拉黑了我 → 同上效果
- *
- * 读写表：users, posts, follows, user_blocks, post_favs, post_likes
- *         （user_inventory 字段查询存在但当前未展示背包功能）
+ * 功能：展示头像/角色/等级经验条，帖子/收藏/点赞三 Tab，关注/粉丝列表弹窗，
+ *       管理员可在此发起封禁
+ * 读写表：读 users、posts、post_favs、post_likes、follows、user_blocks
+ * 权限：无（封禁弹窗仅 admin/owner 可见）
  */
 session_start();
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/exp_helper.php';
 ensure_user_columns($conn);
 
-// --- 核心修复：动态获取要查看的用户 ID ---
 if (isset($_GET['id']) && intval($_GET['id']) > 0) {
     $view_uid = intval($_GET['id']);
 } elseif (isset($_SESSION['user_id'])) {
@@ -36,7 +21,6 @@ if (isset($_GET['id']) && intval($_GET['id']) > 0) {
     exit;
 }
 
-// 使用 $view_uid 获取资料
 $user_res = $conn->query("SELECT * FROM users WHERE id = $view_uid");
 $user = $user_res->fetch_assoc();
 $user_posts_res = $conn->query("SELECT id, title, content, created_at FROM posts WHERE user_id = $view_uid ORDER BY created_at DESC LIMIT 10");
@@ -45,10 +29,8 @@ if (!$user) {
     die("该用户不存在或已被注销。 <a href='../index.php'>返回首页</a>");
 }
 
-// 2. 获取该用户的背包物品数据
 $inventory = $conn->query("SELECT * FROM user_inventory WHERE user_id = $view_uid");
 
-// 3. 统计该用户的帖子数量
 $post_count_res = $conn->query("SELECT count(*) as total FROM posts WHERE user_id = $view_uid");
 $post_count = $post_count_res ? $post_count_res->fetch_assoc()['total'] : 0;
 $follow_count_res = $conn->query("SELECT count(*) as total FROM follows WHERE follower_id = $view_uid");
@@ -56,10 +38,8 @@ $follow_count = $follow_count_res ? $follow_count_res->fetch_assoc()['total'] : 
 $fans_count_res = $conn->query("SELECT count(*) as total FROM follows WHERE followed_id = $view_uid");
 $fans_count = $fans_count_res ? $fans_count_res->fetch_assoc()['total'] : 0;
 
-// 当前访问者是否为页面主人
 $is_mine = (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $view_uid);
 
-// 拉黑状态（双向）
 $i_blocked_them = false;
 $they_blocked_me = false;
 if ($my_id > 0 && !$is_mine) {
@@ -69,7 +49,6 @@ if ($my_id > 0 && !$is_mine) {
     $they_blocked_me = $r2 && $r2->num_rows > 0;
 }
 
-// 收藏夹 & 点赞夹（仅自己可见）
 $favs_list  = [];
 $likes_list = [];
 if ($is_mine) {
@@ -88,7 +67,6 @@ if ($is_mine) {
     if ($r) $likes_list = $r->fetch_all(MYSQLI_ASSOC);
 }
 
-// --- 检查当前登录用户是否关注了正在查看的用户 ---
 $is_following = false;
 $my_id = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : 0;
 
@@ -107,7 +85,7 @@ if ($my_id > 0 && $my_id != $view_uid) {
     <title>个人中心 - <?php echo htmlspecialchars($user['username']); ?></title>
     <style>
         .profile-container { max-width: 800px; margin: 24px auto; padding: 0 16px; }
-        .user-card { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 24px; display: flex; align-items: center; gap: 24px; }
+        .user-card { background: 
         @media(max-width:600px){
             .profile-container { padding: 0 10px; margin: 12px auto; }
             .user-card { flex-direction: column; align-items: center; text-align: center; padding: 20px 16px; gap: 16px; }
@@ -115,40 +93,43 @@ if ($my_id > 0 && $my_id != $view_uid) {
             .grid { grid-template-columns: repeat(3, 1fr) !important; }
             .stats-bar .stat-item strong { font-size: 16px; }
         }
-        .avatar { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 2px solid #30363d; cursor: pointer; transition: .2s; flex-shrink: 0; display: block; }
-        .avatar:hover { border-color: #3fb950; box-shadow: 0 0 16px rgba(63,185,80,.25); }
-        .user-info h2 { margin: 0 0 6px; display: flex; align-items: center; gap: 10px; color: #e6edf3; font-size: 18px; }
+        .avatar { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 2px solid 
+        .avatar:hover { border-color: 
+        .user-info h2 { margin: 0 0 6px; display: flex; align-items: center; gap: 10px; color: 
         .role-badge { font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 700; }
-        .user-info p { color: #8b949e; margin: 0 0 10px; font-size: 13px; }
+        .user-info p { color: 
         .user-meta-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
-        .user-meta-item { font-size: 12px; color: #6e7681; font-family: "Courier New", monospace; }
-        .user-meta-item span { color: #8b949e; }
-        .btn-edit { font-size: 12px; color: #3fb950; text-decoration: none; border: 1px solid rgba(63,185,80,.4); padding: 5px 14px; border-radius: 4px; transition: .2s; font-weight: 600; display: inline-flex; align-items: center; }
-        .btn-edit:hover { background: rgba(63,185,80,.1); color: #3fb950; }
-        .btn-edit.following { color: #6e7681 !important; border-color: #30363d !important; }
-        .btn-edit.following:hover { color: #f85149 !important; border-color: rgba(248,81,73,.4) !important; }
+        .user-meta-item { font-size: 12px; color: 
+        .user-meta-item span { color: 
+        .mid-copy { cursor: pointer; color: 
+        .mid-copy:hover { opacity: .75; }
+        .mid-copied { color: 
+        .btn-edit { font-size: 12px; color: 
+        .btn-edit:hover { background: rgba(63,185,80,.1); color: 
+        .btn-edit.following { color: 
+        .btn-edit.following:hover { color: 
 
-        .stats-bar { display: flex; background: #161b22; border: 1px solid #30363d; border-radius: 6px; margin-top: 12px; }
-        .stat-item { flex: 1; text-align: center; padding: 14px; border-right: 1px solid #30363d; }
+        .stats-bar { display: flex; background: 
+        .stat-item { flex: 1; text-align: center; padding: 14px; border-right: 1px solid 
         .stat-item:last-child { border: none; }
-        .stat-item strong { font-size: 20px; color: #e6edf3; display: block; font-family: "Courier New", monospace; }
-        .stat-item small { color: #6e7681; font-size: 11px; letter-spacing: .5px; text-transform: uppercase; font-family: "Courier New", monospace; }
+        .stat-item strong { font-size: 20px; color: 
+        .stat-item small { color: 
 
-        .inventory-section { background: #161b22; border: 1px solid #30363d; border-radius: 6px; margin-top: 12px; padding: 18px 20px; }
-        .inventory-section h3 { font-size: 11px; font-weight: 700; color: #6e7681; letter-spacing: 1.5px; text-transform: uppercase; font-family: "Courier New", monospace; margin: 0 0 14px; }
+        .inventory-section { background: 
+        .inventory-section h3 { font-size: 11px; font-weight: 700; color: 
         .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-        .item-slot { aspect-ratio: 1; background: #1c2128; border: 1px solid #30363d; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: #6e7681; transition: .2s; }
-        .item-slot:hover { border-color: #3fb950; color: #3fb950; }
+        .item-slot { aspect-ratio: 1; background: 
+        .item-slot:hover { border-color: 
 
-        .post-section { background: #161b22; border: 1px solid #30363d; border-radius: 6px; margin-top: 12px; padding: 18px 20px; }
-        .post-section h3 { font-size: 11px; font-weight: 700; color: #6e7681; letter-spacing: 1.5px; text-transform: uppercase; font-family: "Courier New", monospace; margin: 0 0 12px; }
+        .post-section { background: 
+        .post-section h3 { font-size: 11px; font-weight: 700; color: 
         .post-list { margin-top: 0; }
-        .post-item { display: block; text-decoration: none; color: #8b949e; padding: 10px 0; border-bottom: 1px solid #21262d; transition: .15s; }
+        .post-item { display: block; text-decoration: none; color: 
         .post-item:last-child { border-bottom: none; }
-        .post-item:hover { color: #e6edf3; padding-left: 6px; }
-        .post-item h4 { margin: 0 0 4px; font-size: 14px; color: #c9d1d9; font-weight: 600; }
-        .post-item:hover h4 { color: #3fb950; }
-        .post-item .post-meta { font-size: 11px; color: #6e7681; display: flex; justify-content: space-between; font-family: "Courier New", monospace; }
+        .post-item:hover { color: 
+        .post-item h4 { margin: 0 0 4px; font-size: 14px; color: 
+        .post-item:hover h4 { color: 
+        .post-item .post-meta { font-size: 11px; color: 
         @keyframes zoomIn { from{transform:scale(.8);opacity:0} to{transform:scale(1);opacity:1} }
     </style>
 </head>
@@ -163,7 +144,7 @@ if ($my_id > 0 && $my_id != $view_uid) {
             style="cursor: pointer;"
             onclick="showFullImage(this.src)"
             title="查看大图"
-            onerror="this.src='../uploads/avatars/default.png'">
+            onerror=\"this.onerror=null;this.src='../uploads/avatars/default.png'\">
 
         <div class="user-info">
             <h2>
@@ -176,15 +157,16 @@ if ($my_id > 0 && $my_id != $view_uid) {
                 ?>
                 <span class="role-badge" style="background:<?= $lc ?>22;color:<?= $lc ?>;border:1px solid <?= $lc ?>55;">Lv.<?= $lv ?> <?= $ln ?></span>
             </h2>
-            <p><?php echo htmlspecialchars($user['signature'] ?: "// 这个人很懒，什么都没留下"); ?></p>
+            <p><?php echo htmlspecialchars($user['signature'] ?: "
             <div class="user-meta-row">
+                <span class="user-meta-item">MID <span class="mid-copy" id="mid-val" onclick="copyMid()" title="点击复制"><?= htmlspecialchars($user['mid'] ?? '—') ?></span></span>
                 <span class="user-meta-item">生日 <span><?php echo $user['birthday'] ?: "未设置"; ?></span></span>
                 <span class="user-meta-item">积分 <span style="color:#3fb950;"><?php echo $user['points']; ?></span></span>
                 <span class="user-meta-item">性别 <span><?php echo $user['gender'] ?: "未设置"; ?></span></span>
             </div>
 
             <?php
-            // 经验条
+            
             $u_exp    = (int)($user['exp'] ?? 0);
             $u_level  = get_level_by_exp($u_exp);
             $u_color  = get_level_color($u_level);
@@ -238,11 +220,20 @@ if ($my_id > 0 && $my_id != $view_uid) {
                                font-size:12px;padding:5px 12px;border-radius:4px;font-family:inherit;transition:.2s;">
                     <?= $i_blocked_them ? '已拉黑' : '拉黑' ?>
                 </button>
+                <?php if (!$is_mine): ?>
+                <button onclick="openReportModal('user',<?= $user['id'] ?>)"
+                        style="cursor:pointer;border:1px solid #30363d;background:none;color:#6e7681;
+                               font-size:12px;padding:5px 12px;border-radius:4px;font-family:inherit;transition:.2s;"
+                        onmouseover="this.style.borderColor='#f85149';this.style.color='#f85149';"
+                        onmouseout="this.style.borderColor='#30363d';this.style.color='#6e7681';">
+                    举报
+                </button>
+                <?php endif; ?>
                 <?php endif; ?>
             <?php endif; ?>
 
             <?php
-            // 封禁按钮：admin/owner 可见，但不能操作同级或更高级
+            
             $my_role     = $_SESSION['role'] ?? '';
             $target_role = $user['role'] ?? 'user';
             $can_ban = false;
@@ -281,11 +272,11 @@ if ($my_id > 0 && $my_id != $view_uid) {
         </div>
         <div class="stat-item" onclick="openUserList('follows')" style="cursor:pointer;" title="查看关注列表">
             <strong><?php echo $follow_count; ?></strong><br>
-            <small>关注 &#9654;</small>
+            <small>关注 &
         </div>
         <div class="stat-item" onclick="openUserList('fans')" style="cursor:pointer;" title="查看粉丝列表">
             <strong id="fans-count"><?php echo $fans_count; ?></strong><br>
-            <small>粉丝 &#9654;</small>
+            <small>粉丝 &
         </div>
     </div>
 
@@ -333,8 +324,8 @@ if ($my_id > 0 && $my_id != $view_uid) {
                 const lv = getLevelByExp(parseInt(u.exp)||0);
                 const lc = _levelColors[lv], ln = _levelNames[lv];
                 return `<a href="profile.php?id=${u.id}" style="display:flex;align-items:center;gap:12px;padding:9px 18px;text-decoration:none;transition:.15s;" onmouseover="this.style.background='#21262d'" onmouseout="this.style.background='transparent'">
-                    <img src="../uploads/avatars/${u.avatar||'default.png'}" onerror="this.src='../uploads/avatars/default.png'"
-                         style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid #30363d;flex-shrink:0;">
+                    <img src="../uploads/avatars/${u.avatar||'default.png'}" onerror=\"this.onerror=null;this.src='../uploads/avatars/default.png'\"
+                         style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid 
                     <div style="min-width:0;">
                         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                             <span style="color:#e6edf3;font-size:13px;font-weight:600;">${u.username}</span>
@@ -363,7 +354,7 @@ if ($my_id > 0 && $my_id != $view_uid) {
     <!-- Tab 区域 -->
     <?php if ($they_blocked_me): ?>
     <div class="post-section" style="padding:24px;text-align:center;color:#6e7681;font-family:'Courier New',monospace;font-size:13px;">
-        // 该用户已限制你查看其内容
+        
     </div>
     <?php else: ?>
     <div class="post-section" style="padding:0;overflow:hidden;">
@@ -400,7 +391,7 @@ if ($my_id > 0 && $my_id != $view_uid) {
                         </a>
                     <?php endwhile; ?>
                 <?php else: ?>
-                    <div class="empty-panel">// 暂无帖子</div>
+                    <div class="empty-panel">
                 <?php endif; ?>
                 <?php if($is_mine): ?>
                     <a href="publish.php" class="post-item" style="text-align:center;border-style:dashed;color:#3fb950;">
@@ -414,7 +405,7 @@ if ($my_id > 0 && $my_id != $view_uid) {
         <!-- 收藏夹 -->
         <div id="panel-favs" class="prof-panel" style="display:none;padding:18px 20px;">
             <?php if (empty($favs_list)): ?>
-                <div class="empty-panel">// 还没有收藏过帖子</div>
+                <div class="empty-panel">
             <?php else: ?>
                 <?php foreach ($favs_list as $p): ?>
                 <a href="post.php?id=<?php echo $p['id']; ?>" class="post-item">
@@ -431,7 +422,7 @@ if ($my_id > 0 && $my_id != $view_uid) {
         <!-- 点赞夹 -->
         <div id="panel-likes" class="prof-panel" style="display:none;padding:18px 20px;">
             <?php if (empty($likes_list)): ?>
-                <div class="empty-panel">// 还没有点赞过帖子</div>
+                <div class="empty-panel">
             <?php else: ?>
                 <?php foreach ($likes_list as $p): ?>
                 <a href="post.php?id=<?php echo $p['id']; ?>" class="post-item">
@@ -453,13 +444,13 @@ if ($my_id > 0 && $my_id != $view_uid) {
 .prof-tab {
     background: none; border: none; cursor: pointer;
     padding: 12px 20px; font-size: 13px; font-family: inherit;
-    color: #6e7681; border-bottom: 2px solid transparent;
+    color: 
     transition: .15s; font-weight: 600;
 }
-.prof-tab:hover { color: #c9d1d9; }
-.prof-tab.active { color: #3fb950; border-bottom-color: #3fb950; }
+.prof-tab:hover { color: 
+.prof-tab.active { color: 
 .prof-panel { }
-.empty-panel { text-align:center; color:#6e7681; font-size:13px; font-family:"Courier New",monospace; padding:28px 0; }
+.empty-panel { text-align:center; color:
 .empty-panel::before { content:'// '; }
 </style>
 <script>
@@ -493,7 +484,7 @@ function toggleBlock(uid) {
     });
 }
 </script>
-<?php endif; // they_blocked_me ?>
+<?php endif; 
 
 <script>
 function toggleFollow(authorId) {
@@ -527,12 +518,10 @@ function showFullImage(src) {
     overlay.style.display = 'flex';
 }
 
-// 点击遮罩层关闭
 document.getElementById('image-overlay').onclick = function() {
     this.style.display = 'none';
 };
 
-// 按 ESC 键关闭
 document.addEventListener('keydown', function(e) {
     if (e.key === "Escape") {
         document.getElementById('image-overlay').style.display = 'none';
@@ -540,15 +529,35 @@ document.addEventListener('keydown', function(e) {
 });
 </script>
 
+<?php if ($my_id && !$is_mine): include __DIR__ . '/report_modal.php'; endif; ?>
+
 <!-- 封禁弹窗 -->
 <div id="ban-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;align-items:center;justify-content:center;">
-    <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:28px 28px 24px;width:360px;max-width:90vw;font-family:'Courier New',monospace;">
+    <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:28px 28px 24px;width:380px;max-width:92vw;font-family:'Courier New',monospace;">
         <p id="ban-modal-title" style="color:#f85149;font-size:15px;margin:0 0 16px;font-weight:700;"></p>
         <div id="ban-reason-wrap">
-            <label style="font-size:12px;color:#8b949e;display:block;margin-bottom:6px;">封禁原因</label>
+            <label style="font-size:12px;color:#8b949e;display:block;margin-bottom:6px;">封禁原因 <span style="color:#f85149;">*</span></label>
             <input id="ban-reason-input" type="text" placeholder="请输入封禁原因（必填）" maxlength="200"
                    style="width:100%;box-sizing:border-box;background:#0d1117;border:1px solid #30363d;color:#e6edf3;
-                          padding:8px 10px;border-radius:4px;font-size:13px;font-family:inherit;outline:none;">
+                          padding:8px 10px;border-radius:4px;font-size:13px;font-family:inherit;outline:none;margin-bottom:14px;">
+
+            <label style="font-size:12px;color:#8b949e;display:block;margin-bottom:6px;">封禁时长</label>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:#c9d1d9;cursor:pointer;">
+                    <input type="radio" name="ban_type" id="ban-type-timed" value="timed" checked
+                           style="accent-color:#f85149;" onchange="toggleBanDate()"> 到期解封
+                </label>
+                <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:#c9d1d9;cursor:pointer;">
+                    <input type="radio" name="ban_type" id="ban-type-perm" value="perm"
+                           style="accent-color:#f85149;" onchange="toggleBanDate()"> 永久封禁
+                </label>
+            </div>
+            <div id="ban-date-wrap" style="margin-top:10px;">
+                <input id="ban-until-input" type="date"
+                       style="background:#0d1117;border:1px solid #30363d;color:#e6edf3;
+                              padding:7px 10px;border-radius:4px;font-size:13px;font-family:inherit;outline:none;width:100%;box-sizing:border-box;"
+                       min="<?= date('Y-m-d', strtotime('+1 day')) ?>">
+            </div>
         </div>
         <div style="display:flex;gap:10px;margin-top:18px;">
             <button id="ban-confirm-btn"
@@ -576,29 +585,41 @@ function openBanModal(uid, isBanned, curReason) {
         confirmBtn.textContent = '确认解封';
         confirmBtn.style.cssText = 'flex:1;padding:9px;border-radius:4px;border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;background:#3fb950;color:#fff;';
     } else {
-        title.textContent = '封禁该账号？封禁后用户将无法登录。';
+        title.textContent = '封禁该账号？';
         title.style.color = '#f85149';
         reasonWrap.style.display = 'block';
         input.value = '';
+        document.getElementById('ban-type-timed').checked = true;
+        document.getElementById('ban-until-input').value = '';
+        document.getElementById('ban-date-wrap').style.display = 'block';
         confirmBtn.textContent = '确认封禁';
         confirmBtn.style.cssText = 'flex:1;padding:9px;border-radius:4px;border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;background:#f85149;color:#fff;';
     }
     confirmBtn.onclick = submitBan;
     modal.style.display = 'flex';
 }
+function toggleBanDate() {
+    const isPerm = document.getElementById('ban-type-perm').checked;
+    document.getElementById('ban-date-wrap').style.display = isPerm ? 'none' : 'block';
+}
 function closeBanModal() {
     document.getElementById('ban-modal').style.display = 'none';
 }
 function submitBan() {
     const reason = document.getElementById('ban-reason-input').value.trim();
-    if (!_banIsCurrentlyBanned && !reason) {
-        alert('请填写封禁原因');
-        return;
-    }
+    if (!_banIsCurrentlyBanned && !reason) { alert('请填写封禁原因'); return; }
     const fd = new FormData();
     fd.append('user_id', _banTargetId);
     fd.append('action', _banIsCurrentlyBanned ? 'unban' : 'ban');
     fd.append('reason', reason);
+    if (!_banIsCurrentlyBanned) {
+        const isPerm = document.getElementById('ban-type-perm').checked;
+        if (!isPerm) {
+            const until = document.getElementById('ban-until-input').value;
+            if (!until) { alert('请选择截止日期，或选择永久封禁'); return; }
+            fd.append('ban_until', until);
+        }
+    }
     fetch('../actions/ban_user.php', { method: 'POST', body: fd })
         .then(r => r.json())
         .then(d => {
@@ -609,6 +630,18 @@ function submitBan() {
 document.getElementById('ban-modal').addEventListener('click', function(e) {
     if (e.target === this) closeBanModal();
 });
+
+function copyMid() {
+    const el = document.getElementById('mid-val');
+    const mid = el.textContent.trim();
+    if (!mid || mid === '—') return;
+    navigator.clipboard.writeText(mid).then(function() {
+        el.classList.add('mid-copied');
+        const orig = el.textContent;
+        el.textContent = '已复制!';
+        setTimeout(function() { el.textContent = orig; el.classList.remove('mid-copied'); }, 1500);
+    });
+}
 </script>
 </body>
 </html>

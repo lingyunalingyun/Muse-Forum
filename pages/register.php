@@ -1,16 +1,10 @@
 <?php
 /**
- * pages/register.php — 注册页
+ * register.php — 注册页
  *
- * 字段：email / username / password / password_confirm
- * 表单 POST → actions/auth.php（action=register）
- *
- * GET 参数：
- *   status=pending  邮箱待验证状态（EMAIL_VERIFY_REQUIRED=true 时显示）
- *   email           用于显示"已向此邮箱发送验证邮件"
- *   resent=1        重发验证邮件成功提示
- *   cooldown=N      重发冷却剩余秒数提示
- *   error           注册失败错误信息
+ * 功能：展示注册表单，包含邮箱验证状态提示；表单提交到 actions/auth.php
+ * 读写表：无 DB 操作
+ * 权限：无
  */
 session_start();
 $status        = $_GET['status']   ?? '';
@@ -23,6 +17,8 @@ $cooldown      = (int)($_GET['cooldown'] ?? 0);
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
+    <link rel="shortcut icon" href="../assets/logo.svg">
     <title>加入我们 - 注册</title>
     <style>
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
@@ -36,20 +32,20 @@ $cooldown      = (int)($_GET['cooldown'] ?? 0);
             background-size: 40px 40px;
         }
         .reg-card {
-            background:#161b22; border:1px solid #30363d; border-radius:6px;
+            background:
             padding:36px 32px; width:360px;
             animation: fadeUp .4s ease;
             box-shadow: 0 0 40px rgba(0,0,0,.4);
         }
-        .reg-card h2 { color:#e6edf3; margin-bottom:24px; font-size:18px; font-family:"Courier New",monospace; }
-        .reg-card h2 .accent { color:#3fb950; }
-        .reg-card h2 .cursor { color:#3fb950; animation: blink 1s infinite; }
+        .reg-card h2 { color:
+        .reg-card h2 .accent { color:
+        .reg-card h2 .cursor { color:
         .reg-card input { margin-bottom:12px; }
-        .reg-card button { width:100%; background:#3fb950; color:#fff; border:none; padding:11px; border-radius:4px;
+        .reg-card button { width:100%; background:
                            cursor:pointer; font-size:14px; font-weight:700; transition:.2s; font-family:inherit; margin-top:4px; }
-        .reg-card button:hover { background:#2ea043; box-shadow:0 0 16px rgba(63,185,80,.4); }
-        .reg-card p { margin-top:16px; font-size:13px; text-align:center; color:#6e7681; }
-        .reg-card a { color:#3fb950; }
+        .reg-card button:hover { background:
+        .reg-card p { margin-top:16px; font-size:13px; text-align:center; color:
+        .reg-card a { color:
         @media(max-width:480px){
             .reg-wrap { padding: 12px; align-items: flex-start; padding-top: 40px; }
             .reg-card { width: 100%; padding: 28px 20px; }
@@ -63,12 +59,12 @@ $cooldown      = (int)($_GET['cooldown'] ?? 0);
     <?php if ($status === 'pending'): ?>
         <h2>&gt; <span class="accent">CHECK MAIL</span><span class="cursor">_</span></h2>
         <div style="text-align:center;padding:8px 0 20px;">
-            <div style="font-size:40px;margin-bottom:12px;">&#9993;</div>
+            <div style="font-size:40px;margin-bottom:12px;">&
             <?php if ($resent): ?>
-                <p style="color:#3fb950;font-size:13px;margin:0 0 12px;">&#10003; 验证邮件已重新发送</p>
+                <p style="color:#3fb950;font-size:13px;margin:0 0 12px;">&
             <?php endif; ?>
             <?php if ($cooldown > 0): ?>
-                <p style="color:#d29922;font-size:13px;margin:0 0 12px;">&#9888; 请等待 <?= $cooldown ?> 秒后再重新发送</p>
+                <p style="color:#d29922;font-size:13px;margin:0 0 12px;">&
             <?php endif; ?>
             <p style="color:#e6edf3;font-size:14px;line-height:1.7;margin:0 0 10px;">验证邮件已发送至</p>
             <p style="color:#3fb950;font-size:15px;font-weight:700;margin:0 0 16px;"><?= $pending_email ?></p>
@@ -84,7 +80,7 @@ $cooldown      = (int)($_GET['cooldown'] ?? 0);
         <h2>&gt; <span class="accent">REGISTER</span><span class="cursor">_</span></h2>
         <?php if ($error_msg): ?>
             <div style="background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);border-radius:4px;padding:9px 12px;margin-bottom:14px;color:#f85149;font-size:13px;">
-                &#9888; <?= $error_msg ?>
+                &
             </div>
         <?php endif; ?>
         <form action="../actions/auth.php" method="POST">

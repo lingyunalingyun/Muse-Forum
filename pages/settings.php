@@ -1,4 +1,11 @@
 <?php
+/**
+ * settings.php — 个人设置页
+ *
+ * 功能：隐私设置（粉丝/关注公开开关、帖子可见性）、黑名单管理
+ * 读写表：读写 users、user_blocks
+ * 权限：需登录
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/exp_helper.php';
@@ -7,12 +14,15 @@ if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
 }
+if (!empty($_SESSION['is_banned'])) {
+    header("Location: ../index.php");
+    exit;
+}
 
 $my_id = intval($_SESSION['user_id']);
 
 ensure_user_columns($conn);
 
-// 自动建表（兼容旧库没有这两张表的情况）
 $conn->query("CREATE TABLE IF NOT EXISTS post_favs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     post_id INT NOT NULL,
@@ -28,7 +38,6 @@ $conn->query("CREATE TABLE IF NOT EXISTS post_likes (
     UNIQUE KEY uq_like (post_id, user_id)
 )");
 
-// 处理隐私设置 POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'privacy') {
     $sf  = isset($_POST['show_followers']) ? 1 : 0;
     $sfw = isset($_POST['show_following']) ? 1 : 0;
@@ -39,13 +48,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit;
 }
 
-// 获取当前用户数据
 $user_res = $conn->query("SELECT * FROM users WHERE id = $my_id");
 if (!$user_res) { die("数据库错误: " . $conn->error); }
 $user = $user_res->fetch_assoc();
 if (!$user) { header("Location: login.php"); exit; }
 
-// 黑名单列表
 $block_res = $conn->query("SELECT u.id, u.username, u.avatar, u.role
     FROM user_blocks b JOIN users u ON u.id = b.blocked_id
     WHERE b.blocker_id = $my_id ORDER BY b.id DESC");
@@ -62,15 +69,15 @@ $saved = isset($_GET['saved']);
         .settings-wrap { max-width: 760px; margin: 28px auto; padding: 0 16px 60px; }
 
         .settings-section {
-            background: #161b22;
-            border: 1px solid #30363d;
+            background: 
+            border: 1px solid 
             border-radius: 6px;
             margin-bottom: 16px;
             overflow: hidden;
         }
         .section-header {
             padding: 14px 20px;
-            border-bottom: 1px solid #21262d;
+            border-bottom: 1px solid 
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -79,7 +86,7 @@ $saved = isset($_GET['saved']);
             margin: 0;
             font-size: 11px;
             font-weight: 700;
-            color: #6e7681;
+            color: 
             letter-spacing: 1.5px;
             text-transform: uppercase;
             font-family: "Courier New", monospace;
@@ -87,7 +94,7 @@ $saved = isset($_GET['saved']);
         .section-header h2::before { content: '// '; opacity: .6; }
         .section-body { padding: 18px 20px; }
 
-        /* 个人资料入口 */
+        
         .profile-entry {
             display: flex;
             align-items: center;
@@ -97,13 +104,13 @@ $saved = isset($_GET['saved']);
             width: 54px; height: 54px;
             border-radius: 50%;
             object-fit: cover;
-            border: 2px solid #30363d;
+            border: 2px solid 
         }
         .profile-entry .info { flex: 1; }
-        .profile-entry .info strong { display: block; font-size: 15px; color: #e6edf3; margin-bottom: 3px; }
-        .profile-entry .info span { font-size: 12px; color: #6e7681; font-family: "Courier New", monospace; }
+        .profile-entry .info strong { display: block; font-size: 15px; color: 
+        .profile-entry .info span { font-size: 12px; color: 
         .btn-edit-profile {
-            font-size: 12px; color: #3fb950;
+            font-size: 12px; color: 
             text-decoration: none;
             border: 1px solid rgba(63,185,80,.4);
             padding: 6px 16px;
@@ -114,24 +121,24 @@ $saved = isset($_GET['saved']);
         }
         .btn-edit-profile:hover { background: rgba(63,185,80,.1); }
 
-        /* 隐私开关 */
+        
         .privacy-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
             padding: 12px 0;
-            border-bottom: 1px solid #21262d;
+            border-bottom: 1px solid 
         }
         .privacy-row:last-of-type { border-bottom: none; }
-        .privacy-label { font-size: 13px; color: #c9d1d9; }
-        .privacy-label small { display: block; font-size: 11px; color: #6e7681; margin-top: 2px; font-family: "Courier New", monospace; }
+        .privacy-label { font-size: 13px; color: 
+        .privacy-label small { display: block; font-size: 11px; color: 
 
         .toggle-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
         .toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
         .toggle-track {
             position: absolute; inset: 0;
-            background: #21262d;
-            border: 1px solid #30363d;
+            background: 
+            border: 1px solid 
             border-radius: 24px;
             cursor: pointer;
             transition: .2s;
@@ -141,16 +148,16 @@ $saved = isset($_GET['saved']);
             position: absolute;
             width: 18px; height: 18px;
             border-radius: 50%;
-            background: #6e7681;
+            background: 
             top: 2px; left: 2px;
             transition: .2s;
         }
-        .toggle-switch input:checked + .toggle-track { background: rgba(63,185,80,.2); border-color: #3fb950; }
-        .toggle-switch input:checked + .toggle-track::after { background: #3fb950; transform: translateX(20px); }
+        .toggle-switch input:checked + .toggle-track { background: rgba(63,185,80,.2); border-color: 
+        .toggle-switch input:checked + .toggle-track::after { background: 
 
         .btn-save-privacy {
             margin-top: 16px;
-            background: #3fb950; color: #fff;
+            background: 
             border: none; border-radius: 4px;
             padding: 9px 24px;
             font-size: 13px; font-weight: 700;
@@ -158,42 +165,42 @@ $saved = isset($_GET['saved']);
             font-family: inherit;
             transition: .2s;
         }
-        .btn-save-privacy:hover { background: #2ea043; box-shadow: 0 0 12px rgba(63,185,80,.25); }
+        .btn-save-privacy:hover { background: 
 
-        /* 可见性下拉 */
+        
         .vis-select {
-            background: #0d1117; border: 1px solid #30363d; color: #e6edf3;
+            background: 
             padding: 7px 10px; border-radius: 4px; font-size: 13px;
             font-family: inherit; cursor: pointer; outline: none; transition: .2s;
             min-width: 160px;
         }
-        .vis-select:focus { border-color: #3fb950; }
-        .vis-select option { background: #161b22; }
+        .vis-select:focus { border-color: 
+        .vis-select option { background: 
 
-        /* 黑名单 */
+        
         .block-item {
             display: flex; align-items: center; gap: 12px;
-            padding: 10px 0; border-bottom: 1px solid #21262d;
+            padding: 10px 0; border-bottom: 1px solid 
         }
         .block-item:last-child { border-bottom: none; }
-        .block-item img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 1px solid #30363d; flex-shrink: 0; }
-        .block-item .bi-name { flex: 1; font-size: 13px; color: #c9d1d9; font-weight: 600; }
+        .block-item img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 1px solid 
+        .block-item .bi-name { flex: 1; font-size: 13px; color: 
         .btn-unblock {
-            font-size: 12px; color: #f85149;
+            font-size: 12px; color: 
             border: 1px solid rgba(248,81,73,.4);
             background: none; border-radius: 4px;
             padding: 5px 12px; cursor: pointer;
             font-family: inherit; transition: .2s;
         }
         .btn-unblock:hover { background: rgba(248,81,73,.1); }
-        .empty-block { font-size: 13px; color: #6e7681; font-family: "Courier New", monospace; padding: 18px 0; text-align: center; }
+        .empty-block { font-size: 13px; color: 
         .empty-block::before { content: '// '; }
 
-        /* Toast */
+        
         .toast {
             position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
-            background: #1c2128; border: 1px solid #3fb950;
-            color: #3fb950; padding: 10px 24px;
+            background: 
+            color: 
             border-radius: 6px; font-family: "Courier New", monospace;
             font-size: 13px; z-index: 999;
             animation: fadeUp .3s ease both;
@@ -211,7 +218,7 @@ $saved = isset($_GET['saved']);
 <?php include __DIR__ . '/../includes/header.php'; ?>
 
 <?php if ($saved): ?>
-<div class="toast" id="saveToast">// 设置已保存</div>
+<div class="toast" id="saveToast">
 <script>setTimeout(function(){ var t=document.getElementById('saveToast'); if(t) t.style.opacity='0'; }, 2500);</script>
 <?php endif; ?>
 
@@ -225,7 +232,7 @@ $saved = isset($_GET['saved']);
         <div class="section-body">
             <div class="profile-entry">
                 <img src="../uploads/avatars/<?php echo htmlspecialchars($user['avatar'] ?: 'default.png'); ?>"
-                     onerror="this.src='../uploads/avatars/default.png'"
+                     onerror="this.onerror=null;this.src='../uploads/avatars/default.png'"
                      alt="avatar">
                 <div class="info">
                     <strong><?php echo htmlspecialchars($user['username']); ?></strong>
@@ -308,7 +315,7 @@ $saved = isset($_GET['saved']);
                 <?php foreach ($block_list as $bu): ?>
                 <div class="block-item" id="bi-<?= $bu['id'] ?>">
                     <img src="../uploads/avatars/<?= htmlspecialchars($bu['avatar'] ?: 'default.png') ?>"
-                         onerror="this.src='../uploads/avatars/default.png'">
+                         onerror="this.onerror=null;this.src='../uploads/avatars/default.png'">
                     <span class="bi-name"><?= htmlspecialchars($bu['username']) ?></span>
                     <button class="btn-unblock" onclick="unblock(<?= $bu['id'] ?>, this)">解除拉黑</button>
                 </div>

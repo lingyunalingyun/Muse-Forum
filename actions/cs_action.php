@@ -1,4 +1,12 @@
 <?php
+/**
+ * cs_action.php — 客服聊天 action 处理端点
+ *
+ * 功能：处理客服相关操作，包括发送消息、关闭工单等
+ * POST 参数：action, chat_id, content 等（视具体操作而定）
+ * 读写表：cs_chats, messages
+ * 权限：需登录
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/exp_helper.php';

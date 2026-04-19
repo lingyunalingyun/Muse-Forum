@@ -1,18 +1,22 @@
 <?php
 /**
- * actions/follow_toggle.php — 关注 / 取消关注（toggle，AJAX JSON）
+ * follow_toggle.php — 关注或取消关注用户，返回 JSON
  *
- * POST 参数：following_id（目标用户 ID）
- * 返回：{"status": "followed"|"unfollowed", "new_count": 最新粉丝数}
- *
- * 关注时向目标用户发送 follow 类型通知
+ * 功能：对目标用户执行关注 toggle，关注时发送通知
+ * POST 参数：target_id
  * 读写表：follows, notifications
+ * 权限：需登录且未被封禁
  */
 session_start();
 require_once __DIR__ . '/../config.php';
 
 $my_id = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : 0;
 $author_id = intval($_POST['following_id'] ?? 0);
+
+if (!empty($_SESSION['is_banned'])) {
+    echo json_encode(['status' => 'error', 'msg' => '账号已被限制']);
+    exit;
+}
 
 if ($my_id && $author_id && $my_id != $author_id) {
     $check = $conn->query("SELECT id FROM follows WHERE follower_id = $my_id AND followed_id = $author_id");

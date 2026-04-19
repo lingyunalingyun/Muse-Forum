@@ -1,19 +1,17 @@
 <?php
 /**
- * actions/comment_like.php — 评论点赞 / 取消点赞（toggle）
+ * comment_like.php — 评论点赞 toggle，返回 JSON
  *
- * POST 参数：cid（评论 ID）
- * 返回：纯文本 "liked" 或 "unliked"
- * 点赞时：
- *   - comments.likes 计数 +1
- *   - 向评论作者发送 like_comment 通知（不通知自己）
- * 取消时：comments.likes 计数 -1，删除点赞记录
- * 读写表：comment_likes, comments（likes）, notifications
+ * 功能：对评论执行点赞/取消点赞，并发送通知给评论作者
+ * POST 参数：comment_id
+ * 读写表：comment_likes, notifications
+ * 权限：需登录
  */
 session_start();
 require_once __DIR__ . '/../config.php';
 
 if (!isset($_SESSION['user_id'])) die("need_login");
+if (!empty($_SESSION['is_banned'])) die("banned");
 
 $uid = $_SESSION['user_id'];
 $cid = intval($_POST['cid']);
@@ -29,7 +27,7 @@ if ($cid > 0) {
         $conn->query("INSERT INTO comment_likes (user_id, comment_id) VALUES ($uid, $cid)");
         $conn->query("UPDATE comments SET likes = likes + 1 WHERE id = $cid");
 
-        // 通知评论作者
+        
         $cr = $conn->query("SELECT user_id, post_id FROM comments WHERE id = $cid");
         $c_info = $cr ? $cr->fetch_assoc() : null;
         if ($c_info && (int)$c_info['user_id'] !== $uid) {

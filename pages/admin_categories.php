@@ -1,20 +1,10 @@
 <?php
 /**
- * pages/admin_categories.php — 分区管理（管理员）
+ * admin_categories.php — 分区管理后台
  *
+ * 功能：创建/编辑/删除分区，封面图必填
+ * 读写表：读写 categories
  * 权限：admin / owner
- *
- * 功能：
- *   - 列出所有分区（含帖子数统计）
- *   - 创建 / 编辑分区（名称、描述、颜色、图标、封面图必填）
- *   - 删除分区
- *   - 封面图上传存放：uploads/categories/
- *
- * 自动补列：
- *   posts.category_id（INT DEFAULT NULL）
- *   categories.cover_image（VARCHAR(255) DEFAULT NULL）
- *
- * 读写表：categories, posts（仅统计 category_id）
  */
 session_start();
 require_once __DIR__ . '/../config.php';
@@ -23,7 +13,6 @@ if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
     header("Location: ../index.php"); exit;
 }
 
-// ── 自动建表 + 补列 + 建目录 ──
 $conn->query("CREATE TABLE IF NOT EXISTS categories (
     id          INT AUTO_INCREMENT PRIMARY KEY,
     name        VARCHAR(50)  NOT NULL,
@@ -35,13 +24,11 @@ $conn->query("CREATE TABLE IF NOT EXISTS categories (
     created_at  DATETIME     DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
-// 补 posts.category_id（兼容 MySQL 5.x）
 $col2 = $conn->query("SHOW COLUMNS FROM posts LIKE 'category_id'");
 if ($col2 && $col2->num_rows === 0) {
     $conn->query("ALTER TABLE posts ADD COLUMN category_id INT NULL DEFAULT NULL");
 }
 
-// 补 cover_image 列（兼容旧表）
 $col_check = $conn->query("SHOW COLUMNS FROM categories LIKE 'cover_image'");
 if ($col_check && $col_check->num_rows === 0) {
     $conn->query("ALTER TABLE categories ADD COLUMN cover_image VARCHAR(255) DEFAULT '' AFTER icon");
@@ -50,7 +37,6 @@ if ($col_check && $col_check->num_rows === 0) {
 $upload_dir = __DIR__ . '/../uploads/categories/';
 if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
 
-// ── 图片上传处理 ──
 function save_cover_image($file, $conn) {
     if ($file['error'] !== UPLOAD_ERR_OK) return null;
     $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
@@ -67,10 +53,9 @@ function save_cover_image($file, $conn) {
     return null;
 }
 
-// ── 删除 ──
 if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     $del_id = (int)$_GET['delete'];
-    // 删除封面图文件
+    
     $row = $conn->query("SELECT cover_image FROM categories WHERE id=$del_id")->fetch_assoc();
     if (!empty($row['cover_image'])) {
         $path = __DIR__ . '/../' . $row['cover_image'];
@@ -81,7 +66,6 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     header("Location: admin_categories.php?msg=delete_ok"); exit;
 }
 
-// ── 编辑保存 ──
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_id'])) {
     $edit_id = (int)$_POST['edit_id'];
     $name    = $conn->real_escape_string(trim($_POST['name'] ?? ''));
@@ -95,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_id'])) {
         if (!empty($_FILES['cover_image']['name'])) {
             $new_cover = save_cover_image($_FILES['cover_image'], $conn);
             if ($new_cover) {
-                // 删旧图
+                
                 $old = $conn->query("SELECT cover_image FROM categories WHERE id=$edit_id")->fetch_assoc();
                 if (!empty($old['cover_image'])) {
                     $old_path = __DIR__ . '/../' . $old['cover_image'];
@@ -110,7 +94,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_id'])) {
     header("Location: admin_categories.php?msg=edit_ok"); exit;
 }
 
-// ── 新建 ──
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'create') {
     $name  = $conn->real_escape_string(trim($_POST['name'] ?? ''));
     $desc  = $conn->real_escape_string(trim($_POST['description'] ?? ''));
@@ -159,44 +142,44 @@ if ($cr) while ($c = $cr->fetch_assoc()) $cats[] = $c;
     <title>分区管理 - 缪斯 MUSE</title>
     <style>
         .page-wrap { max-width: 820px; margin: 28px auto; padding: 0 16px; }
-        .page-title { font-size: 18px; font-weight: 700; color: #e6edf3; font-family: "Courier New", monospace; margin-bottom: 6px; }
-        .page-title span { color: #3fb950; }
-        .back-link { display: inline-block; margin-bottom: 20px; color: #6e7681; text-decoration: none; font-size: 12px; font-family: "Courier New", monospace; }
-        .back-link:hover { color: #e6edf3; }
+        .page-title { font-size: 18px; font-weight: 700; color: 
+        .page-title span { color: 
+        .back-link { display: inline-block; margin-bottom: 20px; color: 
+        .back-link:hover { color: 
 
         .msg-bar { padding: 10px 16px; border-radius: 4px; font-size: 13px; margin-bottom: 16px; font-family: "Courier New", monospace; }
-        .msg-ok  { background: rgba(63,185,80,.12); border: 1px solid rgba(63,185,80,.3); color: #3fb950; }
-        .msg-err { background: rgba(248,81,73,.1);  border: 1px solid rgba(248,81,73,.3); color: #f85149; }
+        .msg-ok  { background: rgba(63,185,80,.12); border: 1px solid rgba(63,185,80,.3); color: 
+        .msg-err { background: rgba(248,81,73,.1);  border: 1px solid rgba(248,81,73,.3); color: 
 
-        .card { background: #161b22; border: 1px solid #30363d; border-radius: 6px; overflow: hidden; margin-bottom: 18px; }
-        .card-head { padding: 12px 18px; border-bottom: 1px solid #30363d; font-size: 12px; font-weight: 700; color: #6e7681; letter-spacing: 1.2px; text-transform: uppercase; font-family: "Courier New", monospace; }
+        .card { background: 
+        .card-head { padding: 12px 18px; border-bottom: 1px solid 
         .card-body { padding: 20px; }
 
         .form-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
         .form-group { display: flex; flex-direction: column; gap: 5px; }
-        .form-group label { font-size: 12px; color: #6e7681; font-family: "Courier New", monospace; }
+        .form-group label { font-size: 12px; color: 
         .form-group input[type=text],
         .form-group input[type=number],
         .form-group textarea {
-            background: #0d1117; border: 1px solid #30363d; border-radius: 4px;
-            color: #e6edf3; padding: 7px 10px; font-size: 13px; font-family: inherit;
+            background: 
+            color: 
             outline: none; transition: border-color .15s; resize: none;
         }
         .form-group input:focus,
-        .form-group textarea:focus { border-color: #3fb950; }
+        .form-group textarea:focus { border-color: 
         .form-group input[type=color] {
             width: 46px; height: 34px; padding: 2px 4px;
-            background: #0d1117; border: 1px solid #30363d; border-radius: 4px; cursor: pointer;
+            background: 
         }
         .form-group.grow { flex: 1; min-width: 150px; }
         .form-group.sm   { width: 80px; }
         .form-group.xs   { width: 64px; }
 
-        /* 封面上传区 */
+        
         .cover-wrap { display: flex; flex-direction: column; gap: 8px; width: 240px; flex-shrink: 0; }
         .cover-preview-box {
             width: 240px; height: 150px; border-radius: 6px;
-            background: #0d1117; border: 1px solid #30363d;
+            background: 
             overflow: hidden; position: relative;
             display: flex; align-items: center; justify-content: center;
         }
@@ -205,55 +188,55 @@ if ($cr) while ($c = $cr->fetch_assoc()) $cats[] = $c;
         }
         .cover-empty {
             display: flex; flex-direction: column; align-items: center; gap: 5px;
-            color: #484f58; font-size: 12px; font-family: "Courier New", monospace; text-align: center;
+            color: 
         }
         .cover-empty span:first-child { font-size: 28px; }
         .cover-btn {
             display: flex; align-items: center; justify-content: center; gap: 6px;
-            background: #1c2128; border: 1px solid #30363d; border-radius: 4px;
-            color: #8b949e; font-size: 13px; padding: 7px 14px; cursor: pointer;
+            background: 
+            color: 
             transition: .15s; font-family: inherit; width: 100%;
         }
-        .cover-btn:hover { border-color: #3fb950; color: #3fb950; }
+        .cover-btn:hover { border-color: 
         .cover-btn input[type=file] { display: none; }
-        .cover-required { font-size: 11px; color: #f85149; font-family: "Courier New", monospace; }
+        .cover-required { font-size: 11px; color: 
 
         .btn { padding: 7px 18px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; border: none; font-family: inherit; transition: .15s; }
-        .btn-green { background: #3fb950; color: #fff; }
-        .btn-green:hover { background: #2ea043; }
-        .btn-outline { background: transparent; border: 1px solid #30363d; color: #8b949e; text-decoration: none; display: inline-block; }
-        .btn-outline:hover { border-color: #8b949e; color: #e6edf3; }
-        .btn-danger { background: rgba(248,81,73,.12); color: #f85149; border: 1px solid rgba(248,81,73,.3); text-decoration: none; display: inline-block; }
+        .btn-green { background: 
+        .btn-green:hover { background: 
+        .btn-outline { background: transparent; border: 1px solid 
+        .btn-outline:hover { border-color: 
+        .btn-danger { background: rgba(248,81,73,.12); color: 
         .btn-danger:hover { background: rgba(248,81,73,.22); }
         .btn-sm { padding: 4px 12px; font-size: 12px; }
 
-        /* 分区卡片列表 */
+        
         .cat-list { display: flex; flex-direction: column; gap: 0; }
         .cat-row {
             display: flex; align-items: center; gap: 14px;
-            padding: 14px 18px; border-bottom: 1px solid #21262d;
+            padding: 14px 18px; border-bottom: 1px solid 
             transition: background .15s;
         }
         .cat-row:last-child { border-bottom: none; }
-        .cat-row:hover { background: #1c2128; }
+        .cat-row:hover { background: 
         .cat-thumb {
             width: 80px; height: 50px; border-radius: 4px;
-            object-fit: cover; flex-shrink: 0; border: 1px solid #30363d;
-            background: #0d1117;
+            object-fit: cover; flex-shrink: 0; border: 1px solid 
+            background: 
         }
         .cat-thumb-placeholder {
             width: 80px; height: 50px; border-radius: 4px; flex-shrink: 0;
-            background: #0d1117; border: 1px solid #30363d;
+            background: 
             display: flex; align-items: center; justify-content: center;
-            font-size: 18px; color: #484f58;
+            font-size: 18px; color: 
         }
         .cat-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
         .cat-info { flex: 1; min-width: 0; }
-        .cat-name { font-size: 14px; font-weight: 700; color: #e6edf3; margin-bottom: 2px; }
-        .cat-meta { font-size: 12px; color: #6e7681; font-family: "Courier New", monospace; }
+        .cat-name { font-size: 14px; font-weight: 700; color: 
+        .cat-meta { font-size: 12px; color: 
         .cat-actions { display: flex; gap: 6px; flex-shrink: 0; }
 
-        .empty-tip { padding: 32px; text-align: center; color: #6e7681; font-family: "Courier New", monospace; font-size: 13px; }
+        .empty-tip { padding: 32px; text-align: center; color: 
     </style>
 </head>
 <body>
@@ -262,7 +245,7 @@ if ($cr) while ($c = $cr->fetch_assoc()) $cats[] = $c;
 
 <div class="page-wrap">
     <a href="../categories.php" class="back-link">← 分区页面</a>
-    <div class="page-title">// <span>分区管理</span></div>
+    <div class="page-title">
 
     <?php if ($msg === 'create_ok'): ?>
     <div class="msg-bar msg-ok">✓ 分区创建成功</div>
@@ -361,7 +344,7 @@ if ($cr) while ($c = $cr->fetch_assoc()) $cats[] = $c;
     <div class="card">
         <div class="card-head">现有分区（<?= count($cats) ?>）</div>
         <?php if (empty($cats)): ?>
-        <div class="empty-tip">// 还没有分区</div>
+        <div class="empty-tip">
         <?php else: ?>
         <div class="cat-list">
         <?php foreach ($cats as $c): ?>

@@ -1,10 +1,11 @@
 <?php
 /**
- * topic.php — 话题页（#标签聚合）
+ * topic.php — 话题（标签）聚合页
  *
- * GET 参数：tag（话题名称，如 "原神"）
- * 通过 post_topics 关联表展示使用了该 #标签 的所有已发布帖子
- * 读表：topics, post_topics, posts, users, post_likes, comments
+ * 功能：根据 ?tag= 参数展示指定话题标签下的所有关联帖子；
+ *       话题不存在或参数为空时重定向至首页。
+ * 读写表：topics、posts、post_topics
+ * 权限：无
  */
 session_start();
 require_once __DIR__ . '/config.php';
@@ -17,11 +18,9 @@ if ($tag === '') {
 
 $safe_tag = $conn->real_escape_string($tag);
 
-// 话题信息
 $topic_res = $conn->query("SELECT id, name, use_count FROM topics WHERE name='$safe_tag'");
 $topic = ($topic_res && $topic_res->num_rows > 0) ? $topic_res->fetch_assoc() : null;
 
-// 该话题下的帖子
 $posts = [];
 if ($topic) {
     $tid = (int)$topic['id'];
@@ -43,13 +42,13 @@ if ($topic) {
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>#<?= htmlspecialchars($tag) ?> - 话题 - 缪斯 MUSE</title>
+    <title>
     <style>
         * { box-sizing: border-box; }
 
         .topic-hero {
-            background: #0d1117;
-            border-bottom: 1px solid #30363d;
+            background: 
+            border-bottom: 1px solid 
             padding: 40px 0 32px;
             text-align: center;
             position: relative;
@@ -71,9 +70,9 @@ if ($topic) {
             background: radial-gradient(ellipse, rgba(63,185,80,.08) 0%, transparent 70%);
             pointer-events:none;
         }
-        .topic-hero h1 { font-size: 26px; margin: 0 0 6px; color: #e6edf3; font-family: "Courier New", monospace; position: relative; z-index: 1; }
-        .topic-hero .tag-symbol { font-size: 32px; color: #3fb950; line-height: 1; margin-bottom: 4px; position: relative; z-index: 1; text-shadow: 0 0 20px rgba(63,185,80,.5); }
-        .topic-hero .use-count { font-size: 12px; color: #6e7681; margin-top: 6px; font-family: "Courier New", monospace; letter-spacing: .5px; position: relative; z-index: 1; }
+        .topic-hero h1 { font-size: 26px; margin: 0 0 6px; color: 
+        .topic-hero .tag-symbol { font-size: 32px; color: 
+        .topic-hero .use-count { font-size: 12px; color: 
 
         .page-layout { max-width: 860px; margin: 24px auto; padding: 0 15px; }
         @media(max-width:600px){
@@ -82,44 +81,44 @@ if ($topic) {
         }
 
         .section-title {
-            font-size: 11px; font-weight: 700; color: #3fb950; letter-spacing: 1.5px;
+            font-size: 11px; font-weight: 700; color: 
             text-transform: uppercase; font-family: "Courier New", monospace;
             margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
         }
         .section-title::before { content: '//'; opacity: .6; }
-        .section-title::after { content: ''; flex: 1; height: 1px; background: #21262d; }
+        .section-title::after { content: ''; flex: 1; height: 1px; background: 
 
         .post-card {
-            background: #161b22;
+            background: 
             margin-bottom: 10px;
             padding: 18px 20px;
             border-radius: 6px;
-            border: 1px solid #30363d;
+            border: 1px solid 
             cursor: pointer;
             transition: border-color .2s, box-shadow .2s;
             text-decoration: none;
             display: block;
             color: inherit;
         }
-        .post-card:hover { border-color: #3fb950; box-shadow: 0 0 0 1px #3fb950; }
-        .post-card.is-recommend { border-left: 3px solid #e3b341; }
-        .post-card.is-notice    { border-left: 3px solid #f0883e; }
+        .post-card:hover { border-color: 
+        .post-card.is-recommend { border-left: 3px solid 
+        .post-card.is-notice    { border-left: 3px solid 
 
         .card-badges { display: flex; gap: 6px; margin-bottom: 8px; }
         .card-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 3px; font-family: "Courier New", monospace; letter-spacing: .5px; }
-        .card-badge.recommend { background: rgba(227,179,65,.15); color: #e3b341; border: 1px solid rgba(227,179,65,.3); }
-        .card-badge.notice    { background: rgba(240,136,62,.15); color: #f0883e; border: 1px solid rgba(240,136,62,.3); }
+        .card-badge.recommend { background: rgba(227,179,65,.15); color: 
+        .card-badge.notice    { background: rgba(240,136,62,.15); color: 
 
-        .post-title   { font-size: 15px; font-weight: 600; color: #c9d1d9; margin-bottom: 8px; }
-        .post-excerpt { color: #8b949e; font-size: 13px; line-height: 1.6; margin-bottom: 10px;
+        .post-title   { font-size: 15px; font-weight: 600; color: 
+        .post-excerpt { color: 
                         overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-        .post-meta    { font-size: 11px; color: #6e7681; display: flex; justify-content: space-between; align-items: center; font-family: "Courier New", monospace; }
-        .author-info  { color: #3fb950; font-weight: 600; }
+        .post-meta    { font-size: 11px; color: 
+        .author-info  { color: 
 
-        .empty-tip { text-align: center; padding: 60px 0; color: #6e7681; font-size: 14px; }
-        .empty-tip a { color: #3fb950; text-decoration: none; }
-        .back-link { display: inline-block; margin-bottom: 16px; color: #6e7681; text-decoration: none; font-size: 12px; font-family: "Courier New", monospace; transition: color .2s; }
-        .back-link:hover { color: #e6edf3; }
+        .empty-tip { text-align: center; padding: 60px 0; color: 
+        .empty-tip a { color: 
+        .back-link { display: inline-block; margin-bottom: 16px; color: 
+        .back-link:hover { color: 
     </style>
 </head>
 <body>
@@ -127,7 +126,7 @@ if ($topic) {
 <?php include __DIR__ . '/includes/header.php'; ?>
 
 <div class="topic-hero">
-    <div class="tag-symbol">#</div>
+    <div class="tag-symbol">
     <h1><?= htmlspecialchars($tag) ?></h1>
     <?php if ($topic): ?>
     <div class="use-count"><?= (int)$topic['use_count'] ?> 篇相关帖子</div>
@@ -140,10 +139,10 @@ if ($topic) {
     <?php if (empty($posts)): ?>
     <div class="empty-tip">
         <p>该话题下还没有帖子</p>
-        <a href="pages/publish.php">发布第一篇 #<?= htmlspecialchars($tag) ?> 帖子</a>
+        <a href="pages/publish.php">发布第一篇 
     </div>
     <?php else: ?>
-    <div class="section-title"># <?= htmlspecialchars($tag) ?> · <?= count($posts) ?> 篇帖子</div>
+    <div class="section-title">
     <?php foreach ($posts as $p):
         $excerpt = mb_substr(strip_tags($p['content']), 0, 100);
     ?>

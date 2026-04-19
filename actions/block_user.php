@@ -1,14 +1,11 @@
 <?php
 /**
- * actions/block_user.php — 拉黑 / 取消拉黑（AJAX JSON，toggle）
+ * block_user.php — 拉黑或取消拉黑用户
  *
- * POST 参数：target_id（目标用户 ID）
- *
- * 逻辑：
- *   - 已拉黑 → 删除记录，返回 {"status": "unblocked"}
- *   - 未拉黑 → 插入记录 + 自动解除双向关注，返回 {"status": "blocked"}
- *
+ * 功能：对目标用户执行拉黑 toggle，拉黑时同步解除双向关注关系
+ * POST 参数：target_id
  * 读写表：user_blocks, follows
+ * 权限：需登录
  */
 session_start();
 require_once __DIR__ . '/../config.php';
@@ -28,7 +25,7 @@ if ($check && $check->num_rows > 0) {
     echo json_encode(['status' => 'unblocked']);
 } else {
     $conn->query("INSERT INTO user_blocks (blocker_id, blocked_id) VALUES ($my_id, $target_id)");
-    // 拉黑时自动解除双向关注
+    
     $conn->query("DELETE FROM follows WHERE (follower_id=$my_id AND followed_id=$target_id) OR (follower_id=$target_id AND followed_id=$my_id)");
     echo json_encode(['status' => 'blocked']);
 }

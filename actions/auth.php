@@ -1,17 +1,21 @@
 <?php
-// auth.php
+/**
+ * auth.php — 认证处理（注册/登录/忘记密码/重置密码/重发验证邮件）
+ *
+ * 功能：根据 POST action 参数路由到对应认证逻辑
+ * POST 参数：action(register|login|forgot|reset|resend_verify), email, username, password, token 等
+ * 读写表：users
+ * 权限：无需登录（登出状态调用）
+ */
+
 session_start();
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/exp_helper.php';
 
-// 自动补全新字段（仅首次运行时执行 ALTER TABLE）
 ensure_user_columns($conn);
 
 $action = $_POST['action'] ?? '';
 
-// ─────────────────────────────────────────────
-// 注册逻辑
-// ─────────────────────────────────────────────
 if ($action === 'register') {
     $email            = trim($_POST['email']            ?? '');
     $username_raw     = trim($_POST['username']         ?? '');
@@ -46,7 +50,7 @@ if ($action === 'register') {
         exit;
     }
 
-    // 生成唯一数字 ID
+    
     $new_userid = 0;
     do {
         $new_userid = mt_rand(100000, 999999);
@@ -81,9 +85,6 @@ if ($action === 'register') {
     }
 }
 
-// ─────────────────────────────────────────────
-// 登录逻辑
-// ─────────────────────────────────────────────
 if ($action === 'login') {
     $identity = $conn->real_escape_string($_POST['identity'] ?? '');
     $password = $_POST['password'] ?? '';
@@ -98,20 +99,17 @@ if ($action === 'login') {
     if ($user = $result->fetch_assoc()) {
         if (password_verify($password, $user['password'])) {
 
-            // 账号封禁检查
+            
             if (!empty($user['is_banned'])) {
-                $reason = htmlspecialchars($user['ban_reason'] ?: '违反社区规范');
-                echo "<!DOCTYPE html><html lang='zh-CN'><head><meta charset='UTF-8'><title>账号已封禁</title></head>
-                <body style='font-family:monospace;background:#0d1117;color:#e6edf3;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;'>
-                <div style='text-align:center;max-width:420px;padding:32px;background:#161b22;border:1px solid #30363d;border-radius:6px;'>
-                <p style='color:#f85149;font-size:18px;margin:0 0 12px;'>&#128683; 账号已封禁</p>
-                <p style='color:#8b949e;font-size:13px;line-height:1.7;'>封禁原因：<b style='color:#e6edf3;'>{$reason}</b></p>
-                <p style='color:#6e7681;font-size:12px;margin-top:16px;'>如有异议，请联系管理员。</p>
-                </div></body></html>";
-                exit;
+                $ban_until = $user['ban_until'] ?? null;
+                if ($ban_until !== null && strtotime($ban_until) <= time()) {
+                    
+                    $conn->query("UPDATE users SET is_banned=0, ban_reason=NULL, ban_until=NULL, banned_by=NULL WHERE id=" . intval($user['id']));
+                    $user['is_banned'] = 0;
+                }
             }
 
-            // 邮箱未验证
+            
             if (EMAIL_VERIFY_REQUIRED && isset($user['email_verified']) && (int)$user['email_verified'] === 0) {
                 $safe_email = htmlspecialchars($user['email']);
                 echo "<!DOCTYPE html><html lang='zh-CN'><head><meta charset='UTF-8'><title>需要验证邮箱</title></head><body style='font-family:monospace;background:#0d1117;color:#e6edf3;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;'>";
@@ -133,7 +131,7 @@ if ($action === 'login') {
             $_SESSION['mid']           = $user['mid'] ?? '';
             $_SESSION['is_cs']         = !empty($user['is_cs']) ? 1 : 0;
 
-            // ── 每日登录经验奖励 ──
+            
             $uid_db = (int)$user['id'];
             $today  = date('Y-m-d');
             $last   = $user['last_login_date'] ?? null;
@@ -142,7 +140,7 @@ if ($action === 'login') {
                 $yesterday  = date('Y-m-d', strtotime('-1 day'));
                 $cur_streak = (int)($user['login_streak'] ?? 0);
                 $new_streak = ($last === $yesterday) ? $cur_streak + 1 : 1;
-                $exp_gain   = calc_login_exp($new_streak);   // min(streak*10, 100)
+                $exp_gain   = calc_login_exp($new_streak);   
 
                 $conn->query("UPDATE users
                               SET last_login_date='$today', login_streak=$new_streak
@@ -166,9 +164,6 @@ if ($action === 'login') {
     }
 }
 
-// ─────────────────────────────────────────────
-// 重新发送验证邮件
-// ─────────────────────────────────────────────
 if ($action === 'resend_verify') {
     $email = $conn->real_escape_string(trim($_POST['email'] ?? ''));
     if (empty($email)) {
@@ -188,7 +183,7 @@ if ($action === 'resend_verify') {
         exit;
     }
 
-    // 冷却检查：60 秒内不能重发
+    
     if (!empty($u['verify_resend_at'])) {
         $last_send = strtotime($u['verify_resend_at']);
         if (time() - $last_send < 60) {
@@ -207,9 +202,6 @@ if ($action === 'resend_verify') {
     exit;
 }
 
-// ─────────────────────────────────────────────
-// 忘记密码
-// ─────────────────────────────────────────────
 if ($action === 'forgot_password') {
     $email = trim($_POST['email'] ?? '');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -220,7 +212,7 @@ if ($action === 'forgot_password') {
     $safe_email = $conn->real_escape_string($email);
     $r = $conn->query("SELECT id, username FROM users WHERE email='$safe_email' AND email_verified=1");
 
-    // 无论账号是否存在都显示发送成功（防止枚举）
+    
     if ($r && $r->num_rows > 0) {
         $u           = $r->fetch_assoc();
         $reset_token = bin2hex(random_bytes(32));
@@ -233,9 +225,6 @@ if ($action === 'forgot_password') {
     exit;
 }
 
-// ─────────────────────────────────────────────
-// 重置密码
-// ─────────────────────────────────────────────
 if ($action === 'reset_password') {
     $token            = trim($_POST['token']            ?? '');
     $password_raw     = $_POST['password']              ?? '';

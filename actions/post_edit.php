@@ -1,19 +1,11 @@
 <?php
 /**
- * actions/post_edit.php — 编辑帖子内容（AJAX JSON）
+ * post_edit.php — 编辑帖子，10分钟内冷却限制
  *
- * POST 参数：pid（帖子 ID）, title, content
- * 权限：仅帖子作者本人
- *
- * 冷却规则：10 分钟内不可重复编辑（由 posts.edited_at 记录上次编辑时间）
- * 自动补列：posts.edited_at（首次执行时 ALTER TABLE，已存在则静默忽略）
- *
- * 返回：
- *   {"status": "ok", "edited_at": "..."}
- *   {"status": "cooldown", "msg": "还需等待 N 分钟"}
- *   {"status": "error", "msg": "..."}
- *
- * 读写表：posts（title, content, edited_at）
+ * 功能：修改已发布帖子的内容，发布后10分钟内可编辑
+ * POST 参数：post_id, title, content
+ * 读写表：posts
+ * 权限：帖子本人，且在发布后10分钟内
  */
 ob_start();
 error_reporting(0);
@@ -37,10 +29,8 @@ if (!$pid || empty($title) || empty(trim(strip_tags($content)))) {
     exit;
 }
 
-// 确保 edited_at 列存在
 $conn->query("ALTER TABLE posts ADD COLUMN edited_at DATETIME DEFAULT NULL");
 
-// 检查权限
 $res  = $conn->query("SELECT user_id, edited_at FROM posts WHERE id = $pid");
 $post = $res ? $res->fetch_assoc() : null;
 
@@ -53,7 +43,6 @@ if ((int)$post['user_id'] !== $my_id) {
     exit;
 }
 
-// 冷却检查（10 分钟）
 if (!empty($post['edited_at'])) {
     $remaining = 600 - (time() - strtotime($post['edited_at']));
     if ($remaining > 0) {

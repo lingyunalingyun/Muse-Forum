@@ -1,17 +1,16 @@
 <?php
 /**
- * actions/user_handler.php — 旧版用户接口（保留兼容，实际已废弃）
+ * user_handler.php — 旧版用户处理接口（已废弃，勿调用）
  *
- * ⚠️  此文件为早期遗留代码，功能已被 actions/auth.php 等取代，不应在生产环境调用。
- *     - register 分支直接拼接 SQL 且无安全处理（无密码哈希、无去重、无验证）
- *     - get_profile 分支查询了 user_inventory 表（当前版本未使用）
- *
- * 如无特殊需求请勿修改或依赖此文件。
+ * 功能：原用于处理用户注册等操作，现已由 auth.php 替代
+ * POST 参数：无效
+ * 读写表：无实际操作
+ * 权限：无
+ * @deprecated 此文件已废弃，请勿调用
  */
 session_start();
 require_once __DIR__ . '/../config.php';
 
-// 注册示例
 if (isset($_POST['action']) && $_POST['action'] == 'register') {
     $email = $conn->real_escape_string($_POST['email'] ?? '');
     $pass = password_hash($_POST['password'] ?? '', PASSWORD_DEFAULT);
@@ -23,7 +22,6 @@ if (isset($_POST['action']) && $_POST['action'] == 'register') {
     }
 }
 
-// 获取个人中心数据（包括背包）
 if (isset($_GET['action']) && $_GET['action'] == 'get_profile') {
     if (!isset($_SESSION['user_id'])) {
         echo json_encode(['error' => '未登录']);

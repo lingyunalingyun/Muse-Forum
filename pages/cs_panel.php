@@ -1,4 +1,11 @@
 <?php
+/**
+ * cs_panel.php — 客服工作台（客服/管理端）
+ *
+ * 功能：管理多用户工单，查看并回复用户发起的客服会话
+ * 读写表：读写 messages（或专属客服表）
+ * 权限：is_cs=1 或 admin / owner
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 
@@ -88,65 +95,65 @@ $type_colors = [
         .panel-wrap { max-width:1100px; margin:28px auto; padding:0 16px 60px; display:grid; grid-template-columns:340px 1fr; gap:16px; align-items:start; }
         .panel-left { display:flex; flex-direction:column; gap:12px; }
 
-        .cs-section { background:#161b22; border:1px solid #30363d; border-radius:6px; overflow:hidden; animation:fadeUp .3s ease; }
-        .cs-sec-head { padding:12px 16px; border-bottom:1px solid #21262d; display:flex; align-items:center; justify-content:space-between; }
-        .cs-sec-head h3 { margin:0; font-size:11px; font-weight:700; color:#6e7681; letter-spacing:1.5px; text-transform:uppercase; font-family:"Courier New",monospace; }
+        .cs-section { background:
+        .cs-sec-head { padding:12px 16px; border-bottom:1px solid 
+        .cs-sec-head h3 { margin:0; font-size:11px; font-weight:700; color:
         .cs-sec-head h3::before { content:'// '; opacity:.6; }
-        .cs-count { font-size:12px; color:#6e7681; font-family:"Courier New",monospace; }
+        .cs-count { font-size:12px; color:
         .cs-sec-body { padding:0; }
 
         .ticket-item {
-            padding:12px 16px; border-bottom:1px solid #21262d; cursor:pointer;
+            padding:12px 16px; border-bottom:1px solid 
             transition:.15s; display:flex; align-items:center; gap:10px;
         }
         .ticket-item:last-child { border-bottom:none; }
         .ticket-item:hover { background:rgba(255,255,255,.03); }
-        .ticket-item.active-item { background:rgba(63,185,80,.05); border-left:2px solid #3fb950; }
+        .ticket-item.active-item { background:rgba(63,185,80,.05); border-left:2px solid 
         .ti-type { font-size:11px; font-weight:700; padding:2px 8px; border-radius:3px; letter-spacing:.3px; white-space:nowrap; }
         .ti-info { flex:1; min-width:0; }
-        .ti-id   { font-size:11px; color:#6e7681; font-family:"Courier New",monospace; }
-        .ti-desc { font-size:12px; color:#8b949e; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        .ti-time { font-size:11px; color:#6e7681; font-family:"Courier New",monospace; white-space:nowrap; }
+        .ti-id   { font-size:11px; color:
+        .ti-desc { font-size:12px; color:
+        .ti-time { font-size:11px; color:
         .btn-join {
-            font-size:12px; color:#3fb950; border:1px solid rgba(63,185,80,.4);
+            font-size:12px; color:
             background:none; border-radius:3px; padding:4px 12px; cursor:pointer;
             font-family:inherit; transition:.2s; white-space:nowrap;
         }
         .btn-join:hover { background:rgba(63,185,80,.1); }
-        .empty-list { padding:20px 16px; font-size:12px; color:#6e7681; font-family:"Courier New",monospace; text-align:center; }
+        .empty-list { padding:20px 16px; font-size:12px; color:
         .empty-list::before { content:'// '; }
 
-        .cs-mgmt-input { display:flex; gap:8px; padding:12px 14px; border-bottom:1px solid #21262d; }
+        .cs-mgmt-input { display:flex; gap:8px; padding:12px 14px; border-bottom:1px solid 
         .mid-input {
-            flex:1; background:#0d1117; border:1px solid #30363d; border-radius:4px;
-            color:#e6edf3; font-size:13px; font-family:"Courier New",monospace;
+            flex:1; background:
+            color:
             padding:7px 10px; outline:none; transition:.2s; letter-spacing:1px;
         }
-        .mid-input:focus { border-color:#3fb950; }
+        .mid-input:focus { border-color:
         .btn-add-cs {
-            background:#3fb950; color:#fff; border:none; border-radius:4px;
+            background:
             padding:0 14px; font-size:12px; font-weight:700; cursor:pointer;
             font-family:inherit; transition:.2s; white-space:nowrap;
         }
-        .btn-add-cs:hover { background:#2ea043; }
-        .agent-item { display:flex; align-items:center; gap:10px; padding:9px 14px; border-bottom:1px solid #21262d; }
+        .btn-add-cs:hover { background:
+        .agent-item { display:flex; align-items:center; gap:10px; padding:9px 14px; border-bottom:1px solid 
         .agent-item:last-child { border-bottom:none; }
-        .agent-name { flex:1; font-size:13px; color:#c9d1d9; }
-        .agent-mid  { font-size:11px; color:#6e7681; font-family:"Courier New",monospace; }
+        .agent-name { flex:1; font-size:13px; color:
+        .agent-mid  { font-size:11px; color:
         .btn-remove-cs {
-            font-size:11px; color:#f85149; border:1px solid rgba(248,81,73,.35);
+            font-size:11px; color:
             background:none; border-radius:3px; padding:3px 10px; cursor:pointer;
             font-family:inherit; transition:.2s;
         }
         .btn-remove-cs:hover { background:rgba(248,81,73,.1); }
         .cs-mgmt-msg { padding:8px 14px; font-size:12px; font-family:"Courier New",monospace; }
 
-        .chat-panel { background:#161b22; border:1px solid #30363d; border-radius:6px; overflow:hidden; animation:fadeUp .3s ease; }
-        .chat-panel-head { padding:12px 16px; border-bottom:1px solid #21262d; display:flex; align-items:center; justify-content:space-between; gap:10px; }
-        .chat-panel-head h3 { margin:0; font-size:11px; font-weight:700; color:#6e7681; letter-spacing:1.5px; text-transform:uppercase; font-family:"Courier New",monospace; }
+        .chat-panel { background:
+        .chat-panel-head { padding:12px 16px; border-bottom:1px solid 
+        .chat-panel-head h3 { margin:0; font-size:11px; font-weight:700; color:
         .chat-panel-head h3::before { content:'// '; opacity:.6; }
         .btn-resolve {
-            font-size:12px; color:#f85149; border:1px solid rgba(248,81,73,.4);
+            font-size:12px; color:
             background:none; border-radius:3px; padding:5px 14px; cursor:pointer;
             font-family:inherit; transition:.2s; white-space:nowrap;
         }
@@ -155,45 +162,45 @@ $type_colors = [
         .chat-messages {
             height:420px; overflow-y:auto; padding:14px;
             display:flex; flex-direction:column; gap:10px;
-            background:#0d1117;
+            background:
         }
         .chat-messages::-webkit-scrollbar { width:4px; }
-        .chat-messages::-webkit-scrollbar-thumb { background:#30363d; border-radius:2px; }
+        .chat-messages::-webkit-scrollbar-thumb { background:
         .msg-row { display:flex; align-items:flex-end; gap:8px; }
         .msg-row.mine { flex-direction:row-reverse; }
-        .msg-bubble { max-width:72%; padding:9px 13px; border-radius:6px; font-size:13px; line-height:1.6; word-break:break-word; }
-        .msg-row.mine   .msg-bubble { background:rgba(167,139,250,.15); border:1px solid rgba(167,139,250,.3); color:#e6edf3; border-radius:6px 6px 0 6px; }
-        .msg-row.theirs .msg-bubble { background:#161b22; border:1px solid #30363d; color:#c9d1d9; border-radius:6px 6px 6px 0; }
-        .msg-col { display:flex; flex-direction:column; }
-        .msg-label { font-size:10px; color:#6e7681; margin-bottom:3px; font-family:"Courier New",monospace; }
+        .msg-col { display:flex; flex-direction:column; max-width:72%; }
+        .msg-bubble { max-width:100%; padding:9px 13px; border-radius:6px; font-size:13px; line-height:1.6; word-break:break-word; }
+        .msg-row.mine   .msg-bubble { background:rgba(167,139,250,.15); border:1px solid rgba(167,139,250,.3); color:
+        .msg-row.theirs .msg-bubble { background:
+        .msg-label { font-size:10px; color:
         .msg-row.mine .msg-label { text-align:right; }
-        .msg-time { font-size:10px; color:#6e7681; margin-top:3px; font-family:"Courier New",monospace; }
+        .msg-time { font-size:10px; color:
         .msg-row.mine .msg-time { text-align:right; }
 
-        .chat-input-area { padding:12px 14px; border-top:1px solid #21262d; display:flex; gap:8px; }
+        .chat-input-area { padding:12px 14px; border-top:1px solid 
         .chat-input {
-            flex:1; background:#0d1117; border:1px solid #30363d; border-radius:4px;
-            color:#e6edf3; font-size:13px; font-family:inherit;
+            flex:1; background:
+            color:
             padding:9px 12px; outline:none; transition:.2s;
         }
-        .chat-input:focus { border-color:#a78bfa; }
+        .chat-input:focus { border-color:
         .btn-send {
-            background:#a78bfa; color:#fff; border:none; border-radius:4px;
+            background:
             padding:0 18px; font-size:13px; font-weight:700; cursor:pointer;
             font-family:inherit; transition:.2s; white-space:nowrap;
         }
-        .btn-send:hover { background:#9063f0; }
-        .btn-send:disabled { background:#21262d; color:#6e7681; cursor:not-allowed; }
+        .btn-send:hover { background:
+        .btn-send:disabled { background:
 
-        .privacy-notice { padding:10px 14px; background:rgba(167,139,250,.06); border-bottom:1px solid #21262d; font-size:11px; color:#6e7681; font-family:"Courier New",monospace; }
+        .privacy-notice { padding:10px 14px; background:rgba(167,139,250,.06); border-bottom:1px solid 
         .privacy-notice::before { content:'🔒 '; }
 
-        .no-chat { display:flex; align-items:center; justify-content:center; height:300px; flex-direction:column; gap:12px; color:#6e7681; font-family:"Courier New",monospace; font-size:13px; }
+        .no-chat { display:flex; align-items:center; justify-content:center; height:300px; flex-direction:column; gap:12px; color:
         .no-chat::before { content:'// '; }
 
         .resolved-overlay { padding:60px 20px; text-align:center; }
-        .resolved-overlay h3 { color:#3fb950; margin:0 0 10px; }
-        .resolved-overlay p { color:#8b949e; font-size:13px; }
+        .resolved-overlay h3 { color:
+        .resolved-overlay p { color:
 
         @media(max-width:900px){
             .panel-wrap { grid-template-columns:1fr; }
@@ -251,7 +258,7 @@ $type_colors = [
                     <div class="ticket-item" id="pt-<?= $t['id'] ?>">
                         <span class="ti-type" style="color:<?= $tc ?>;border:1px solid <?= $tc ?>30;background:<?= $tc ?>15;"><?= $tl ?></span>
                         <div class="ti-info">
-                            <div class="ti-id">#<?= $t['id'] ?> &nbsp;·&nbsp; 用户 #<?= $t['id'] * 7 % 9973 ?></div>
+                            <div class="ti-id">
                             <?php if ($t['description']): ?>
                             <div class="ti-desc"><?= htmlspecialchars(mb_substr($t['description'], 0, 40)) ?></div>
                             <?php endif; ?>
@@ -283,7 +290,7 @@ $type_colors = [
                     <div class="ticket-item <?= $is_cur ? 'active-item' : '' ?>" onclick="openChat(<?= $t['id'] ?>)">
                         <span class="ti-type" style="color:<?= $tc ?>;border:1px solid <?= $tc ?>30;background:<?= $tc ?>15;"><?= $tl ?></span>
                         <div class="ti-info">
-                            <div class="ti-id">#<?= $t['id'] ?> &nbsp;·&nbsp; 用户 #<?= $t['id'] * 7 % 9973 ?></div>
+                            <div class="ti-id">
                             <?php if ($t['description']): ?>
                             <div class="ti-desc"><?= htmlspecialchars(mb_substr($t['description'], 0, 40)) ?></div>
                             <?php endif; ?>
@@ -300,7 +307,7 @@ $type_colors = [
         <?php if ($active_ticket): ?>
             <div class="cs-sec-head chat-panel-head">
                 <h3>
-                    工单 #<?= $active_ticket['id'] ?> &nbsp;—&nbsp;
+                    工单 
                     <?php $tc = $type_colors[$active_ticket['type']] ?? '#8b949e'; $tl = $issue_types[$active_ticket['type']] ?? $active_ticket['type']; ?>
                     <span style="color:<?= $tc ?>;"><?= $tl ?></span>
                 </h3>

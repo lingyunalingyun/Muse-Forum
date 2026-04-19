@@ -1,10 +1,10 @@
 <?php
 /**
- * pages/reset_password.php — 重置密码（使用 token 链接访问）
+ * reset_password.php — 重置密码页
  *
- * GET 参数：token（reset_token，1 小时有效）
- * 先验证 token 是否有效，无效则跳转回 forgot_password.php 并提示重新申请。
- * 表单 POST → actions/auth.php（action=reset_password）
+ * 功能：验证重置 token 后展示新密码表单
+ * 读写表：读 users（验证 token）
+ * 权限：无
  */
 session_start();
 require_once __DIR__ . '/../config.php';
@@ -26,6 +26,8 @@ if (!empty($token)) {
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
+    <link rel="shortcut icon" href="../assets/logo.svg">
     <title>重置密码 - <?= SITE_NAME ?></title>
     <style>
         @keyframes blink  { 0%,100%{opacity:1} 50%{opacity:0} }
@@ -39,20 +41,20 @@ if (!empty($token)) {
             background-size:40px 40px;
         }
         .card {
-            background:#161b22; border:1px solid #30363d; border-radius:6px;
+            background:
             padding:36px 32px; width:360px;
             animation:fadeUp .4s ease;
             box-shadow:0 0 40px rgba(0,0,0,.4);
         }
-        .card h2 { color:#e6edf3; margin-bottom:20px; font-size:18px; font-family:"Courier New",monospace; }
-        .card h2 .accent { color:#3fb950; }
-        .card h2 .cursor { color:#3fb950; animation:blink 1s infinite; }
+        .card h2 { color:
+        .card h2 .accent { color:
+        .card h2 .cursor { color:
         .card input { margin-bottom:12px; }
-        .card button { width:100%; background:#3fb950; color:#fff; border:none; padding:11px; border-radius:4px;
+        .card button { width:100%; background:
                        cursor:pointer; font-size:14px; font-weight:700; transition:.2s; font-family:inherit; margin-top:4px; }
-        .card button:hover { background:#2ea043; box-shadow:0 0 16px rgba(63,185,80,.4); }
-        .card p { margin-top:16px; font-size:13px; text-align:center; color:#6e7681; }
-        .card a { color:#3fb950; }
+        .card button:hover { background:
+        .card p { margin-top:16px; font-size:13px; text-align:center; color:
+        .card a { color:
         @media(max-width:480px){
             .wrap { padding:12px; align-items:flex-start; padding-top:40px; }
             .card { width:100%; padding:28px 20px; }
@@ -66,7 +68,7 @@ if (!empty($token)) {
     <?php if (!$valid): ?>
         <h2>&gt; <span class="accent" style="color:#f85149;">LINK INVALID</span><span class="cursor">_</span></h2>
         <div style="text-align:center;padding:8px 0 16px;">
-            <div style="font-size:40px;margin-bottom:12px;">&#9888;</div>
+            <div style="font-size:40px;margin-bottom:12px;">&
             <p style="color:#8b949e;font-size:13px;line-height:1.7;margin:0 0 20px;">
                 <?php if ($error_msg): ?>
                     <?= $error_msg ?>
@@ -81,7 +83,7 @@ if (!empty($token)) {
         <h2>&gt; <span class="accent">RESET PWD</span><span class="cursor">_</span></h2>
         <?php if ($error_msg): ?>
             <div style="background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);border-radius:4px;padding:9px 12px;margin-bottom:14px;color:#f85149;font-size:13px;">
-                &#9888; <?= $error_msg ?>
+                &
             </div>
         <?php endif; ?>
         <form action="../actions/auth.php" method="POST">

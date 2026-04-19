@@ -1,23 +1,21 @@
 <?php
 /**
- * actions/comment_save.php — 提交评论 / 回复
+ * comment_save.php — 提交评论或回复
  *
- * POST 参数：post_id, parent_id（0 = 顶级评论；>0 = 回复某条评论）, content
- *
- * 通知逻辑（避免重复通知）：
- *   1. 通知帖子作者（类型：parent_id>0 时为 reply，否则为 comment）
- *   2. 若是回复，额外通知被回复评论的作者（前提：与帖主不同且不是自己）
- *   3. 扫描 content 中的 @username，向被提及用户发送 mention 通知
- *
- * 返回：纯文本 "success" 或错误说明
+ * 功能：发布新评论或对已有评论的回复，并发送通知
+ * POST 参数：post_id, content, parent_id（可选，回复时传入）
  * 读写表：comments, notifications
+ * 权限：需登录且未被封禁
  */
-// comment_save.php - 处理评论与回复
+
 header('Content-Type: text/plain; charset=utf-8');
 session_start();
 
 if (!isset($_SESSION['user_id'])) {
     die("请先登录");
+}
+if (!empty($_SESSION['is_banned'])) {
+    die("账号已被限制，无法发表评论");
 }
 
 require_once __DIR__ . '/../config.php';
@@ -34,7 +32,7 @@ if ($post_id > 0 && !empty($content)) {
     if ($stmt->execute()) {
         $new_cid = $stmt->insert_id;
 
-        // 通知帖子作者（自己评论自己不通知）
+        
         $pr = $conn->query("SELECT user_id FROM posts WHERE id = $post_id");
         $post_author = $pr ? (int)$pr->fetch_assoc()['user_id'] : 0;
         if ($post_author && $post_author !== $user_id) {
@@ -43,7 +41,7 @@ if ($post_id > 0 && !empty($content)) {
                           VALUES ($post_author, $user_id, '$ntype', $post_id, $new_cid)");
         }
 
-        // 若是回复，额外通知被回复评论的作者
+        
         if ($parent_id > 0) {
             $cr = $conn->query("SELECT user_id FROM comments WHERE id = $parent_id");
             $parent_author = $cr ? (int)$cr->fetch_assoc()['user_id'] : 0;
@@ -53,7 +51,7 @@ if ($post_id > 0 && !empty($content)) {
             }
         }
 
-        // @mention 检测
+        
         preg_match_all('/@([^\s@]{1,20})/u', $content, $matches);
         $mentioned_users = array_unique($matches[1]);
         foreach ($mentioned_users as $mentioned_name) {

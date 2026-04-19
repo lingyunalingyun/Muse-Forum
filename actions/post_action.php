@@ -1,16 +1,11 @@
 <?php
 /**
- * actions/post_action.php — 帖子点赞 / 收藏 toggle（AJAX JSON）
+ * post_action.php — 帖子点赞/收藏 toggle，返回 JSON
  *
- * POST 参数：pid（帖子 ID）, type=like|fav
- * 返回：{"status": "success", "active": true|false, "new_count": 当前总数}
- *
- * 首次操作（新增）时向帖子作者发通知：
- *   like → like_post 通知
- *   fav  → fav_post 通知
- *   不通知自己的操作
- *
- * 读写表：post_likes 或 post_favs, notifications
+ * 功能：对帖子执行点赞或收藏的 toggle 操作，并发送通知给帖子作者
+ * POST 参数：action(like|fav), post_id
+ * 读写表：post_likes, post_favs, notifications
+ * 权限：需登录且未被封禁
  */
 session_start();
 require_once __DIR__ . '/../config.php';
@@ -18,6 +13,11 @@ require_once __DIR__ . '/../config.php';
 $my_id = intval($_SESSION['user_id'] ?? 0);
 $pid = intval($_POST['pid'] ?? 0);
 $type = $_POST['type'] ?? '';
+
+if (!$my_id || !empty($_SESSION['is_banned'])) {
+    echo json_encode(['status' => 'error', 'msg' => '账号已被限制']);
+    exit;
+}
 
 if ($my_id && $pid && ($type == 'like' || $type == 'fav')) {
     $table = ($type == 'like') ? 'post_likes' : 'post_favs';
@@ -31,7 +31,7 @@ if ($my_id && $pid && ($type == 'like' || $type == 'fav')) {
         $conn->query("INSERT INTO $table (post_id, user_id) VALUES ($pid, $my_id)");
         $active = true;
 
-        // 通知帖子作者
+        
         $pr = $conn->query("SELECT user_id FROM posts WHERE id = $pid");
         $p_author = $pr ? (int)$pr->fetch_assoc()['user_id'] : 0;
         if ($p_author && $p_author !== $my_id) {

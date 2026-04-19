@@ -1,10 +1,10 @@
 <?php
 /**
- * cs_chat.php — 用户客服对话页面
+ * cs_chat.php — 客服聊天页（用户端）
  *
- * 登录用户可在此创建客服工单、查看等待状态、与客服实时聊天。
- * 工单状态：pending（等待接入）→ active（对话中）→ resolved（已解决）。
- * 每 12 小时无客服回应自动补偿 100 积分；解决后不再触发补偿。
+ * 功能：展示用户与客服的对话记录
+ * 读写表：读写 messages（或专属客服表）
+ * 权限：需登录
  */
 session_start();
 require_once __DIR__ . '/../config.php';
@@ -69,93 +69,93 @@ $issue_types = [
     <style>
         @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
         .cs-wrap { max-width:680px; margin:32px auto; padding:0 16px 60px; }
-        .cs-card  { background:#161b22; border:1px solid #30363d; border-radius:6px; overflow:hidden; animation:fadeUp .3s ease; }
-        .cs-head  { padding:14px 20px; border-bottom:1px solid #21262d; display:flex; align-items:center; justify-content:space-between; }
-        .cs-head h2 { margin:0; font-size:11px; font-weight:700; color:#6e7681; letter-spacing:1.5px; text-transform:uppercase; font-family:"Courier New",monospace; }
+        .cs-card  { background:
+        .cs-head  { padding:14px 20px; border-bottom:1px solid 
+        .cs-head h2 { margin:0; font-size:11px; font-weight:700; color:
         .cs-head h2::before { content:'// '; opacity:.6; }
         .cs-body  { padding:24px 20px; }
 
         .type-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px; }
         .type-btn  {
-            background:#0d1117; border:1px solid #30363d; border-radius:4px;
+            background:
             padding:12px 14px; cursor:pointer; text-align:left;
-            color:#8b949e; font-size:13px; font-family:inherit; transition:.2s;
+            color:
         }
-        .type-btn:hover, .type-btn.selected { border-color:#3fb950; color:#e6edf3; background:rgba(63,185,80,.07); }
-        .type-btn.selected { color:#3fb950; }
+        .type-btn:hover, .type-btn.selected { border-color:
+        .type-btn.selected { color:
         .type-btn .type-icon { font-size:18px; display:block; margin-bottom:6px; }
 
         .cs-textarea {
             width:100%; box-sizing:border-box;
-            background:#0d1117; border:1px solid #30363d; border-radius:4px;
-            color:#e6edf3; font-size:13px; font-family:inherit;
+            background:
+            color:
             padding:10px 12px; resize:vertical; min-height:80px;
             outline:none; transition:.2s;
         }
-        .cs-textarea:focus { border-color:#3fb950; }
+        .cs-textarea:focus { border-color:
         .btn-submit {
             margin-top:14px; width:100%;
-            background:#3fb950; color:#fff; border:none; border-radius:4px;
+            background:
             padding:11px; font-size:14px; font-weight:700; cursor:pointer;
             font-family:inherit; transition:.2s;
         }
-        .btn-submit:hover { background:#2ea043; box-shadow:0 0 14px rgba(63,185,80,.3); }
-        .btn-submit:disabled { background:#21262d; color:#6e7681; cursor:not-allowed; box-shadow:none; }
+        .btn-submit:hover { background:
+        .btn-submit:disabled { background:
 
         .pending-state { text-align:center; padding:40px 20px; }
         .pending-state .big-icon { font-size:44px; margin-bottom:18px; }
-        .pending-state h3 { color:#d29922; margin:0 0 10px; font-size:16px; }
-        .pending-state p  { color:#8b949e; font-size:13px; line-height:1.8; margin:0; }
-        .ticket-meta { display:inline-block; margin-top:14px; font-family:"Courier New",monospace; font-size:12px; color:#6e7681; background:#0d1117; border:1px solid #21262d; border-radius:4px; padding:6px 14px; }
+        .pending-state h3 { color:
+        .pending-state p  { color:
+        .ticket-meta { display:inline-block; margin-top:14px; font-family:"Courier New",monospace; font-size:12px; color:
 
         .chat-messages {
             height:380px; overflow-y:auto; padding:16px;
             display:flex; flex-direction:column; gap:10px;
-            background:#0d1117; border-radius:4px; margin-bottom:14px;
+            background:
         }
         .chat-messages::-webkit-scrollbar { width:4px; }
-        .chat-messages::-webkit-scrollbar-thumb { background:#30363d; border-radius:2px; }
+        .chat-messages::-webkit-scrollbar-thumb { background:
         .msg-row { display:flex; align-items:flex-end; gap:8px; }
         .msg-row.mine { flex-direction:row-reverse; }
+        .msg-col { display:flex; flex-direction:column; max-width:70%; }
         .msg-bubble {
-            max-width:70%; padding:9px 13px; border-radius:6px;
+            max-width:100%; padding:9px 13px; border-radius:6px;
             font-size:13px; line-height:1.6; word-break:break-word;
         }
-        .msg-row.mine  .msg-bubble { background:rgba(63,185,80,.15); border:1px solid rgba(63,185,80,.25); color:#e6edf3; border-radius:6px 6px 0 6px; }
-        .msg-row.theirs .msg-bubble { background:#161b22; border:1px solid #30363d; color:#c9d1d9; border-radius:6px 6px 6px 0; }
-        .msg-label { font-size:10px; color:#6e7681; margin-bottom:4px; font-family:"Courier New",monospace; }
+        .msg-row.mine  .msg-bubble { background:rgba(63,185,80,.15); border:1px solid rgba(63,185,80,.25); color:
+        .msg-row.theirs .msg-bubble { background:
+        .msg-label { font-size:10px; color:
         .msg-row.mine .msg-label { text-align:right; }
-        .msg-col { display:flex; flex-direction:column; }
-        .msg-time { font-size:10px; color:#6e7681; margin-top:3px; font-family:"Courier New",monospace; }
+        .msg-time { font-size:10px; color:
         .msg-row.mine .msg-time { text-align:right; }
 
         .chat-input-row { display:flex; gap:8px; }
         .chat-input {
-            flex:1; background:#0d1117; border:1px solid #30363d; border-radius:4px;
-            color:#e6edf3; font-size:13px; font-family:inherit;
+            flex:1; background:
+            color:
             padding:9px 12px; outline:none; transition:.2s;
         }
-        .chat-input:focus { border-color:#3fb950; }
+        .chat-input:focus { border-color:
         .btn-send {
-            background:#3fb950; color:#fff; border:none; border-radius:4px;
+            background:
             padding:0 20px; font-size:13px; font-weight:700; cursor:pointer;
             font-family:inherit; transition:.2s; white-space:nowrap;
         }
-        .btn-send:hover { background:#2ea043; }
-        .btn-send:disabled { background:#21262d; color:#6e7681; cursor:not-allowed; }
+        .btn-send:hover { background:
+        .btn-send:disabled { background:
 
         .resolved-state { text-align:center; padding:40px 20px; }
         .resolved-state .big-icon { font-size:44px; margin-bottom:18px; }
-        .resolved-state h3 { color:#3fb950; margin:0 0 10px; font-size:16px; }
-        .resolved-state p  { color:#8b949e; font-size:13px; line-height:1.8; margin:0 0 18px; }
-        .btn-new { display:inline-block; background:transparent; border:1px solid rgba(63,185,80,.4); color:#3fb950; border-radius:4px; padding:8px 22px; font-size:13px; cursor:pointer; font-family:inherit; transition:.2s; }
+        .resolved-state h3 { color:
+        .resolved-state p  { color:
+        .btn-new { display:inline-block; background:transparent; border:1px solid rgba(63,185,80,.4); color:
         .btn-new:hover { background:rgba(63,185,80,.1); }
 
-        .cs-status-bar { display:flex; align-items:center; gap:8px; padding:8px 14px; background:rgba(63,185,80,.06); border-bottom:1px solid #21262d; font-size:12px; color:#3fb950; font-family:"Courier New",monospace; }
-        .cs-dot { width:7px; height:7px; border-radius:50%; background:#3fb950; box-shadow:0 0 6px #3fb950; animation: pulse 2s infinite; }
+        .cs-status-bar { display:flex; align-items:center; gap:8px; padding:8px 14px; background:rgba(63,185,80,.06); border-bottom:1px solid 
+        .cs-dot { width:7px; height:7px; border-radius:50%; background:
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
-        .err-msg { background:rgba(248,81,73,.1); border:1px solid rgba(248,81,73,.3); border-radius:4px; padding:9px 12px; color:#f85149; font-size:13px; margin-bottom:14px; }
+        .err-msg { background:rgba(248,81,73,.1); border:1px solid rgba(248,81,73,.3); border-radius:4px; padding:9px 12px; color:
 
         @media(max-width:560px){
             .type-grid { grid-template-columns:1fr 1fr; gap:8px; }
@@ -199,7 +199,7 @@ $issue_types = [
                 <h3>&gt; WAITING_FOR_CS_</h3>
                 <p>您的工单已提交，正在等待客服接入。<br>客服接入后将在此页面与您对话。<br>若 12 小时内无回应，将自动补偿 <b style="color:#3fb950;">100 积分</b>。</p>
                 <span class="ticket-meta">
-                    工单 #<?= $ticket['id'] ?> &nbsp;·&nbsp;
+                    工单 
                     <?= htmlspecialchars($issue_types[$ticket['type']] ?? $ticket['type']) ?> &nbsp;·&nbsp;
                     <?= date('m-d H:i', strtotime($ticket['created_at'])) ?>
                 </span>
@@ -212,7 +212,7 @@ $issue_types = [
     <div class="cs-card">
         <div class="cs-status-bar">
             <span class="cs-dot"></span>
-            客服已接入 &nbsp;·&nbsp; 工单 #<?= $tid ?> &nbsp;·&nbsp; <?= htmlspecialchars($issue_types[$ticket['type']] ?? $ticket['type']) ?>
+            客服已接入 &nbsp;·&nbsp; 工单 
         </div>
         <div class="cs-head"><h2>客服对话</h2></div>
         <div class="cs-body" style="padding-top:14px;">

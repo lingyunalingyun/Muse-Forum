@@ -1,19 +1,10 @@
 <?php
 /**
- * pages/publish.php — 发帖页（富文本编辑器）
+ * publish.php — 发帖页
  *
- * 编辑器：WangEditor（WYSIWYG 富文本，支持图片、代码块等）
- *
- * 功能：
- *   - 选择分区（categories 下拉）
- *   - 图片上传（AJAX → actions/upload_image.php，WangEditor 协议）
- *   - 附件上传（AJAX → actions/upload_attachment.php，支持多文件）
- *   - @提及自动补全（keyup → actions/user_search.php）
- *   - 保存草稿 / 发布（AJAX → actions/save.php）
- *   - 公告标记复选框（仅 admin/owner 可见，勾选后跳过审核直接发布）
- *
- * URL 参数：draft_id（续写草稿时传入，页面会预加载草稿内容）
- * 读表：posts（草稿预加载）, categories
+ * 功能：WangEditor 富文本编辑器，支持附件上传；表单提交到 actions/save.php
+ * 读写表：无直接 DB 操作
+ * 权限：需登录且未被封禁
  */
 session_start();
 require_once __DIR__ . '/../config.php';
@@ -22,11 +13,14 @@ if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
 }
+if (!empty($_SESSION['is_banned'])) {
+    header("Location: ../index.php");
+    exit;
+}
 
 $uid      = (int)$_SESSION['user_id'];
 $is_admin = in_array($_SESSION['role'] ?? '', ['admin', 'owner']);
 
-// 加载指定草稿
 $draft_id = (int)($_GET['draft_id'] ?? 0);
 $draft    = null;
 if ($draft_id > 0) {
@@ -34,12 +28,10 @@ if ($draft_id > 0) {
     $draft = ($dr && $dr->num_rows > 0) ? $dr->fetch_assoc() : null;
 }
 
-// 分区列表
 $cats_res = $conn->query("SELECT id, name, icon, color FROM categories ORDER BY sort_order ASC, id ASC");
 $categories = [];
 if ($cats_res) while ($c = $cats_res->fetch_assoc()) $categories[] = $c;
 
-// 其他草稿列表（排除当前打开的）
 $drafts_res = $conn->query("
     SELECT id, title, created_at FROM posts
     WHERE user_id = $uid AND status = '草稿'" .
@@ -58,136 +50,136 @@ if ($drafts_res) {
     <title><?= $draft ? '编辑草稿' : '发布帖子' ?> - 缪斯 MUSE</title>
     <link href="https://cdn.jsdelivr.net/npm/@wangeditor/editor@5.1.23/dist/css/style.css" rel="stylesheet">
     <style>
-        /* ── WangEditor 深色主题覆盖 ── */
+        
         .w-e-toolbar {
-            background: #0d1117 !important;
-            border-color: #30363d !important;
+            background: 
+            border-color: 
         }
         .w-e-bar-item button, .w-e-bar-item-group>button {
-            color: #8b949e !important;
+            color: 
         }
         .w-e-bar-item button:hover, .w-e-bar-item-group>button:hover,
         .w-e-bar-item button.active {
-            background: #1c2128 !important;
-            color: #e6edf3 !important;
+            background: 
+            color: 
         }
         .w-e-text-container {
-            background: #161b22 !important;
-            color: #c9d1d9 !important;
+            background: 
+            color: 
         }
-        .w-e-scroll { background: #161b22 !important; }
-        [data-slate-editor] { color: #c9d1d9 !important; }
-        .w-e-text-placeholder { color: #484f58 !important; }
-        /* 下拉面板 */
+        .w-e-scroll { background: 
+        [data-slate-editor] { color: 
+        .w-e-text-placeholder { color: 
+        
         .w-e-drop-panel {
-            background: #161b22 !important;
-            border-color: #30363d !important;
+            background: 
+            border-color: 
             box-shadow: 0 4px 16px rgba(0,0,0,.5) !important;
         }
         .w-e-select-list {
-            background: #161b22 !important;
-            border-color: #30363d !important;
+            background: 
+            border-color: 
         }
-        .w-e-select-list ul li { color: #8b949e !important; }
+        .w-e-select-list ul li { color: 
         .w-e-select-list ul li:hover,
         .w-e-select-list ul li.selected {
-            background: #1c2128 !important;
-            color: #e6edf3 !important;
+            background: 
+            color: 
         }
-        /* 颜色选择器、字号等面板 */
-        .w-e-panel-content-color button:hover { outline-color: #3fb950 !important; }
-        .w-e-modal { background: #161b22 !important; border-color: #30363d !important; }
-        .w-e-modal input { background: #0d1117 !important; border-color: #30363d !important; color: #e6edf3 !important; }
-        .w-e-modal button[type=button] { background: #3fb950 !important; border-color: #3fb950 !important; color: #fff !important; }
-        .w-e-bar-divider { background: #30363d !important; }
+        
+        .w-e-panel-content-color button:hover { outline-color: 
+        .w-e-modal { background: 
+        .w-e-modal input { background: 
+        .w-e-modal button[type=button] { background: 
+        .w-e-bar-divider { background: 
     </style>
     <style>
-        /* ── 发帖页专属 ── */
+        
         .pub-topbar {
-            background: #161b22; border-bottom: 1px solid #30363d;
+            background: 
             padding: 0 24px; height: 50px;
             display: flex; align-items: center; gap: 12px;
             position: sticky; top: 56px; z-index: 100;
         }
-        .pub-back { color: #8b949e; text-decoration: none; font-size: 13px; display: flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 4px; transition: .15s; }
-        .pub-back:hover { background: #1c2128; color: #e6edf3; }
-        .pub-topbar-title { font-size: 14px; font-weight: 700; color: #e6edf3; flex: 1; font-family: "Courier New", monospace; }
-        .autosave-tip { font-size: 11px; color: #6e7681; font-family: "Courier New", monospace; }
-        .autosave-tip.saved { color: #3fb950; }
+        .pub-back { color: 
+        .pub-back:hover { background: 
+        .pub-topbar-title { font-size: 14px; font-weight: 700; color: 
+        .autosave-tip { font-size: 11px; color: 
+        .autosave-tip.saved { color: 
         .btn-draft {
-            background: transparent; border: 1px solid #30363d; color: #8b949e;
+            background: transparent; border: 1px solid 
             padding: 6px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; transition: .15s; font-family: inherit;
         }
-        .btn-draft:hover { border-color: #8b949e; color: #e6edf3; }
+        .btn-draft:hover { border-color: 
         .btn-publish {
-            background: #3fb950; border: none; color: #fff;
+            background: 
             padding: 7px 20px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 700; transition: .2s; font-family: inherit;
         }
-        .btn-publish:hover { background: #2ea043; box-shadow: 0 0 12px rgba(63,185,80,.3); }
-        .btn-publish:disabled { background: #1c2128; color: #6e7681; cursor: not-allowed; }
+        .btn-publish:hover { background: 
+        .btn-publish:disabled { background: 
 
         .pub-layout { max-width: 960px; margin: 20px auto; padding: 0 16px; display: flex; gap: 18px; align-items: flex-start; }
         .pub-main { flex: 1; min-width: 0; }
 
-        .editor-card { background: #161b22; border: 1px solid #30363d; border-radius: 6px; overflow: hidden; }
+        .editor-card { background: 
         .title-input {
             width: 100%; border: none; outline: none;
-            font-size: 20px; font-weight: 700; color: #e6edf3;
+            font-size: 20px; font-weight: 700; color: 
             padding: 20px 22px 14px; font-family: inherit; background: transparent;
         }
-        .title-input::placeholder { color: #6e7681; }
-        .editor-divider { height: 1px; background: #30363d; }
-        #editor-toolbar { border-bottom: 1px solid #30363d; padding: 0 10px; background: #0d1117; }
-        #editor-text-area { min-height: 360px; padding: 4px 22px; background: #161b22; color: #c9d1d9; }
+        .title-input::placeholder { color: 
+        .editor-divider { height: 1px; background: 
+        
+        
 
-        .attach-section { border-top: 1px solid #30363d; padding: 14px 22px; }
-        .attach-header { font-size: 12px; color: #6e7681; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; font-family: "Courier New", monospace; }
+        .attach-section { border-top: 1px solid 
+        .attach-header { font-size: 12px; color: 
         .attach-dropzone {
-            border: 1px dashed #30363d; border-radius: 4px; padding: 18px;
-            text-align: center; color: #6e7681; font-size: 13px; cursor: pointer; transition: .2s; position: relative;
+            border: 1px dashed 
+            text-align: center; color: 
         }
-        .attach-dropzone:hover, .attach-dropzone.drag-over { border-color: #3fb950; color: #3fb950; background: rgba(63,185,80,.04); }
+        .attach-dropzone:hover, .attach-dropzone.drag-over { border-color: 
         .attach-dropzone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
         .attach-list { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
-        .attach-item { display: flex; align-items: center; gap: 10px; background: #1c2128; border: 1px solid #30363d; border-radius: 4px; padding: 7px 12px; font-size: 13px; }
+        .attach-item { display: flex; align-items: center; gap: 10px; background: 
         .attach-icon { font-size: 16px; flex-shrink: 0; }
-        .attach-name { flex: 1; color: #8b949e; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .attach-size { color: #6e7681; font-size: 11px; flex-shrink: 0; font-family: "Courier New", monospace; }
-        .attach-del  { color: #f85149; cursor: pointer; font-size: 15px; flex-shrink: 0; opacity: .7; }
+        .attach-name { flex: 1; color: 
+        .attach-size { color: 
+        .attach-del  { color: 
         .attach-del:hover { opacity: 1; }
-        .attach-progress { color: #3fb950; font-size: 11px; font-family: "Courier New", monospace; }
+        .attach-progress { color: 
 
-        /* 分区选择 */
-        .cat-select-card { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 16px 20px; margin-top: 14px; }
-        .cat-select-title { font-size: 11px; font-weight: 700; color: #6e7681; margin-bottom: 10px; letter-spacing: 1.5px; text-transform: uppercase; font-family: "Courier New", monospace; }
+        
+        .cat-select-card { background: 
+        .cat-select-title { font-size: 11px; font-weight: 700; color: 
         .cat-options { display: flex; flex-wrap: wrap; gap: 8px; }
         .cat-option { display: none; }
         .cat-option + label {
             display: inline-flex; align-items: center; gap: 5px;
             padding: 5px 14px; border-radius: 20px; cursor: pointer;
-            font-size: 13px; border: 1px solid #30363d; color: #8b949e;
-            background: #0d1117; transition: .15s; user-select: none;
+            font-size: 13px; border: 1px solid 
+            background: 
         }
-        .cat-option:checked + label { color: #e6edf3; border-color: var(--cat-color, #3fb950); background: rgba(63,185,80,.1); }
-        .cat-option + label:hover { border-color: #6e7681; color: #e6edf3; }
+        .cat-option:checked + label { color: 
+        .cat-option + label:hover { border-color: 
 
-        .settings-card { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 18px 20px; margin-top: 14px; }
-        .settings-title { font-size: 11px; font-weight: 700; color: #6e7681; margin-bottom: 12px; letter-spacing: 1.5px; text-transform: uppercase; font-family: "Courier New", monospace; }
-        .setting-row { display: flex; align-items: flex-start; gap: 12px; padding: 9px 0; border-bottom: 1px solid #21262d; }
+        .settings-card { background: 
+        .settings-title { font-size: 11px; font-weight: 700; color: 
+        .setting-row { display: flex; align-items: flex-start; gap: 12px; padding: 9px 0; border-bottom: 1px solid 
         .setting-row:last-child { border-bottom: none; padding-bottom: 0; }
-        .setting-row input[type=checkbox] { width: 15px; height: 15px; margin-top: 2px; cursor: pointer; accent-color: #3fb950; flex-shrink: 0; }
-        .setting-label { font-size: 13px; color: #e6edf3; }
-        .setting-desc  { font-size: 12px; color: #6e7681; margin-top: 3px; }
+        .setting-row input[type=checkbox] { width: 15px; height: 15px; margin-top: 2px; cursor: pointer; accent-color: 
+        .setting-label { font-size: 13px; color: 
+        .setting-desc  { font-size: 12px; color: 
 
         .drafts-sidebar { width: 210px; flex-shrink: 0; }
-        .drafts-card { background: #161b22; border: 1px solid #30363d; border-radius: 6px; overflow: hidden; }
-        .drafts-card-title { font-size: 11px; font-weight: 700; color: #6e7681; padding: 12px 14px; border-bottom: 1px solid #30363d; letter-spacing: 1.5px; text-transform: uppercase; font-family: "Courier New", monospace; }
-        .draft-link { display: block; padding: 9px 14px; text-decoration: none; color: #8b949e; font-size: 13px; border-bottom: 1px solid #21262d; transition: .15s; }
+        .drafts-card { background: 
+        .drafts-card-title { font-size: 11px; font-weight: 700; color: 
+        .draft-link { display: block; padding: 9px 14px; text-decoration: none; color: 
         .draft-link:last-child { border-bottom: none; }
-        .draft-link:hover { background: #1c2128; color: #3fb950; }
+        .draft-link:hover { background: 
         .draft-link-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .draft-link-time  { font-size: 11px; color: #6e7681; margin-top: 2px; font-family: "Courier New", monospace; }
-        .no-drafts { padding: 18px 14px; text-align: center; color: #6e7681; font-size: 12px; font-family: "Courier New", monospace; }
+        .draft-link-time  { font-size: 11px; color: 
+        .no-drafts { padding: 18px 14px; text-align: center; color: 
 
         @media (max-width: 720px) {
             .pub-layout { flex-direction: column; padding: 0 10px; }
@@ -247,17 +239,25 @@ if ($drafts_res) {
         </div>
 
         <?php if (!empty($categories)): ?>
-        <!-- 分区选择 -->
+        <!-- 分区选择（多选） -->
         <div class="cat-select-card">
-            <div class="cat-select-title">选择分区</div>
+            <div class="cat-select-title">选择分区 <span style="font-weight:400;color:#484f58;font-size:10px;">可多选</span></div>
             <div class="cat-options">
-                <input type="radio" class="cat-option" name="category_id" id="cat_0" value="0" checked>
+                <input type="checkbox" class="cat-option" id="cat_0" value="0" checked onchange="onCatChange(this)">
                 <label for="cat_0">不限分区</label>
-                <?php foreach ($categories as $c): ?>
-                <input type="radio" class="cat-option" name="category_id"
-                       id="cat_<?= $c['id'] ?>" value="<?= $c['id'] ?>"
+                <?php
+                
+                $draft_cats = [];
+                if ($draft) {
+                    $dc_r = $conn->query("SELECT category_id FROM post_categories WHERE post_id=" . (int)$draft['id']);
+                    if ($dc_r) while ($dc = $dc_r->fetch_assoc()) $draft_cats[] = (int)$dc['category_id'];
+                }
+                foreach ($categories as $c):
+                    $is_checked = in_array((int)$c['id'], $draft_cats) ? 'checked' : '';
+                ?>
+                <input type="checkbox" class="cat-option cat-real" id="cat_<?= $c['id'] ?>" value="<?= $c['id'] ?>"
                        style="--cat-color:<?= htmlspecialchars($c['color']) ?>"
-                       <?= ($draft && (int)$draft['category_id'] === (int)$c['id']) ? 'checked' : '' ?>>
+                       onchange="onCatChange(this)" <?= $is_checked ?>>
                 <label for="cat_<?= $c['id'] ?>" style="--cat-color:<?= htmlspecialchars($c['color']) ?>">
                     <?= htmlspecialchars($c['icon']) ?> <?= htmlspecialchars($c['name']) ?>
                 </label>
@@ -287,7 +287,7 @@ if ($drafts_res) {
             <div class="drafts-card-title">📝 我的草稿</div>
             <?php if ($draft): ?>
             <div style="padding:10px 16px; font-size:12px; color:#3fb950; border-bottom:1px solid #30363d; font-family:'Courier New',monospace;">
-                // 当前正在编辑此草稿
+                
             </div>
             <?php endif; ?>
             <?php if (!empty($other_drafts)): ?>
@@ -314,7 +314,6 @@ if ($drafts_res) {
 <script>
 const { createEditor, createToolbar } = window.wangEditor;
 
-// ── 初始化编辑器 ──
 const editorConfig = {
     placeholder: '写点什么吧…支持拖拽图片直接上传',
     MENU_CONF: {
@@ -341,10 +340,8 @@ const editor = createEditor({
 
 createToolbar({ editor, selector: '#editor-toolbar', mode: 'default' });
 
-// ── 附件管理 ──
 let attachments = <?= json_encode($draft && $draft['attachments'] ? json_decode($draft['attachments'], true) : []) ?>;
 
-// 恢复草稿附件显示
 attachments.forEach(att => renderAttachItem(att));
 
 function handleDrop(e) {
@@ -368,7 +365,7 @@ function uploadAttachment(file) {
     .then(r => r.json())
     .then(data => {
         if (data.status === 'ok') {
-            // 更新条目数据
+            
             const att = { id, original: data.original, filename: data.filename, size: data.size, url: data.url, ext: data.ext };
             attachments.push(att);
             updateAttachItem(id, att);
@@ -425,7 +422,6 @@ function removeAttachItem(id) {
     if (el) el.remove();
 }
 
-// ── 提交（草稿 / 发布）──
 async function submitPost(isDraft) {
     const title = document.getElementById('post-title').value.trim();
     if (!title)            { alert('标题不能为空'); return; }
@@ -445,8 +441,10 @@ async function submitPost(isDraft) {
     const noticeEl = document.getElementById('is-notice');
     if (noticeEl) fd.append('is_notice', noticeEl.checked ? '1' : '0');
 
-    const catEl = document.querySelector('input[name="category_id"]:checked');
-    if (catEl) fd.append('category_id', catEl.value);
+    const realChecked = [...document.querySelectorAll('.cat-real:checked')];
+    if (realChecked.length > 0) {
+        realChecked.forEach(el => fd.append('category_ids[]', el.value));
+    }
 
     try {
         const res  = await fetch('../actions/save.php', { method: 'POST', body: fd });
@@ -454,7 +452,7 @@ async function submitPost(isDraft) {
 
         if (data.status === 'ok') {
             if (isDraft) {
-                // 更新草稿 ID，更新提示
+                
                 document.getElementById('draft-id').value = data.id;
                 history.replaceState(null, '', 'publish.php?draft_id=' + data.id);
                 setAutosaveTip('草稿已保存 ' + new Date().toLocaleTimeString());
@@ -475,7 +473,6 @@ async function submitPost(isDraft) {
     }
 }
 
-// ── 自动保存（60s，仅有内容时）──
 let autoTimer = null;
 function scheduleAutosave() {
     clearTimeout(autoTimer);
@@ -496,6 +493,21 @@ function setAutosaveTip(txt) {
 
 document.getElementById('post-title').addEventListener('input', scheduleAutosave);
 editor.on('change', scheduleAutosave);
+
+function onCatChange(el) {
+    const none = document.getElementById('cat_0');
+    const reals = [...document.querySelectorAll('.cat-real')];
+    if (el.value === '0') {
+        
+        if (el.checked) reals.forEach(r => r.checked = false);
+        else el.checked = true; 
+    } else {
+        
+        if (el.checked) none.checked = false;
+        
+        if (reals.every(r => !r.checked)) none.checked = true;
+    }
+}
 </script>
 </body>
 </html>

@@ -1,31 +1,30 @@
 <?php
 /**
- * categories.php — 分区入口页
+ * categories.php — 论坛分区入口页
  *
- * PS5 游戏库风格大图卡片网格（16:10 比例），左侧彩色竖条（分区自定义颜色）。
- * 点击分区卡片跳转到 square.php?cat=ID 查看该分区帖子。
- * 读表：categories（id, name, description, color, icon, cover_image）
+ * 功能：以 PS5 游戏库风格的 16:10 大图卡片网格展示所有论坛分区，
+ *       每个分区卡片左侧带彩色竖条，并显示该分区的帖子数量统计。
+ * 读写表：categories、posts
+ * 权限：无
  */
 session_start();
 require_once __DIR__ . '/config.php';
 
-$cats = [];
-// 检查 posts.category_id 列是否存在
-$has_cat_col = false;
-$cc = $conn->query("SHOW COLUMNS FROM posts LIKE 'category_id'");
-if ($cc && $cc->num_rows > 0) $has_cat_col = true;
+$conn->query("CREATE TABLE IF NOT EXISTS post_categories (
+    post_id INT NOT NULL,
+    category_id INT NOT NULL,
+    PRIMARY KEY (post_id, category_id)
+) DEFAULT CHARSET=utf8mb4");
 
-if ($has_cat_col) {
-    $cr = $conn->query("
-        SELECT c.*, COUNT(p.id) as post_count
-        FROM categories c
-        LEFT JOIN posts p ON p.category_id = c.id AND p.status = '已发布'
-        GROUP BY c.id
-        ORDER BY c.sort_order ASC, c.id ASC
-    ");
-} else {
-    $cr = $conn->query("SELECT *, 0 as post_count FROM categories ORDER BY sort_order ASC, id ASC");
-}
+$cats = [];
+$cr = $conn->query("
+    SELECT c.*, COUNT(pc.post_id) as post_count
+    FROM categories c
+    LEFT JOIN post_categories pc ON pc.category_id = c.id
+    LEFT JOIN posts p ON p.id = pc.post_id AND p.status = '已发布'
+    GROUP BY c.id
+    ORDER BY c.sort_order ASC, c.id ASC
+");
 if ($cr) while ($c = $cr->fetch_assoc()) $cats[] = $c;
 $db_err = !$cr ? $conn->error : '';
 ?>
@@ -35,10 +34,10 @@ $db_err = !$cr ? $conn->error : '';
     <meta charset="UTF-8">
     <title>分区 - 缪斯 MUSE</title>
     <style>
-        /* ── 页头 ── */
+        
         .cat-hero {
-            background: #0d1117;
-            border-bottom: 1px solid #30363d;
+            background: 
+            border-bottom: 1px solid 
             padding: 32px 0 26px;
             position: relative; overflow: hidden;
         }
@@ -54,13 +53,13 @@ $db_err = !$cr ? $conn->error : '';
             position: relative; z-index: 1;
         }
         .cat-hero h1 {
-            font-size: 24px; font-weight: 700; color: #e6edf3;
+            font-size: 24px; font-weight: 700; color: 
             font-family: "Courier New", monospace; margin: 0 0 4px;
         }
-        .cat-hero h1 span { color: #3fb950; }
-        .cat-hero p { font-size: 13px; color: #6e7681; margin: 0; font-family: "Courier New", monospace; }
+        .cat-hero h1 span { color: 
+        .cat-hero p { font-size: 13px; color: 
 
-        /* ── 游戏库网格 ── */
+        
         .lib-wrap {
             max-width: 1200px; margin: 32px auto; padding: 0 24px;
         }
@@ -72,7 +71,7 @@ $db_err = !$cr ? $conn->error : '';
         @media(max-width:900px)  { .lib-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; } }
         @media(max-width:500px)  { .lib-grid { grid-template-columns: 1fr; gap: 12px; } .lib-wrap { padding: 0 12px; margin-top: 20px; } }
 
-        /* ── 分区卡片 ── */
+        
         .lib-card {
             position: relative;
             border-radius: 10px;
@@ -81,16 +80,16 @@ $db_err = !$cr ? $conn->error : '';
             cursor: pointer;
             text-decoration: none;
             display: block;
-            background: #161b22;
-            border: 1px solid #30363d;
+            background: 
+            border: 1px solid 
             transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s;
         }
         .lib-card:hover {
             transform: translateY(-6px) scale(1.01);
-            box-shadow: 0 16px 48px rgba(0,0,0,.6), 0 0 0 1px var(--cc, #3fb950);
+            box-shadow: 0 16px 48px rgba(0,0,0,.6), 0 0 0 1px var(--cc, 
         }
 
-        /* 封面图 */
+        
         .lib-cover {
             position: absolute; inset: 0;
             width: 100%; height: 100%;
@@ -99,10 +98,10 @@ $db_err = !$cr ? $conn->error : '';
         }
         .lib-card:hover .lib-cover { transform: scale(1.06); }
 
-        /* 无封面占位 */
+        
         .lib-placeholder {
             position: absolute; inset: 0;
-            background: linear-gradient(135deg, #161b22 0%, #1c2128 100%);
+            background: linear-gradient(135deg, 
             background-image:
                 linear-gradient(rgba(63,185,80,.05) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(63,185,80,.05) 1px, transparent 1px);
@@ -112,10 +111,10 @@ $db_err = !$cr ? $conn->error : '';
         .lib-placeholder-icon {
             font-size: 52px;
             opacity: .35;
-            filter: drop-shadow(0 0 16px var(--cc, #3fb950));
+            filter: drop-shadow(0 0 16px var(--cc, 
         }
 
-        /* 底部渐变遮罩 */
+        
         .lib-card::after {
             content: '';
             position: absolute; inset: 0;
@@ -128,23 +127,23 @@ $db_err = !$cr ? $conn->error : '';
             pointer-events: none;
         }
 
-        /* 左侧彩色竖条 */
+        
         .lib-stripe {
             position: absolute; left: 0; top: 0; bottom: 0;
             width: 4px;
-            background: var(--cc, #3fb950);
+            background: var(--cc, 
             z-index: 3;
             opacity: .9;
         }
 
-        /* 底部文字 */
+        
         .lib-body {
             position: absolute; bottom: 0; left: 0; right: 0;
             padding: 18px 18px 16px;
             z-index: 3;
         }
         .lib-name {
-            font-size: 20px; font-weight: 700; color: #e6edf3;
+            font-size: 20px; font-weight: 700; color: 
             line-height: 1.25; margin-bottom: 5px;
             text-shadow: 0 1px 6px rgba(0,0,0,.8);
             overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
@@ -160,7 +159,7 @@ $db_err = !$cr ? $conn->error : '';
         }
         .lib-count {
             font-size: 12px; font-family: "Courier New", monospace;
-            color: var(--cc, #3fb950); font-weight: 700;
+            color: var(--cc, 
         }
         .lib-enter {
             margin-left: auto;
@@ -173,13 +172,13 @@ $db_err = !$cr ? $conn->error : '';
             opacity: 1; transform: translateX(0);
         }
 
-        /* 空状态 */
+        
         .empty-tip {
             text-align: center; padding: 80px 0;
-            color: #6e7681; font-size: 14px;
+            color: 
             font-family: "Courier New", monospace;
         }
-        .empty-tip a { color: #3fb950; text-decoration: none; }
+        .empty-tip a { color: 
     </style>
 </head>
 <body>
@@ -188,7 +187,7 @@ $db_err = !$cr ? $conn->error : '';
 
 <div class="cat-hero">
     <div class="cat-hero-inner">
-        <h1>// <span>分区</span></h1>
+        <h1>
         <p>选择一个分区，开始探索</p>
     </div>
 </div>
@@ -198,7 +197,7 @@ $db_err = !$cr ? $conn->error : '';
     <div class="empty-tip" style="color:#f85149;">数据库错误：<?= htmlspecialchars($db_err) ?><br><a href="pages/admin_categories.php" style="color:#3fb950;">→ 进入管理页面自动修复</a></div>
     <?php elseif (empty($cats)): ?>
     <div class="empty-tip">
-        <p>// 还没有分区</p>
+        <p>
         <?php if (in_array($_SESSION['role'] ?? '', ['admin', 'owner'])): ?>
         <a href="pages/admin_categories.php">→ 创建第一个分区</a>
         <?php endif; ?>

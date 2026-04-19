@@ -1,10 +1,10 @@
 <?php
 /**
- * pages/notices.php — 社区公告列表
+ * notices.php — 社区公告列表
  *
- * 显示所有 is_notice=1 且 status='已发布' 的帖子，按 id DESC 排序。
- * 点击标题跳转到 post.php?id=...
- * 读表：posts, users
+ * 功能：展示 is_notice=1 的帖子作为公告
+ * 读写表：读 posts
+ * 权限：无
  */
 session_start();
 require_once __DIR__ . '/../config.php';
@@ -27,11 +27,11 @@ $notices = $conn->query("
 
         .notice-page { max-width: 800px; margin: 24px auto; padding: 0 15px; }
 
-        /* 页头 */
+        
         .notice-banner {
-            background: #161b22;
-            border: 1px solid #30363d;
-            border-left: 3px solid #f0883e;
+            background: 
+            border: 1px solid 
+            border-left: 3px solid 
             border-radius: 6px;
             padding: 24px 28px;
             margin-bottom: 16px;
@@ -40,15 +40,15 @@ $notices = $conn->query("
             gap: 16px;
         }
         .notice-banner-icon { font-size: 36px; line-height: 1; }
-        .notice-banner h1 { margin: 0 0 4px; font-size: 18px; color: #e6edf3; font-family: "Courier New", monospace; }
-        .notice-banner p  { margin: 0; font-size: 13px; color: #8b949e; }
+        .notice-banner h1 { margin: 0 0 4px; font-size: 18px; color: 
+        .notice-banner p  { margin: 0; font-size: 13px; color: 
 
-        /* 公告卡片 */
+        
         .notice-card {
-            background: #161b22;
+            background: 
             border-radius: 6px;
-            border: 1px solid #30363d;
-            border-left: 3px solid #f0883e;
+            border: 1px solid 
+            border-left: 3px solid 
             padding: 18px 22px;
             margin-bottom: 10px;
             cursor: pointer;
@@ -57,7 +57,7 @@ $notices = $conn->query("
             display: block;
             color: inherit;
         }
-        .notice-card:hover { border-color: #f0883e; box-shadow: 0 0 0 1px rgba(240,136,62,.4); }
+        .notice-card:hover { border-color: 
 
         .notice-card-header {
             display: flex;
@@ -67,7 +67,7 @@ $notices = $conn->query("
         }
         .notice-icon-sm {
             background: rgba(240,136,62,.15);
-            color: #f0883e;
+            color: 
             width: 32px;
             height: 32px;
             border-radius: 4px;
@@ -82,12 +82,12 @@ $notices = $conn->query("
         .notice-title {
             font-size: 15px;
             font-weight: 600;
-            color: #c9d1d9;
+            color: 
             line-height: 1.4;
             flex: 1;
         }
         .notice-excerpt {
-            color: #8b949e;
+            color: 
             font-size: 13px;
             line-height: 1.7;
             margin-bottom: 10px;
@@ -98,7 +98,7 @@ $notices = $conn->query("
         }
         .notice-meta {
             font-size: 11px;
-            color: #6e7681;
+            color: 
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -111,10 +111,10 @@ $notices = $conn->query("
             object-fit: cover;
             vertical-align: middle;
             margin-right: 5px;
-            border: 1px solid #30363d;
+            border: 1px solid 
         }
 
-        .empty-tip { text-align: center; padding: 60px 0; color: #6e7681; font-size: 14px; }
+        .empty-tip { text-align: center; padding: 60px 0; color: 
     </style>
 </head>
 <body>

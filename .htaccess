@@ -1,9 +1,14 @@
 Options -Indexes
 
 # 自定义错误页
-ErrorDocument 404 /404.php
+ErrorDocument 400 /400.php
+ErrorDocument 401 /401.php
 ErrorDocument 403 /403.php
+ErrorDocument 404 /404.php
+ErrorDocument 429 /429.php
 ErrorDocument 500 /500.php
+ErrorDocument 502 /502.php
+ErrorDocument 503 /503.php
 
 # PHP 文件直接执行，不下载
 <FilesMatch "\.php$">

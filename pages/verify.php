@@ -1,12 +1,10 @@
 <?php
 /**
- * pages/verify.php — 邮箱验证
+ * verify.php — 邮箱验证页
  *
- * GET 参数：token（verify_token）
- * 逻辑：
- *   - token 有效且未过期（verify_token_expires > NOW()）→ 将 email_verified 置 1，清除 token，跳转登录页
- *   - token 无效或已过期 → 显示失败提示，提供重发入口
- * 读写表：users
+ * 功能：处理用户点击验证链接后的 token 校验，验证成功后激活账号
+ * 读写表：读写 users
+ * 权限：无
  */
 session_start();
 require_once __DIR__ . '/../config.php';
@@ -48,26 +46,28 @@ if (empty($token)) {
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
+    <link rel="shortcut icon" href="../assets/logo.svg">
     <title>邮箱验证 - <?= SITE_NAME ?></title>
     <style>
         @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
-        body { background:#0d1117; color:#e6edf3; font-family:"Courier New",monospace; margin:0; }
+        body { background:
         .wrap { display:flex; justify-content:center; align-items:center; min-height:100vh; padding:20px;
                 background-image: linear-gradient(rgba(63,185,80,.03) 1px,transparent 1px),
                                   linear-gradient(90deg,rgba(63,185,80,.03) 1px,transparent 1px);
                 background-size:40px 40px; }
-        .card { background:#161b22; border:1px solid #30363d; border-radius:6px; padding:40px 36px;
+        .card { background:
                 max-width:420px; width:100%; text-align:center; animation:fadeUp .4s ease;
                 box-shadow:0 0 40px rgba(0,0,0,.4); }
         .icon { font-size:48px; margin-bottom:20px; }
         h2 { margin:0 0 12px; font-size:18px; }
-        p  { color:#8b949e; font-size:13px; line-height:1.7; margin:0 0 24px; }
-        .btn { display:inline-block; background:#3fb950; color:#fff; text-decoration:none;
+        p  { color:
+        .btn { display:inline-block; background:
                padding:10px 28px; border-radius:4px; font-size:14px; font-weight:700;
                transition:.2s; font-family:inherit; }
-        .btn:hover { background:#2ea043; box-shadow:0 0 16px rgba(63,185,80,.4); }
-        .btn-gray { background:transparent; color:#8b949e; border:1px solid #30363d; }
-        .btn-gray:hover { color:#e6edf3; border-color:#8b949e; box-shadow:none; }
+        .btn:hover { background:
+        .btn-gray { background:transparent; color:
+        .btn-gray:hover { color:
     </style>
 </head>
 <body>
@@ -75,17 +75,17 @@ if (empty($token)) {
 <div class="wrap">
     <div class="card">
         <?php if ($status === 'ok'): ?>
-            <div class="icon">&#10003;</div>
+            <div class="icon">&
             <h2 style="color:#3fb950;">&gt; VERIFIED_</h2>
             <p><?= htmlspecialchars($msg) ?></p>
             <a href="login.php" class="btn">前往登录</a>
         <?php elseif ($status === 'already'): ?>
-            <div class="icon">&#9432;</div>
+            <div class="icon">&
             <h2 style="color:#58a6ff;">&gt; ALREADY_VERIFIED_</h2>
             <p><?= htmlspecialchars($msg) ?></p>
             <a href="login.php" class="btn">前往登录</a>
         <?php elseif ($status === 'expired'): ?>
-            <div class="icon">&#8987;</div>
+            <div class="icon">&
             <h2 style="color:#d29922;">&gt; LINK_EXPIRED_</h2>
             <p><?= htmlspecialchars($msg) ?></p>
             <form action="../actions/auth.php" method="POST">
@@ -96,7 +96,7 @@ if (empty($token)) {
             <a href="register.php" class="btn btn-gray" style="margin-right:8px;">返回注册</a>
             <a href="login.php" class="btn" style="margin-top:12px;">去登录</a>
         <?php else: ?>
-            <div class="icon">&#9888;</div>
+            <div class="icon">&
             <h2 style="color:#f85149;">&gt; ERROR_</h2>
             <p><?= htmlspecialchars($msg) ?></p>
             <a href="register.php" class="btn btn-gray">重新注册</a>

@@ -1,16 +1,25 @@
-<?php http_response_code(404); ?>
+<?php
+/**
+ * 404.php — HTTP 404 错误页
+ *
+ * 功能：向客户端发送 404 Not Found 状态码并展示暗色主题页面不存在提示页面。
+ * 读写表：无
+ * 权限：无
+ */
+http_response_code(404); ?>
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+<link rel="shortcut icon" href="assets/logo.svg">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>404 - 页面不存在 · 缪斯 MUSE</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-html,body{height:100%;background:#0d1117;color:#e6edf3;font-family:"Courier New",monospace;}
+html,body{height:100%;background:
 body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px;position:relative;overflow:hidden;}
 
-/* 网格背景 */
 body::before{
     content:'';position:fixed;inset:0;
     background-image:
@@ -20,7 +29,6 @@ body::before{
     pointer-events:none;
 }
 
-/* 大数字 */
 .code{
     font-size:clamp(100px,20vw,180px);
     font-weight:900;
@@ -34,7 +42,7 @@ body::before{
 .code::after{
     content:attr(data-code);
     position:absolute;inset:0;
-    color:#3fb950;
+    color:
     -webkit-text-stroke:0;
     opacity:0;
     animation:glitch 4s infinite;
@@ -52,24 +60,24 @@ body::before{
 .wrap{text-align:center;position:relative;z-index:1;}
 
 .label{
-    font-size:13px;letter-spacing:3px;color:#6e7681;
+    font-size:13px;letter-spacing:3px;color:
     text-transform:uppercase;margin:16px 0 24px;
 }
-.label span{color:#3fb950;}
+.label span{color:
 
 .msg{
-    font-size:15px;color:#8b949e;line-height:1.8;margin-bottom:32px;
+    font-size:15px;color:
     max-width:420px;
 }
-.msg .highlight{color:#e6edf3;}
+.msg .highlight{color:
 
 .prompt{
-    font-size:14px;color:#3fb950;margin-bottom:32px;
+    font-size:14px;color:
     display:flex;align-items:center;justify-content:center;gap:2px;
 }
 .cursor{
     display:inline-block;width:9px;height:16px;
-    background:#3fb950;margin-left:2px;
+    background:
     animation:blink .8s step-end infinite;
 }
 @keyframes blink{0%,100%{opacity:1;}50%{opacity:0;}}
@@ -79,12 +87,11 @@ body::before{
     padding:9px 22px;border-radius:4px;font-size:13px;font-weight:700;
     text-decoration:none;font-family:inherit;transition:.15s;letter-spacing:.5px;
 }
-.btn-green{background:#3fb950;color:#fff;border:none;}
-.btn-green:hover{background:#2ea043;box-shadow:0 0 16px rgba(63,185,80,.4);}
-.btn-outline{background:transparent;color:#8b949e;border:1px solid #30363d;}
-.btn-outline:hover{border-color:#6e7681;color:#e6edf3;}
+.btn-green{background:
+.btn-green:hover{background:
+.btn-outline{background:transparent;color:
+.btn-outline:hover{border-color:
 
-/* 扫描线 */
 .scanline{
     position:fixed;top:0;left:0;right:0;height:2px;
     background:linear-gradient(90deg,transparent,rgba(63,185,80,.15),transparent);
@@ -97,7 +104,7 @@ body::before{
 <div class="scanline"></div>
 <div class="wrap">
     <div class="code" data-code="404">404</div>
-    <div class="label">// <span>PAGE NOT FOUND</span></div>
+    <div class="label">
     <p class="msg">
         你访问的页面<span class="highlight">不存在</span>或已被删除。<br>
         请检查链接是否正确，或返回首页重新探索。

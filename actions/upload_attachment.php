@@ -1,16 +1,11 @@
 <?php
 /**
- * actions/upload_attachment.php — 附件上传（AJAX JSON）
+ * upload_attachment.php — 附件上传，返回 JSON
  *
- * POST FILES：file
- * 限制：
- *   - 禁止 php/php3/php4/php5/phtml/phar/exe/sh/bat/cmd/msi/vbs/ps1 等可执行扩展
- *   - 最大 20MB
- * 文件命名：日期_uniqid_原始文件名（特殊字符替换为 _）
- * 文件存放：uploads/attachments/
- *
- * 返回：{"status":"ok","filename":...,"original":...,"size":...,"ext":...,"url":...}
- *       或 {"status":"error","msg":"..."}
+ * 功能：接收上传的附件文件并保存到服务器，返回文件访问路径
+ * POST 参数：file（multipart/form-data）
+ * 读写表：写入 uploads/attachments/ 目录
+ * 权限：需登录
  */
 session_start();
 require_once __DIR__ . '/../config.php';
@@ -30,7 +25,6 @@ if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
     exit;
 }
 
-// 禁止危险扩展
 $blocked = ['php','php3','php4','php5','phtml','phar','exe','sh','bat','cmd','msi','vbs','ps1'];
 $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 if (in_array($ext, $blocked)) {
