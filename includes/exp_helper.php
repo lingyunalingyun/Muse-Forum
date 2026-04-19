@@ -1,13 +1,4 @@
 <?php
-/**
- * exp_helper.php — 核心辅助函数库
- *
- * 功能：经验等级计算（get_level_by_exp / add_exp / calc_login_exp）、角色徽章（get_role_info / get_role_badge）、
- *       自动补列（ensure_user_columns）、邮件发送（send_verify_email / send_reset_email / build_email_html）、
- *       帖子可见性检查（can_see_posts）
- * 读写表：users（函数级别读写，无直接顶层 SQL）
- * 权限：无（纯函数库，由调用方控制权限）
- */
 
 function get_level_by_exp(int $exp): int {
     if ($exp >= 50000) return 6;
@@ -59,19 +50,17 @@ function get_role_info(string $role, bool $is_banned = false): array {
         'border' => 'rgba(110,118,129,.35)',
     ];
     $map = [
-        'owner'    => ['label'=>'★ 站长',   'color'=>'#f85149','bg'=>'rgba(248,81,73,.15)',  'border'=>'rgba(248,81,73,.4)'],
-        'admin'    => ['label'=>'管理员',   'color'=>'#a78bfa','bg'=>'rgba(167,139,250,.15)','border'=>'rgba(167,139,250,.4)'],
-        'reviewer' => ['label'=>'◈ 审核员', 'color'=>'#e3b341','bg'=>'rgba(227,179,65,.15)', 'border'=>'rgba(227,179,65,.4)'],
-        'sponsor'  => ['label'=>'赞助者',   'color'=>'#c084fc','bg'=>'rgba(192,132,252,.15)','border'=>'rgba(192,132,252,.4)'],
-        'user'     => ['label'=>'成员',     'color'=>'#58a6ff','bg'=>'rgba(88,166,255,.15)', 'border'=>'rgba(88,166,255,.4)'],
+        'owner'   => ['label'=>'★ 站长', 'color'=>'#f85149','bg'=>'rgba(248,81,73,.15)',  'border'=>'rgba(248,81,73,.4)'],
+        'admin'   => ['label'=>'管理员', 'color'=>'#a78bfa','bg'=>'rgba(167,139,250,.15)','border'=>'rgba(167,139,250,.4)'],
+        'sponsor' => ['label'=>'赞助者', 'color'=>'#3fb950','bg'=>'rgba(63,185,80,.15)',  'border'=>'rgba(63,185,80,.4)'],
+        'user'    => ['label'=>'成员',   'color'=>'#58a6ff','bg'=>'rgba(88,166,255,.15)', 'border'=>'rgba(88,166,255,.4)'],
     ];
     return $map[$role] ?? $map['user'];
 }
 
 function get_role_badge(string $role, bool $is_banned = false, string $extra = ''): string {
     $i = get_role_info($role, $is_banned);
-    $class = (!$is_banned && $role === 'sponsor') ? ' class="sponsor-badge"' : '';
-    return "<span{$class} style=\"font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;"
+    return "<span style=\"font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;"
          . "letter-spacing:.3px;background:{$i['bg']};color:{$i['color']};border:1px solid {$i['border']};{$extra}\">"
          . $i['label'] . "</span>";
 }
@@ -89,8 +78,6 @@ function ensure_user_columns($conn): void {
         'last_login_date'      => 'DATE DEFAULT NULL',
         'is_banned'            => 'TINYINT(1) NOT NULL DEFAULT 0',
         'ban_reason'           => 'VARCHAR(255) DEFAULT NULL',
-        'ban_until'            => 'DATETIME DEFAULT NULL',
-        'banned_by'            => 'INT DEFAULT NULL',
         'show_followers'       => 'TINYINT(1) NOT NULL DEFAULT 1',
         'show_following'       => 'TINYINT(1) NOT NULL DEFAULT 1',
         'post_visibility'      => "VARCHAR(20) NOT NULL DEFAULT 'public'",
@@ -124,50 +111,6 @@ function ensure_user_columns($conn): void {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         UNIQUE KEY uq_block (blocker_id, blocked_id)
     )");
-
-    
-    $conn->query("CREATE TABLE IF NOT EXISTS post_view_logs (
-        post_id INT NOT NULL,
-        viewer_key VARCHAR(64) NOT NULL,
-        viewed_at DATETIME NOT NULL,
-        PRIMARY KEY (post_id, viewer_key)
-    )");
-
-    
-    foreach ([
-        'views'     => 'INT NOT NULL DEFAULT 0',
-        'repost_id' => 'INT DEFAULT NULL',
-    ] as $_col => $_def) {
-        $r = $conn->query("SHOW COLUMNS FROM posts LIKE '$_col'");
-        if ($r && $r->num_rows === 0) $conn->query("ALTER TABLE posts ADD COLUMN $_col $_def");
-    }
-
-    
-    $r = $conn->query("SHOW TABLES LIKE 'messages'");
-    if ($r && $r->num_rows > 0) {
-        $r2 = $conn->query("SHOW COLUMNS FROM messages LIKE 'ref_post_id'");
-        if ($r2 && $r2->num_rows === 0)
-            $conn->query("ALTER TABLE messages ADD COLUMN ref_post_id INT DEFAULT NULL");
-    }
-
-    
-    $conn->query("CREATE TABLE IF NOT EXISTS reports (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        reporter_id INT NOT NULL,
-        type VARCHAR(10) NOT NULL COMMENT 'post|user',
-        target_id INT NOT NULL,
-        reason VARCHAR(100) NOT NULL,
-        detail VARCHAR(500) DEFAULT NULL,
-        status VARCHAR(20) NOT NULL DEFAULT 'pending' COMMENT 'pending|handled|dismissed',
-        handler_id INT DEFAULT NULL,
-        handled_at DATETIME DEFAULT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        INDEX idx_type_target (type, target_id),
-        INDEX idx_status (status)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-
-    
-    $conn->query("ALTER TABLE reports CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 }
 
 function can_see_posts($conn, string $visibility, int $author_id, int $viewer_id, string $viewer_role = 'user'): bool {

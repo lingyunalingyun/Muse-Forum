@@ -1,11 +1,4 @@
 <?php
-/**
- * repost_card.php — 转发卡片渲染函数
- *
- * 功能：提供 render_repost_card($conn, $post_id, $base) 函数，返回转发卡片 HTML 字符串
- * 读写表：读 posts、users
- * 权限：无（纯函数库）
- */
 
 function render_repost_card($conn, int $post_id, string $base = '../'): string {
     $r = $conn->query(

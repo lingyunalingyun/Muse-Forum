@@ -1,12 +1,4 @@
 <?php
-/**
- * text_format.php — 帖子文本格式化函数库
- *
- * 功能：format_post_content() 将帖子内容中的 #话题 渲染为话题链接、@用户名 渲染为个人页链接，
- *       使用分组正则跳过 HTML 标签内部
- * 读写表：读 users（验证 @ 提及的用户名有效性）
- * 权限：无（纯函数库）
- */
 
 function format_post_content($html, $conn) {
     

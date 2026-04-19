@@ -1,12 +1,4 @@
 <?php
-/**
- * dating.php — 交友广场页
- *
- * 功能：以 6 列 CSS 无缝滚动卡片墙展示全站交友卡片，点击卡片弹出详情弹窗；
- *       登录用户可发布/编辑/删除自己的交友卡片，支持黑名单过滤。
- * 读写表：social_cards、users、user_blocks
- * 权限：浏览无需登录；发布/管理卡片需登录
- */
 session_start();
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/includes/exp_helper.php';
@@ -168,16 +160,16 @@ foreach ($columns as $ci => $col_cards) {
     position: relative; z-index: 10;
     display: flex; align-items: center; justify-content: space-between;
     padding: 10px 16px;
-    background: linear-gradient(
+    background: linear-gradient(to bottom, #161b22 60%, transparent);
     pointer-events: none;
 }
 .dating-topbar > * { pointer-events: auto; }
 .dating-title {
-    font-size: 14px; font-weight: 700; color: 
+    font-size: 14px; font-weight: 700; color: #e6edf3;
     font-family: "Courier New", monospace;
 }
-.dating-title span { color: 
-.dating-count { font-size: 11px; color: 
+.dating-title span { color: #3fb950; }
+.dating-count { font-size: 11px; color: #8b949e; }
 
 .wall-wrap {
     display: flex; gap: 8px;
@@ -217,8 +209,8 @@ foreach ($columns as $ci => $col_cards) {
 }
 
 .s-placeholder {
-    background: 
-    border: 1px dashed 
+    background: #161b22;
+    border: 1px dashed #30363d;
     cursor: default;
 }
 .s-placeholder:hover { transform: none; box-shadow: none; }
@@ -288,7 +280,7 @@ foreach ($columns as $ci => $col_cards) {
 }
 .modal-mask.open { display:flex; }
 .modal-box {
-    background:
+    background: #161b22;
     width:440px; max-width:calc(100vw - 32px); max-height:90vh;
     overflow-y:auto; padding:28px 28px 24px; position:relative;
     animation:fadeUp .25s ease;
@@ -296,102 +288,102 @@ foreach ($columns as $ci => $col_cards) {
 @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
 .modal-close {
     position:absolute; top:16px; right:16px; width:28px; height:28px;
-    background:
-    color:
+    background: #21262d;
+    color: #8b949e;
     align-items:center; justify-content:center; transition:.15s;
 }
-.modal-close:hover { background:
+.modal-close:hover { background: #30363d;
 
 .modal-profile { display:flex; align-items:flex-start; gap:16px; margin-bottom:18px; }
-.modal-avatar { width:72px; height:72px; border-radius:50%; object-fit:cover; border:2px solid 
+.modal-avatar { width:72px; height:72px; border-radius:50%; object-fit:cover; border:2px solid #30363d; }
 .modal-info { flex:1; min-width:0; }
-.modal-name { font-size:17px; font-weight:700; color:
+.modal-name { font-size:17px; font-weight:700; color: #e6edf3; }
 .modal-badges { display:flex; flex-wrap:wrap; gap:5px; align-items:center; margin-bottom:6px; }
 .modal-lv { font-size:11px; font-weight:700; padding:2px 7px; border-radius:3px; }
-.modal-sub { font-size:12px; color:
+.modal-sub { font-size:12px; color: #8b949e; }
 
 .modal-section { margin-bottom:16px; }
 .modal-section-label {
-    font-size:10px; font-weight:700; color:
+    font-size:10px; font-weight:700; color: #8b949e;
     letter-spacing:1.5px; text-transform:uppercase; font-family:"Courier New",monospace;
     margin-bottom:7px;
 }
-.modal-section-label::before { content:'// '; color:
-.modal-intro-text { font-size:13px; color:
+.modal-section-label::before { content:'// '; color: #3fb950; }
+.modal-intro-text { font-size:13px; color: #c9d1d9; }
 .modal-tags { display:flex; flex-wrap:wrap; gap:6px; }
 .modal-tag {
     font-size:12px; padding:3px 10px; border-radius:10px;
-    background:rgba(63,185,80,.1); color:
+    background:rgba(63,185,80,.1); color: #3fb950;
 }
 
 .modal-actions { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
 .btn-profile {
     flex:1; padding:8px 16px; border-radius:5px; font-size:13px; font-weight:600;
-    text-align:center; text-decoration:none; border:1px solid 
-    color:
+    text-align:center; text-decoration:none; border:1px solid #30363d;
+    color: #8b949e;
 }
-.btn-profile:hover { border-color:
+.btn-profile:hover { border-color: #58a6ff; }
 .btn-dm {
     flex:1; padding:8px 16px; border-radius:5px; font-size:13px; font-weight:600;
-    border:1px solid rgba(63,185,80,.4); color:
+    border:1px solid rgba(63,185,80,.4); color: #3fb950;
     transition:.15s; cursor:pointer;
 }
 .btn-dm:hover { background:rgba(63,185,80,.15); }
 
-.dm-area { display:none; border-top:1px solid 
+.dm-area { display:none; border-top:1px solid #30363d; }
 .dm-area.show { display:block; }
 .dm-textarea {
-    width:100%; background:
-    color:
+    width:100%; background: #0d1117;
+    color: #e6edf3;
     font-family:inherit; line-height:1.5; height:80px;
 }
-.dm-textarea:focus { border-color:
+.dm-textarea:focus { border-color: #3fb950; }
 .dm-send-row { display:flex; justify-content:flex-end; gap:8px; margin-top:8px; }
 .btn-send {
     padding:7px 20px; border-radius:4px; font-size:13px; font-weight:700;
-    background:
+    background: #3fb950;
 }
-.btn-send:hover { background:
-.btn-cancel-dm { padding:7px 14px; border-radius:4px; font-size:13px; background:transparent; border:1px solid 
-.btn-cancel-dm:hover { border-color:
-.dm-sent-tip { font-size:12px; color:
+.btn-send:hover { background: #2ea043; }
+.btn-cancel-dm { padding:7px 14px; border-radius:4px; font-size:13px; background:transparent; border:1px solid #30363d; }
+.btn-cancel-dm:hover { border-color: #8b949e; }
+.dm-sent-tip { font-size:12px; color: #3fb950; }
 
 .pub-modal-box {
-    background:
+    background: #161b22;
     width:480px; max-width:calc(100vw - 32px); padding:28px;
     position:relative; animation:fadeUp .25s ease;
 }
 .pub-modal-title {
-    font-size:13px; font-weight:700; color:
+    font-size:13px; font-weight:700; color: #e6edf3;
     letter-spacing:1.5px; text-transform:uppercase; font-family:"Courier New",monospace;
     margin:0 0 18px;
 }
-.pub-modal-title::before { content:'// '; color:
+.pub-modal-title::before { content:'// '; color: #3fb950; }
 .pub-field { margin-bottom:14px; }
-.pub-label { font-size:12px; color:
+.pub-label { font-size:12px; color: #8b949e; }
 .pub-textarea {
-    width:100%; background:
-    color:
+    width:100%; background: #0d1117;
+    color: #e6edf3;
     font-family:inherit; line-height:1.6; min-height:100px;
 }
-.pub-textarea:focus { border-color:
+.pub-textarea:focus { border-color: #3fb950; }
 .pub-input {
-    width:100%; background:
-    color:
+    width:100%; background: #0d1117;
+    color: #e6edf3;
 }
-.pub-input:focus { border-color:
-.pub-hint { font-size:11px; color:
+.pub-input:focus { border-color: #3fb950; }
+.pub-hint { font-size:11px; color: #6e7681; }
 .pub-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:6px; }
-.btn-pub-cancel { padding:8px 18px; border-radius:4px; font-size:13px; background:transparent; border:1px solid 
-.btn-pub-cancel:hover { border-color:
-.btn-pub-submit { padding:8px 22px; border-radius:4px; font-size:13px; font-weight:700; background:
-.btn-pub-submit:hover { background:
-.btn-pub-delete { padding:8px 16px; border-radius:4px; font-size:13px; border:1px solid rgba(248,81,73,.4); color:
+.btn-pub-cancel { padding:8px 18px; border-radius:4px; font-size:13px; background:transparent; border:1px solid #30363d; }
+.btn-pub-cancel:hover { border-color: #8b949e; }
+.btn-pub-submit { padding:8px 22px; border-radius:4px; font-size:13px; font-weight:700; background: #3fb950; }
+.btn-pub-submit:hover { background: #2ea043; }
+.btn-pub-delete { padding:8px 16px; border-radius:4px; font-size:13px; border:1px solid rgba(248,81,73,.4); color: #f85149; }
 .btn-pub-delete:hover { background:rgba(248,81,73,.1); }
 
 .wall-empty {
     flex:1; display:flex; flex-direction:column; align-items:center;
-    justify-content:center; color:
+    justify-content:center; color: #8b949e;
     font-size:13px; gap:8px;
 }
 
