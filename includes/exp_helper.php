@@ -1,11 +1,4 @@
 <?php
-/**
- * exp_helper.php — 经验与等级辅助函数库
- *
- * 功能：提供经验值与等级互算、等级颜色、等级名称、经验奖励等纯函数
- * 读写表：无（纯函数，不直接操作数据库）
- * 权限：内部引用
- */
 // 经验 & 等级辅助函数
 
 function get_level_by_exp(int $exp): int {
@@ -172,6 +165,25 @@ function ensure_user_columns($conn): void {
 
     // 修复已存在的 reports 表 charset
     $conn->query("ALTER TABLE reports CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
+    // 个人资料审核申请表
+    $conn->query("CREATE TABLE IF NOT EXISTS profile_edit_requests (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        new_username VARCHAR(50) DEFAULT NULL,
+        new_gender VARCHAR(10) DEFAULT NULL,
+        new_phone VARCHAR(20) DEFAULT NULL,
+        new_birthday DATE DEFAULT NULL,
+        new_signature VARCHAR(200) DEFAULT NULL,
+        new_avatar VARCHAR(100) DEFAULT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'pending',
+        admin_id INT DEFAULT NULL,
+        admin_note VARCHAR(255) DEFAULT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        reviewed_at DATETIME DEFAULT NULL,
+        INDEX idx_user (user_id),
+        INDEX idx_status (status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 }
 
 // 可见性检查：当前访问者能否看到 $author_id 的帖子

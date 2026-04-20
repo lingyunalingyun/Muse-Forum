@@ -1,11 +1,4 @@
 <?php
-/**
- * header.php — 全局顶部导航栏
- *
- * 功能：渲染顶部 nav，检测登录状态、未读消息数、封禁状态，支持子目录自适应路径
- * 读写表：users、messages（只读）
- * 权限：公开（被各页面 include）
- */
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -57,6 +50,8 @@ if ($is_logged_in && isset($conn)) {
         if ($p_res) $pending_posts = (int)$p_res->fetch_assoc()['cnt'];
         $rp_res = $conn->query("SELECT COUNT(*) as cnt FROM reports WHERE status='pending'");
         if ($rp_res) $pending_reports = (int)$rp_res->fetch_assoc()['cnt'];
+        $pr_res = $conn->query("SELECT COUNT(*) as cnt FROM profile_edit_requests WHERE status='pending'");
+        $pending_profile_reviews = $pr_res ? (int)$pr_res->fetch_assoc()['cnt'] : 0;
     }
 }
 ?>
@@ -444,6 +439,14 @@ window.addEventListener('load', function() {
             ⚙ 后台
             <?php $pending_total = $pending_posts + $pending_reports; if ($pending_total > 0): ?>
             <span style="background:#f85149;color:#fff;border-radius:9px;min-width:16px;height:16px;font-size:10px;display:inline-flex;align-items:center;justify-content:center;padding:0 3px;font-weight:700;"><?= $pending_total > 99 ? '99+' : $pending_total ?></span>
+            <?php endif; ?>
+        </a>
+        <?php endif; ?>
+        <?php if (in_array($current_role, ['admin', 'owner'])): ?>
+        <a href="<?= $base ?>pages/admin_profile_reviews.php" class="admin-drawer-btn" style="text-decoration:none;">
+            👤 资料审核
+            <?php if (!empty($pending_profile_reviews) && $pending_profile_reviews > 0): ?>
+            <span style="background:#f85149;color:#fff;border-radius:9px;min-width:16px;height:16px;font-size:10px;display:inline-flex;align-items:center;justify-content:center;padding:0 3px;font-weight:700;"><?= $pending_profile_reviews > 99 ? '99+' : $pending_profile_reviews ?></span>
             <?php endif; ?>
         </a>
         <?php endif; ?>
