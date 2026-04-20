@@ -50,8 +50,12 @@ if ($is_logged_in && isset($conn)) {
         if ($p_res) $pending_posts = (int)$p_res->fetch_assoc()['cnt'];
         $rp_res = $conn->query("SELECT COUNT(*) as cnt FROM reports WHERE status='pending'");
         if ($rp_res) $pending_reports = (int)$rp_res->fetch_assoc()['cnt'];
-        $pr_res = $conn->query("SELECT COUNT(*) as cnt FROM profile_edit_requests WHERE status='pending'");
-        $pending_profile_reviews = $pr_res ? (int)$pr_res->fetch_assoc()['cnt'] : 0;
+        $pr_tbl = $conn->query("SHOW TABLES LIKE 'profile_edit_requests'");
+        $pending_profile_reviews = 0;
+        if ($pr_tbl && $pr_tbl->num_rows > 0) {
+            $pr_res = $conn->query("SELECT COUNT(*) as cnt FROM profile_edit_requests WHERE status='pending'");
+            if ($pr_res) $pending_profile_reviews = (int)$pr_res->fetch_assoc()['cnt'];
+        }
     }
 }
 ?>
