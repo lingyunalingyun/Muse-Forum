@@ -1,8 +1,18 @@
-<?php http_response_code(502); ?>
+<?php
+/**
+ * 502.php — HTTP 502 错误页
+ *
+ * 功能：设置响应码 502 并展示"网关错误"提示页面
+ * 读写表：无
+ * 权限：公开
+ */
+http_response_code(502); ?>
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+<link rel="shortcut icon" href="assets/logo.svg">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>502 - 网关错误 · 缪斯 MUSE</title>
 <style>

@@ -1,5 +1,11 @@
 <?php
-
+/**
+ * forgot_password.php — 忘记密码页面
+ *
+ * 功能：用户输入邮箱后发送密码重置链接，展示发送状态与错误提示
+ * 读写表：users（写入 reset_token、reset_token_expires）
+ * 权限：公开
+ */
 session_start();
 $status    = $_GET['status'] ?? '';
 $error_msg = htmlspecialchars($_GET['error'] ?? '');
@@ -9,6 +15,8 @@ $sent_email = htmlspecialchars($_GET['email'] ?? '');
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
+    <link rel="shortcut icon" href="../assets/logo.svg">
     <title>忘记密码 - <?php require_once __DIR__ . '/../config.php'; echo SITE_NAME; ?></title>
     <style>
         @keyframes blink  { 0%,100%{opacity:1} 50%{opacity:0} }

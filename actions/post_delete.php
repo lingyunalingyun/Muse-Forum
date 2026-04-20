@@ -1,5 +1,11 @@
 <?php
-
+/**
+ * post_delete.php — 删除帖子
+ *
+ * 功能：根据帖子 ID 删除指定帖子
+ * 读写表：posts
+ * 权限：需登录；仅帖子作者或 admin 可删
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 

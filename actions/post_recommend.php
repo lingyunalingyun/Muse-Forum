@@ -1,5 +1,11 @@
 <?php
-
+/**
+ * post_recommend.php — 切换帖子推荐状态
+ *
+ * 功能：将帖子的 is_recommend 字段在 0/1 之间切换，用于管理员推荐帖子
+ * 读写表：posts
+ * 权限：需登录；仅 admin / owner
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 header('Content-Type: application/json');

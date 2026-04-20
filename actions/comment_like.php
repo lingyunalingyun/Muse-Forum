@@ -1,5 +1,12 @@
 <?php
-
+/**
+ * comment_like.php — 点赞 / 取消点赞评论
+ *
+ * 功能：切换当前用户对指定评论的点赞状态，并更新 comments.likes 计数；
+ *       首次点赞时向评论作者发送通知
+ * 读写表：comment_likes、comments、notifications
+ * 权限：需登录
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 
@@ -19,7 +26,7 @@ if ($cid > 0) {
         $conn->query("INSERT INTO comment_likes (user_id, comment_id) VALUES ($uid, $cid)");
         $conn->query("UPDATE comments SET likes = likes + 1 WHERE id = $cid");
 
-        
+        // 通知评论作者
         $cr = $conn->query("SELECT user_id, post_id FROM comments WHERE id = $cid");
         $c_info = $cr ? $cr->fetch_assoc() : null;
         if ($c_info && (int)$c_info['user_id'] !== $uid) {

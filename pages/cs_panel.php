@@ -1,4 +1,11 @@
 <?php
+/**
+ * cs_panel.php — 客服工作台
+ *
+ * 功能：客服人员查看待处理工单列表、接单、回复用户消息、标记工单状态（处理中/已解决）
+ * 读写表：cs_tickets、cs_messages、users
+ * 权限：admin / owner / 具有 is_cs 标记的客服账号
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 
@@ -161,10 +168,10 @@ $type_colors = [
         .chat-messages::-webkit-scrollbar-thumb { background:#30363d; border-radius:2px; }
         .msg-row { display:flex; align-items:flex-end; gap:8px; }
         .msg-row.mine { flex-direction:row-reverse; }
-        .msg-bubble { max-width:72%; padding:9px 13px; border-radius:6px; font-size:13px; line-height:1.6; word-break:break-word; }
+        .msg-col { display:flex; flex-direction:column; max-width:72%; }
+        .msg-bubble { max-width:100%; padding:9px 13px; border-radius:6px; font-size:13px; line-height:1.6; word-break:break-word; }
         .msg-row.mine   .msg-bubble { background:rgba(167,139,250,.15); border:1px solid rgba(167,139,250,.3); color:#e6edf3; border-radius:6px 6px 0 6px; }
         .msg-row.theirs .msg-bubble { background:#161b22; border:1px solid #30363d; color:#c9d1d9; border-radius:6px 6px 6px 0; }
-        .msg-col { display:flex; flex-direction:column; }
         .msg-label { font-size:10px; color:#6e7681; margin-bottom:3px; font-family:"Courier New",monospace; }
         .msg-row.mine .msg-label { text-align:right; }
         .msg-time { font-size:10px; color:#6e7681; margin-top:3px; font-family:"Courier New",monospace; }

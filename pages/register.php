@@ -1,5 +1,11 @@
 <?php
-
+/**
+ * register.php — 用户注册页面
+ *
+ * 功能：新用户填写用户名、邮箱、密码完成注册，注册后发送邮箱验证邮件
+ * 读写表：users
+ * 权限：公开
+ */
 session_start();
 $status        = $_GET['status']   ?? '';
 $pending_email = htmlspecialchars($_GET['email']    ?? '');
@@ -11,6 +17,8 @@ $cooldown      = (int)($_GET['cooldown'] ?? 0);
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
+    <link rel="shortcut icon" href="../assets/logo.svg">
     <title>加入我们 - 注册</title>
     <style>
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }

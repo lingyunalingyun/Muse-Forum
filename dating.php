@@ -1,4 +1,11 @@
 <?php
+/**
+ * dating.php — 社交广场（交友）页
+ *
+ * 功能：用户发布/浏览/互动交友卡片，支持筛选性别和年龄段
+ * 读写表：social_cards、users
+ * 权限：需登录（浏览公开，发卡需登录）
+ */
 session_start();
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/includes/exp_helper.php';
@@ -6,6 +13,7 @@ require_once __DIR__ . '/includes/exp_helper.php';
 $my_id   = (int)($_SESSION['user_id'] ?? 0);
 $my_name = $_SESSION['username'] ?? '';
 
+// 建表
 $conn->query("CREATE TABLE IF NOT EXISTS social_cards (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -19,6 +27,7 @@ $conn->query("CREATE TABLE IF NOT EXISTS social_cards (
     UNIQUE KEY uniq_user (user_id)
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+// 补列（老数据库兼容）
 $gc = $conn->query("SHOW COLUMNS FROM social_cards LIKE 'gender'");
 if ($gc && $gc->num_rows === 0) {
     $conn->query("ALTER TABLE social_cards ADD COLUMN gender VARCHAR(10) NOT NULL DEFAULT '' AFTER user_id");
@@ -31,12 +40,14 @@ if ($ac && $ac->num_rows === 0) {
 $my_role = $_SESSION['role'] ?? 'user';
 $is_moderator = in_array($my_role, ['admin', 'owner']);
 
+// 拉黑过滤条件
 $block_where = '';
 if ($my_id > 0) {
     $block_where = "AND NOT EXISTS (SELECT 1 FROM user_blocks WHERE blocker_id=$my_id AND blocked_id=sc.user_id)
                     AND NOT EXISTS (SELECT 1 FROM user_blocks WHERE blocker_id=sc.user_id AND blocked_id=$my_id)";
 }
 
+// 拉取所有激活卡片（随机排序，过滤封禁+拉黑）
 $cards = [];
 $cr = $conn->query("
     SELECT sc.id, sc.user_id, sc.gender, sc.age_range, sc.intro, sc.tags,
@@ -48,26 +59,31 @@ $cr = $conn->query("
 ");
 if ($cr) while ($row = $cr->fetch_assoc()) $cards[] = $row;
 
+// 我的卡片
 $my_card = null;
 if ($my_id > 0) {
     $mcr = $conn->query("SELECT * FROM social_cards WHERE user_id=$my_id");
     if ($mcr) $my_card = $mcr->fetch_assoc();
 }
 
+// 随机分配到列（6列）
 $col_count = 6;
 $columns   = array_fill(0, $col_count, []);
 foreach ($cards as $card) {
     $columns[array_rand($columns)][] = $card;
 }
 
+// 每列动画时长（整体放慢，错开，有机感）
 $durations = [70, 58, 80, 64, 74, 62];
 
+// 辅助：计算年龄
 function calc_age($birthday) {
     if (!$birthday) return null;
     $b = new DateTime($birthday);
     return (new DateTime())->diff($b)->y ?: null;
 }
 
+// 渲染真实卡片
 function render_card($c) {
     $av      = htmlspecialchars($c['avatar'] ?: 'default.png');
     $name    = htmlspecialchars($c['username']);
@@ -78,7 +94,7 @@ function render_card($c) {
     $lv      = (int)($c['level'] ?? 1);
     $lc      = get_level_color($lv);
 
-    
+    // 性别光晕（上下左右均匀散发）
     if ($gender === '女') {
         $glow = 'box-shadow:0 0 28px 10px rgba(255,105,180,.55),inset 0 0 40px rgba(255,105,180,.1);';
     } elseif ($gender === '男') {
@@ -129,6 +145,7 @@ function render_card($c) {
          . '</div>';
 }
 
+// 渲染占位卡片
 function render_placeholder($index) {
     $hints = ['虚位以待', '等你来', '期待相遇', '一张空卡', '投放卡片'];
     $hint  = $hints[$index % count($hints)];
@@ -140,6 +157,7 @@ function render_placeholder($index) {
          . '</div>';
 }
 
+// 每列最少填满 8 张（保证动画流畅），不足用占位符补
 $min_per_col = 8;
 foreach ($columns as $ci => $col_cards) {
     $need = $min_per_col - count($col_cards);
@@ -156,11 +174,12 @@ foreach ($columns as $ci => $col_cards) {
 <style>
 * { box-sizing: border-box; }
 
+/* ── 顶部浮层 ── */
 .dating-topbar {
     position: relative; z-index: 10;
     display: flex; align-items: center; justify-content: space-between;
     padding: 10px 16px;
-    background: linear-gradient(to bottom, #161b22 60%, transparent);
+    background: linear-gradient(#0d1117, transparent);
     pointer-events: none;
 }
 .dating-topbar > * { pointer-events: auto; }
@@ -169,8 +188,9 @@ foreach ($columns as $ci => $col_cards) {
     font-family: "Courier New", monospace;
 }
 .dating-title span { color: #3fb950; }
-.dating-count { font-size: 11px; color: #8b949e; }
+.dating-count { font-size: 11px; color: #6e7681; font-family: "Courier New", monospace; }
 
+/* ── 卡片墙 ── */
 .wall-wrap {
     display: flex; gap: 8px;
     padding: 0 8px 8px;
@@ -195,6 +215,7 @@ foreach ($columns as $ci => $col_cards) {
 @keyframes scrollUp   { from{transform:translateY(0)}   to{transform:translateY(-50%)} }
 @keyframes scrollDown { from{transform:translateY(-50%)} to{transform:translateY(0)}   }
 
+/* ── 卡片（扑克牌比例 5:7） ── */
 .s-card {
     position: relative; overflow: hidden;
     border-radius: 12px; cursor: pointer; flex-shrink: 0;
@@ -207,14 +228,14 @@ foreach ($columns as $ci => $col_cards) {
     box-shadow: 0 8px 32px rgba(0,0,0,.7);
     z-index: 2;
 }
-
+/* 占位卡片 */
 .s-placeholder {
     background: #161b22;
     border: 1px dashed #30363d;
     cursor: default;
 }
 .s-placeholder:hover { transform: none; box-shadow: none; }
-
+/* 模糊背景层 */
 .s-card-bg {
     position: absolute; inset: -12px;
     background-size: cover; background-position: center;
@@ -222,7 +243,7 @@ foreach ($columns as $ci => $col_cards) {
     transform: scale(1.05);
     pointer-events: none;
 }
-
+/* 渐变遮罩 */
 .s-card-overlay {
     position: absolute; inset: 0;
     background: linear-gradient(
@@ -233,12 +254,12 @@ foreach ($columns as $ci => $col_cards) {
     );
     pointer-events: none;
 }
-
+/* 内容层：三段式 header / intro(3/4) / tags(1/4) */
 .s-card-body {
     position: relative; z-index: 1;
     height: 100%; display: flex; flex-direction: column;
 }
-
+/* 顶部用户信息条（小） */
 .s-card-header {
     padding: 10px 12px 4px;
     flex-shrink: 0;
@@ -246,7 +267,7 @@ foreach ($columns as $ci => $col_cards) {
 }
 .s-name { font-size:14px; font-weight:700; color:rgba(255,255,255,.9); text-shadow:0 1px 3px rgba(0,0,0,.6); }
 .s-lv   { font-size:10px; font-weight:700; padding:1px 5px; border-radius:3px; }
-
+/* 介绍区（占 3/4） */
 .s-intro-wrap {
     flex: 3;
     padding: 6px 14px 8px;
@@ -258,7 +279,7 @@ foreach ($columns as $ci => $col_cards) {
     overflow:hidden; display:-webkit-box; -webkit-line-clamp:6; -webkit-box-orient:vertical;
     text-shadow:0 1px 4px rgba(0,0,0,.5);
 }
-
+/* 标签区（占 1/4） */
 .s-tags-area {
     flex: 1;
     padding: 6px 12px 10px;
@@ -273,6 +294,7 @@ foreach ($columns as $ci => $col_cards) {
 }
 .s-meta { font-size:12px; color:rgba(255,255,255,.4); font-family:"Courier New",monospace; width:100%; margin-top:2px; }
 
+/* ── 详情弹窗 ── */
 .modal-mask {
     display:none; position:fixed; inset:0; z-index:1000;
     background:rgba(0,0,0,.65); backdrop-filter:blur(4px);
@@ -280,7 +302,7 @@ foreach ($columns as $ci => $col_cards) {
 }
 .modal-mask.open { display:flex; }
 .modal-box {
-    background: #161b22;
+    background:#161b22; border:1px solid #30363d; border-radius:10px;
     width:440px; max-width:calc(100vw - 32px); max-height:90vh;
     overflow-y:auto; padding:28px 28px 24px; position:relative;
     animation:fadeUp .25s ease;
@@ -288,102 +310,105 @@ foreach ($columns as $ci => $col_cards) {
 @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
 .modal-close {
     position:absolute; top:16px; right:16px; width:28px; height:28px;
-    background: #21262d;
-    color: #8b949e;
+    background:#1c2128; border:1px solid #30363d; border-radius:50%;
+    color:#8b949e; cursor:pointer; font-size:16px; display:flex;
     align-items:center; justify-content:center; transition:.15s;
 }
-.modal-close:hover { background: #30363d;
+.modal-close:hover { background:#21262d; color:#e6edf3; }
 
 .modal-profile { display:flex; align-items:flex-start; gap:16px; margin-bottom:18px; }
-.modal-avatar { width:72px; height:72px; border-radius:50%; object-fit:cover; border:2px solid #30363d; }
+.modal-avatar { width:72px; height:72px; border-radius:50%; object-fit:cover; border:2px solid #30363d; flex-shrink:0; }
 .modal-info { flex:1; min-width:0; }
-.modal-name { font-size:17px; font-weight:700; color: #e6edf3; }
+.modal-name { font-size:17px; font-weight:700; color:#e6edf3; margin-bottom:5px; display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
 .modal-badges { display:flex; flex-wrap:wrap; gap:5px; align-items:center; margin-bottom:6px; }
 .modal-lv { font-size:11px; font-weight:700; padding:2px 7px; border-radius:3px; }
-.modal-sub { font-size:12px; color: #8b949e; }
+.modal-sub { font-size:12px; color:#6e7681; font-family:"Courier New",monospace; display:flex; gap:10px; flex-wrap:wrap; }
 
 .modal-section { margin-bottom:16px; }
 .modal-section-label {
-    font-size:10px; font-weight:700; color: #8b949e;
+    font-size:10px; font-weight:700; color:#6e7681;
     letter-spacing:1.5px; text-transform:uppercase; font-family:"Courier New",monospace;
     margin-bottom:7px;
 }
-.modal-section-label::before { content:'// '; color: #3fb950; }
-.modal-intro-text { font-size:13px; color: #c9d1d9; }
+.modal-section-label::before { content:'// '; color:#3fb950; }
+.modal-intro-text { font-size:13px; color:#c9d1d9; line-height:1.7; white-space:pre-wrap; word-break:break-word; }
 .modal-tags { display:flex; flex-wrap:wrap; gap:6px; }
 .modal-tag {
     font-size:12px; padding:3px 10px; border-radius:10px;
-    background:rgba(63,185,80,.1); color: #3fb950;
+    background:rgba(63,185,80,.1); color:#3fb950; border:1px solid rgba(63,185,80,.3);
 }
 
 .modal-actions { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
 .btn-profile {
     flex:1; padding:8px 16px; border-radius:5px; font-size:13px; font-weight:600;
     text-align:center; text-decoration:none; border:1px solid #30363d;
-    color: #8b949e;
+    color:#8b949e; background:#1c2128; transition:.15s; cursor:pointer;
 }
-.btn-profile:hover { border-color: #58a6ff; }
+.btn-profile:hover { border-color:#58a6ff; color:#58a6ff; }
 .btn-dm {
     flex:1; padding:8px 16px; border-radius:5px; font-size:13px; font-weight:600;
-    border:1px solid rgba(63,185,80,.4); color: #3fb950;
+    border:1px solid rgba(63,185,80,.4); color:#3fb950; background:rgba(63,185,80,.08);
     transition:.15s; cursor:pointer;
 }
 .btn-dm:hover { background:rgba(63,185,80,.15); }
 
-.dm-area { display:none; border-top:1px solid #30363d; }
+.dm-area { display:none; border-top:1px solid #21262d; padding-top:14px; }
 .dm-area.show { display:block; }
 .dm-textarea {
-    width:100%; background: #0d1117;
-    color: #e6edf3;
+    width:100%; background:#0d1117; border:1px solid #30363d; border-radius:5px;
+    color:#e6edf3; font-size:13px; padding:10px 12px; resize:none; outline:none;
     font-family:inherit; line-height:1.5; height:80px;
 }
-.dm-textarea:focus { border-color: #3fb950; }
+.dm-textarea:focus { border-color:#3fb950; }
 .dm-send-row { display:flex; justify-content:flex-end; gap:8px; margin-top:8px; }
 .btn-send {
     padding:7px 20px; border-radius:4px; font-size:13px; font-weight:700;
-    background: #3fb950;
+    background:#3fb950; border:none; color:#fff; cursor:pointer; transition:.2s;
 }
-.btn-send:hover { background: #2ea043; }
-.btn-cancel-dm { padding:7px 14px; border-radius:4px; font-size:13px; background:transparent; border:1px solid #30363d; }
-.btn-cancel-dm:hover { border-color: #8b949e; }
-.dm-sent-tip { font-size:12px; color: #3fb950; }
+.btn-send:hover { background:#2ea043; }
+.btn-cancel-dm { padding:7px 14px; border-radius:4px; font-size:13px; background:transparent; border:1px solid #30363d; color:#6e7681; cursor:pointer; transition:.15s; }
+.btn-cancel-dm:hover { border-color:#8b949e; color:#e6edf3; }
+.dm-sent-tip { font-size:12px; color:#3fb950; font-family:"Courier New",monospace; text-align:center; padding:8px 0; display:none; }
 
+
+/* ── 发布卡片弹窗 ── */
 .pub-modal-box {
-    background: #161b22;
+    background:#161b22; border:1px solid #30363d; border-radius:10px;
     width:480px; max-width:calc(100vw - 32px); padding:28px;
     position:relative; animation:fadeUp .25s ease;
 }
 .pub-modal-title {
-    font-size:13px; font-weight:700; color: #e6edf3;
+    font-size:13px; font-weight:700; color:#6e7681;
     letter-spacing:1.5px; text-transform:uppercase; font-family:"Courier New",monospace;
     margin:0 0 18px;
 }
-.pub-modal-title::before { content:'// '; color: #3fb950; }
+.pub-modal-title::before { content:'// '; color:#3fb950; }
 .pub-field { margin-bottom:14px; }
-.pub-label { font-size:12px; color: #8b949e; }
+.pub-label { font-size:12px; color:#6e7681; margin-bottom:6px; display:block; font-family:"Courier New",monospace; }
 .pub-textarea {
-    width:100%; background: #0d1117;
-    color: #e6edf3;
+    width:100%; background:#0d1117; border:1px solid #30363d; border-radius:5px;
+    color:#e6edf3; font-size:13px; padding:10px 12px; resize:vertical; outline:none;
     font-family:inherit; line-height:1.6; min-height:100px;
 }
-.pub-textarea:focus { border-color: #3fb950; }
+.pub-textarea:focus { border-color:#3fb950; box-shadow:0 0 0 3px rgba(63,185,80,.12); }
 .pub-input {
-    width:100%; background: #0d1117;
-    color: #e6edf3;
+    width:100%; background:#0d1117; border:1px solid #30363d; border-radius:5px;
+    color:#e6edf3; font-size:13px; padding:9px 12px; outline:none; font-family:inherit;
 }
-.pub-input:focus { border-color: #3fb950; }
-.pub-hint { font-size:11px; color: #6e7681; }
+.pub-input:focus { border-color:#3fb950; }
+.pub-hint { font-size:11px; color:#484f58; margin-top:4px; font-family:"Courier New",monospace; }
 .pub-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:6px; }
-.btn-pub-cancel { padding:8px 18px; border-radius:4px; font-size:13px; background:transparent; border:1px solid #30363d; }
-.btn-pub-cancel:hover { border-color: #8b949e; }
-.btn-pub-submit { padding:8px 22px; border-radius:4px; font-size:13px; font-weight:700; background: #3fb950; }
-.btn-pub-submit:hover { background: #2ea043; }
-.btn-pub-delete { padding:8px 16px; border-radius:4px; font-size:13px; border:1px solid rgba(248,81,73,.4); color: #f85149; }
+.btn-pub-cancel { padding:8px 18px; border-radius:4px; font-size:13px; background:transparent; border:1px solid #30363d; color:#6e7681; cursor:pointer; transition:.15s; }
+.btn-pub-cancel:hover { border-color:#8b949e; color:#e6edf3; }
+.btn-pub-submit { padding:8px 22px; border-radius:4px; font-size:13px; font-weight:700; background:#3fb950; border:none; color:#fff; cursor:pointer; transition:.2s; }
+.btn-pub-submit:hover { background:#2ea043; }
+.btn-pub-delete { padding:8px 16px; border-radius:4px; font-size:13px; border:1px solid rgba(248,81,73,.4); color:#f85149; background:transparent; cursor:pointer; transition:.15s; }
 .btn-pub-delete:hover { background:rgba(248,81,73,.1); }
 
+/* ── 空状态 ── */
 .wall-empty {
     flex:1; display:flex; flex-direction:column; align-items:center;
-    justify-content:center; color: #8b949e;
+    justify-content:center; color:#6e7681; font-family:"Courier New",monospace;
     font-size:13px; gap:8px;
 }
 
@@ -406,7 +431,7 @@ foreach ($columns as $ci => $col_cards) {
 <!-- 顶部浮层 -->
 <div class="dating-topbar">
     <div>
-        <span class="dating-title">
+        <span class="dating-title">// <span>交友</span></span>
         <span class="dating-count" style="margin-left:10px;"><?= count($cards) ?> 张卡片</span>
     </div>
     <?php if ($my_id > 0): ?>
@@ -431,7 +456,7 @@ foreach ($columns as $ci => $col_cards) {
 <?php if (empty($cards)): ?>
     <div class="wall-empty">
         <div style="font-size:36px;">📭</div>
-        <div>
+        <div>// 还没有人投放卡片</div>
         <div style="font-size:12px;margin-top:4px;">成为第一个！</div>
     </div>
 <?php else: ?>
@@ -440,7 +465,7 @@ foreach ($columns as $ci => $col_cards) {
     <div class="wall-col" style="--dur:<?= $durations[$ci] ?>s">
         <div class="col-inner">
             <?php
-            
+            // 渲染两遍，保证无缝循环
             for ($rep = 0; $rep < 2; $rep++) {
                 foreach ($col_cards as $c) {
                     if (!empty($c['__placeholder'])) {
@@ -489,7 +514,7 @@ foreach ($columns as $ci => $col_cards) {
                 <button class="btn-cancel-dm" onclick="toggleDm(false)">取消</button>
                 <button class="btn-send" onclick="sendDm()">发送</button>
             </div>
-            <div class="dm-sent-tip" id="dm-sent-tip">
+            <div class="dm-sent-tip" id="dm-sent-tip">// 消息已发送 ✓</div>
         </div>
     </div>
 </div>
@@ -549,17 +574,19 @@ foreach ($columns as $ci => $col_cards) {
     </div>
 </div>
 
+
 <script>
 const MY_ID   = <?= $my_id ?>;
 const MY_ROLE = '<?= htmlspecialchars($my_role) ?>';
 let   dmUid   = 0;
 
+// ── 详情弹窗 ──
 function openCard(el) {
     const d = el.dataset;
     document.getElementById('m-avatar').src = 'uploads/avatars/' + d.av;
     document.getElementById('m-name').textContent = d.name;
 
-    
+    // 角色徽章 + 等级
     const badges = document.getElementById('m-badges');
     badges.innerHTML = '';
     const roleMap = {
@@ -580,19 +607,19 @@ function openCard(el) {
     lv.textContent = 'Lv.' + d.lv;
     badges.appendChild(lv);
 
-    
+    // 副信息
     const sub = document.getElementById('m-sub');
     sub.innerHTML = '';
     if (d.gender)   sub.innerHTML += '<span>' + escHtml(d.gender) + '</span>';
     if (d.ageRange) sub.innerHTML += '<span>' + escHtml(d.ageRange) + ' 岁</span>';
 
-    
+    // 签名
     if (d.sig) sub.innerHTML += '<span style="color:#484f58">// ' + escHtml(d.sig) + '</span>';
 
-    
+    // 介绍
     document.getElementById('m-intro').textContent = d.intro;
 
-    
+    // 标签
     const tagsEl = document.getElementById('m-tags');
     const tagsSec = document.getElementById('m-tags-section');
     tagsEl.innerHTML = '';
@@ -609,7 +636,7 @@ function openCard(el) {
         tagsSec.style.display = 'none';
     }
 
-    
+    // 操作按钮
     dmUid = parseInt(d.uid);
     const acts = document.getElementById('m-actions');
     acts.innerHTML = '';
@@ -636,7 +663,7 @@ function openCard(el) {
         acts.appendChild(btnAdminDel);
     }
 
-    
+    // 重置私信区
     toggleDm(false);
     document.getElementById('dm-text').value = '';
     document.getElementById('dm-sent-tip').style.display = 'none';
@@ -680,6 +707,7 @@ function sendDm() {
     .catch(() => alert('网络错误'));
 }
 
+// ── 投放卡片弹窗 ──
 function openPub() {
     if (!MY_ID) { location.href = 'pages/login.php'; return; }
     document.getElementById('pub-modal').classList.add('open');
@@ -696,7 +724,7 @@ function submitCard() {
 
     const ageRange = document.getElementById('pub-age-range').value.trim();
     if (!ageRange) { alert('请填写年龄段'); return; }
-    
+    // 检查最小年龄 >= 18
     const minAge = parseInt(ageRange.replace(/[~\-\s].*/,''));
     if (!isNaN(minAge) && minAge < 18) { alert('最小年龄不能低于 18 岁'); return; }
 

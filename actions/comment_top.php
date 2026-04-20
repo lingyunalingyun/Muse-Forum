@@ -1,5 +1,11 @@
 <?php
-
+/**
+ * comment_top.php — 切换评论置顶状态
+ *
+ * 功能：将指定评论设为置顶（同一帖子同时只能有一条置顶）；再次操作则取消置顶
+ * 读写表：comments
+ * 权限：需登录；仅帖子作者或 admin 可操作
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 

@@ -1,7 +1,14 @@
 <?php
-
+/**
+ * notifications.php — 消息通知与私信中心
+ *
+ * 功能：展示系统通知（点赞/评论/关注等互动消息）和私信收件箱，支持标记已读、发送/查看私信会话
+ * 读写表：notifications、messages、users
+ * 权限：需登录
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../includes/repost_card.php';
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
@@ -9,15 +16,16 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $my_id    = intval($_SESSION['user_id']);
-$tab      = $_GET['tab'] ?? 'all';       
+$tab      = $_GET['tab'] ?? 'all';       // all | message | interact
 $other_id = intval($_GET['user_id'] ?? 0);
 
+// ── 私信 Tab：加载收件箱和会话数据 ──
 $inbox      = [];
 $messages   = [];
 $other_user = null;
 
 if ($tab === 'message') {
-    
+    // 收件箱
     $inbox_res = $conn->query("
         SELECT u.id, u.username, u.avatar,
                last_msg.content AS last_content,
@@ -38,7 +46,7 @@ if ($tab === 'message') {
     ");
     if ($inbox_res) while ($r = $inbox_res->fetch_assoc()) $inbox[] = $r;
 
-    
+    // 当前会话
     if ($other_id > 0) {
         $ou_res = $conn->query("SELECT id, username, avatar FROM users WHERE id = $other_id");
         $other_user = $ou_res ? $ou_res->fetch_assoc() : null;
@@ -56,7 +64,7 @@ if ($tab === 'message') {
         }
     }
 } else {
-    
+    // ── 通知 Tab：标记已读并查询 ──
     if ($tab === 'interact') {
         $conn->query("UPDATE notifications SET is_read=1 WHERE user_id=$my_id AND type!='message' AND is_read=0");
     } else {
@@ -78,6 +86,7 @@ if ($tab === 'message') {
     if ($res) while ($row = $res->fetch_assoc()) $notifications[] = $row;
 }
 
+// Tab 未读数
 $unread_msg      = (int)$conn->query("SELECT COUNT(*) as c FROM notifications WHERE user_id=$my_id AND type='message'  AND is_read=0")->fetch_assoc()['c'];
 $unread_interact = (int)$conn->query("SELECT COUNT(*) as c FROM notifications WHERE user_id=$my_id AND type!='message' AND is_read=0")->fetch_assoc()['c'];
 
@@ -132,7 +141,8 @@ $type_config = [
         .msg-row { display: flex; align-items: flex-end; gap: 8px; }
         .msg-row.sent { flex-direction: row-reverse; }
         .msg-avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid #30363d; }
-        .msg-bubble { max-width: 65%; padding: 9px 13px; border-radius: 4px; font-size: 13px; line-height: 1.5; word-break: break-word; }
+        .msg-col { display: flex; flex-direction: column; max-width: 65%; }
+        .msg-bubble { max-width: 100%; padding: 9px 13px; border-radius: 4px; font-size: 13px; line-height: 1.5; word-break: break-word; }
         .msg-row.received .msg-bubble { background: #161b22; color: #c9d1d9; border: 1px solid #30363d; border-bottom-left-radius: 2px; }
         .msg-row.sent .msg-bubble { background: rgba(63,185,80,.2); color: #e6edf3; border: 1px solid rgba(63,185,80,.4); border-bottom-right-radius: 2px; }
         .msg-time { font-size: 10px; color: #484f58; margin-top: 3px; text-align: right; font-family: "Courier New", monospace; }
@@ -182,7 +192,7 @@ $type_config = [
 <?php include __DIR__ . '/../includes/header.php'; ?>
 
 <?php
-
+// Tab 栏（两种布局都需要）
 $tab_html = '
 <div class="tabs">
     <a href="notifications.php?tab=all" class="tab ' . ($tab==='all'?'active':'') . '">全部'
@@ -248,8 +258,15 @@ $tab_html = '
                         <img src="../uploads/avatars/<?= htmlspecialchars($m['avatar'] ?: 'default.png') ?>"
                              class="msg-avatar" onerror="this.onerror=null;this.src='../uploads/avatars/default.png'">
                     <?php endif; ?>
-                    <div>
-                        <div class="msg-bubble"><?= htmlspecialchars($m['content']) ?></div>
+                    <div class="msg-col">
+                        <div class="msg-bubble">
+                            <?php if ($m['content'] !== ''): ?>
+                            <?= htmlspecialchars($m['content']) ?>
+                            <?php endif; ?>
+                            <?php if (!empty($m['ref_post_id'])): ?>
+                            <?= render_repost_card($conn, (int)$m['ref_post_id'], '../') ?>
+                            <?php endif; ?>
+                        </div>
                         <div class="msg-time"><?= $time_str ?></div>
                     </div>
                 </div>
@@ -289,7 +306,7 @@ function appendMsg(m) {
     const t = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
     const div = document.createElement('div');
     div.className = 'msg-row sent';
-    div.innerHTML = `<div><div class="msg-bubble">${escHtml(m.content)}</div><div class="msg-time">${t}</div></div>`;
+    div.innerHTML = `<div class="msg-col"><div class="msg-bubble">${escHtml(m.content)}</div><div class="msg-time">${t}</div></div>`;
     list.appendChild(div);
     list.scrollTop = list.scrollHeight;
 }

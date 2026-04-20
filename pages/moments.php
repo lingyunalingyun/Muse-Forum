@@ -1,4 +1,11 @@
 <?php
+/**
+ * moments.php — 动态广场（关注流）
+ *
+ * 功能：展示当前用户自己及其关注用户发布的帖子动态，支持分页和按用户筛选，支持 AJAX 懒加载
+ * 读写表：posts、users、follows、post_likes、post_favs
+ * 权限：需登录
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/exp_helper.php';
@@ -54,6 +61,7 @@ function time_ago(string $dt): string {
     return date('m-d', strtotime($dt));
 }
 
+// ── AJAX 模式：只返回帖子列表 HTML ──────────────────────────────
 if ($is_ajax) {
     header('Content-Type: text/html; charset=utf-8');
 
@@ -140,7 +148,7 @@ if ($is_ajax) {
         }
     }
 
-    
+    // 分页（AJAX 模式用 onclick）
     if ($total_pages > 1) {
         echo '<div class="pagination">';
         echo '<span class="pag-btn '.($page<=1?'disabled':'').'" onclick="loadFeed('.$filter_uid.','.($page-1).')">← 上页</span>';
@@ -153,6 +161,9 @@ if ($is_ajax) {
     exit;
 }
 
+// ── 完整页面模式 ─────────────────────────────────────────────────
+
+// 关注用户头像条
 $following = [];
 $fr = $conn->query(
     "SELECT u.id, u.username, u.avatar
@@ -161,6 +172,7 @@ $fr = $conn->query(
 );
 if ($fr) while ($r = $fr->fetch_assoc()) $following[] = $r;
 
+// 热搜：#话题（最近 30 天帖子中使用次数最多）
 $trending = [];
 $tr = $conn->query(
     "SELECT t.name, COUNT(pt.post_id) AS cnt
@@ -179,8 +191,9 @@ if ($tr) while ($r = $tr->fetch_assoc()) $trending[] = $r;
 <title>动态 — MUSE</title>
 <link rel="stylesheet" href="../style.css">
 <style>
-body { background: #0d1117; }
+body { background: #0d1117; color: #c9d1d9; margin: 0; font-family: "Microsoft YaHei", sans-serif; }
 
+/* ── 关注用户头像条 ── */
 .follow-strip {
     background: #161b22;
     border-bottom: 1px solid #21262d;
@@ -221,7 +234,7 @@ body { background: #0d1117; }
     width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block;
 }
 .fs-name {
-    font-size: 11px; color: #8b949e;
+    font-size: 11px; color: #8b949e; text-align: center;
     max-width: 62px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     line-height: 1.3;
 }
@@ -233,6 +246,7 @@ body { background: #0d1117; }
     font-size: 20px;
 }
 
+/* ── 主布局 ── */
 .moments-layout {
     max-width: 1100px;
     margin: 20px auto;
@@ -244,64 +258,71 @@ body { background: #0d1117; }
 .moments-main { flex: 1; min-width: 0; }
 .moments-side { width: 280px; flex-shrink: 0; }
 
+/* ── 帖子卡片 ── */
 .mc {
     background: #161b22;
-    border: 1px solid #30363d;
+    border: 1px solid #21262d;
     border-radius: 8px;
     padding: 16px;
     margin-bottom: 10px;
     transition: border-color .15s;
 }
-.mc:hover { border-color: #58a6ff; }
+.mc:hover { border-color: #30363d; }
 .mc-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 .mc-av {
     width: 44px; height: 44px; border-radius: 50%; object-fit: cover;
-    border: 1px solid #30363d;
+    border: 1px solid #30363d; flex-shrink: 0;
 }
 .mc-info { flex: 1; min-width: 0; }
-.mc-name { font-size: 14px; font-weight: 700; color: #e6edf3; }
-.mc-action { font-size: 12px; color: #8b949e; }
-.mc-time { font-size: 11px; color: #6e7681; }
-.mc-more { color: #8b949e; }
-.mc-more:hover { color: #e6edf3; }
+.mc-name { font-size: 14px; font-weight: 700; color: #e6edf3; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.mc-action { font-size: 12px; color: #6e7681; font-weight: 400; }
+.mc-time { font-size: 11px; color: #484f58; margin-top: 2px; font-family: "Courier New", monospace; }
+.mc-more { color: #484f58; font-size: 18px; cursor: pointer; padding: 0 4px; line-height: 1; flex-shrink: 0; text-decoration: none; }
+.mc-more:hover { color: #8b949e; }
 .mc-body { margin-bottom: 12px; }
-.mc-text-only { font-size: 13px; color: #c9d1d9; }
+.mc-text-only { font-size: 13px; color: #c9d1d9; line-height: 1.7; word-break: break-word; }
 .mc-with-thumb { display: flex; gap: 12px; align-items: flex-start; }
-.mc-thumb { width: 120px; height: 80px; border-radius: 4px; object-fit: cover; flex-shrink: 0; border: 1px solid #30363d; }
+.mc-thumb { width: 120px; height: 80px; border-radius: 4px; object-fit: cover; flex-shrink: 0; border: 1px solid #30363d; background: #0d1117; }
 .mc-text-side { flex: 1; min-width: 0; }
-.mc-title { font-size: 14px; font-weight: 700; color: #e6edf3; }
+.mc-title { font-size: 14px; font-weight: 700; color: #e6edf3; margin-bottom: 5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .mc-title a { color: inherit; text-decoration: none; }
-.mc-title a:hover { color: #58a6ff; }
-.mc-preview { font-size: 12px; color: #8b949e; }
-.mc-repost-comment { font-size: 13px; color: #c9d1d9; }
-.mc-actions { display: flex; gap: 20px; align-items: center; font-size: 13px; color: #8b949e; }
-.mc-act { display: flex; align-items: center; gap: 5px; text-decoration: none; color: #8b949e; }
+.mc-title a:hover { color: #3fb950; }
+.mc-preview { font-size: 12px; color: #8b949e; line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.mc-repost-comment { font-size: 13px; color: #c9d1d9; line-height: 1.65; margin-bottom: 8px; }
+.mc-actions { display: flex; gap: 20px; align-items: center; font-size: 13px; color: #6e7681; border-top: 1px solid #21262d; padding-top: 10px; }
+.mc-act { display: flex; align-items: center; gap: 5px; text-decoration: none; color: #6e7681; transition: color .15s; cursor: pointer; }
 .mc-act:hover { color: #3fb950; }
 .mc-act svg { width: 15px; height: 15px; fill: currentColor; flex-shrink: 0; }
 .mc-act-view { margin-left: auto; font-size: 12px; }
 .fs-av-link { cursor: pointer; }
 .fs-av-link:hover .mc-av { border-color: #3fb950; }
 
-.side-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; overflow: hidden; }
-.side-card-head { padding: 12px 16px 10px; font-size: 16px; font-weight: 700; color: #e6edf3; }
-.trend-item { display: flex; align-items: flex-start; gap: 10px; padding: 9px 16px; border-bottom: 1px solid #21262d; text-decoration: none; }
+/* ── 侧边栏 ── */
+.side-card { background: #161b22; border: 1px solid #21262d; border-radius: 8px; overflow: hidden; margin-bottom: 14px; }
+.side-card-head { padding: 12px 16px 10px; font-size: 16px; font-weight: 700; color: #e6edf3; border-bottom: 1px solid #21262d; }
+.trend-item { display: flex; align-items: flex-start; gap: 10px; padding: 9px 16px; border-bottom: 1px solid #0d1117; text-decoration: none; transition: background .12s; cursor: pointer; }
 .trend-item:last-child { border-bottom: none; }
 .trend-item:hover { background: #1c2128; }
 .trend-num { font-size: 14px; font-weight: 700; min-width: 18px; margin-top: 1px; font-family: "Courier New", monospace; flex-shrink: 0; }
 .trend-num.hot1 { color: #f85149; }
 .trend-num.hot2 { color: #f0883e; }
-.trend-num.hot3 { color: #d29922; }
-.trend-num.hots { color: #8b949e; }
-.trend-text { font-size: 13px; color: #e6edf3; }
-.trend-meta { font-size: 11px; color: #6e7681; }
+.trend-num.hot3 { color: #e3b341; }
+.trend-num.hots { color: #6e7681; }
+.trend-text { font-size: 13px; color: #c9d1d9; line-height: 1.4; }
+.trend-meta { font-size: 11px; color: #484f58; margin-top: 3px; font-family: "Courier New",monospace; }
 
-.empty { text-align: center; padding: 60px 20px; color: #8b949e; }
-.empty a { color: #58a6ff; }
+/* ── Feed 加载状态 ── */
+#moments-feed { min-height: 200px; position: relative; transition: opacity .15s; }
+#moments-feed.loading { opacity: .4; pointer-events: none; }
+
+/* ── 空状态 & 分页 ── */
+.empty { text-align: center; padding: 60px 20px; color: #6e7681; font-size: 13px; }
+.empty a { color: #3fb950; text-decoration: none; }
 .pagination { display: flex; gap: 6px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
 .pag-btn { padding: 5px 13px; border-radius: 4px; font-size: 12px; cursor: pointer;
-           border: 1px solid #30363d; color: #c9d1d9; background: transparent; }
-.pag-btn:hover:not(.disabled):not(.active) { border-color: #58a6ff; }
-.pag-btn.active { background: #3fb950; border-color: #3fb950; color: #0d1117; font-weight: 700; }
+           border: 1px solid #30363d; background: #161b22; color: #8b949e; transition: .15s; user-select: none; }
+.pag-btn:hover:not(.disabled):not(.active) { border-color: #3fb950; color: #3fb950; }
+.pag-btn.active { background: #3fb950; color: #fff; border-color: #3fb950; font-weight: 700; }
 .pag-btn.disabled { opacity: .35; cursor: default; }
 
 @media (max-width: 768px) {
@@ -344,7 +365,7 @@ body { background: #0d1117; }
     <div class="moments-main">
         <div id="moments-feed">
             <?php
-            
+            // 初始渲染（与 AJAX 模式输出相同的 HTML）
             if ($filter_uid > 0) {
                 $fu_res = $conn->query("SELECT username FROM users WHERE id=$filter_uid");
                 $fu_row = $fu_res ? $fu_res->fetch_assoc() : null;
@@ -426,7 +447,7 @@ body { background: #0d1117; }
                     <?php
                 }
             }
-            
+            // 分页
             if ($total_pages > 1) {
                 echo '<div class="pagination">';
                 echo '<span class="pag-btn '.($page<=1?'disabled':'').'" onclick="loadFeed('.$filter_uid.','.($page-1).')">← 上页</span>';
@@ -437,7 +458,7 @@ body { background: #0d1117; }
                 echo '</div>';
             }
             ?>
-        </div><!-- 
+        </div><!-- #moments-feed -->
     </div>
 
     <!-- 右侧边栏 -->
@@ -451,7 +472,7 @@ body { background: #0d1117; }
             <a href="../search.php?tab=posts&keyword=<?= urlencode('#'.$t['name']) ?>" class="trend-item">
                 <span class="trend-num <?= $nc ?>"><?= $i+1 ?></span>
                 <div>
-                    <div class="trend-text">
+                    <div class="trend-text">#<?= htmlspecialchars($t['name']) ?></div>
                     <div class="trend-meta"><?= $t['cnt'] ?> 条帖子</div>
                 </div>
             </a>
@@ -469,7 +490,7 @@ function loadFeed(uid, page) {
     _curUid  = uid;
     _curPage = page;
 
-    
+    // 更新头像条高亮
     document.querySelectorAll('.fs-item').forEach(function(el) {
         el.classList.toggle('active', parseInt(el.dataset.uid) === uid);
     });

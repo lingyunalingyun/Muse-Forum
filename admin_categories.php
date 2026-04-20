@@ -1,36 +1,19 @@
 <?php
-
+/**
+ * admin_categories.php — 后台分区管理页
+ *
+ * 功能：管理员对论坛分区进行增删改操作，支持上传分区封面图
+ * 读写表：categories、post_categories
+ * 权限：admin
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 
-if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
+if (($_SESSION['role'] ?? '') !== 'admin') {
     header("Location: ../index.php"); exit;
 }
 
-$conn->query("CREATE TABLE IF NOT EXISTS categories (
-    id          INT AUTO_INCREMENT PRIMARY KEY,
-    name        VARCHAR(50)  NOT NULL,
-    description VARCHAR(200) DEFAULT '',
-    color       VARCHAR(7)   DEFAULT '#3fb950',
-    icon        VARCHAR(10)  DEFAULT '#',
-    cover_image VARCHAR(255) DEFAULT '',
-    sort_order  INT          DEFAULT 0,
-    created_at  DATETIME     DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-
-$col2 = $conn->query("SHOW COLUMNS FROM posts LIKE 'category_id'");
-if ($col2 && $col2->num_rows === 0) {
-    $conn->query("ALTER TABLE posts ADD COLUMN category_id INT NULL DEFAULT NULL");
-}
-
-$col_check = $conn->query("SHOW COLUMNS FROM categories LIKE 'cover_image'");
-if ($col_check && $col_check->num_rows === 0) {
-    $conn->query("ALTER TABLE categories ADD COLUMN cover_image VARCHAR(255) DEFAULT '' AFTER icon");
-}
-
-$upload_dir = __DIR__ . '/../uploads/categories/';
-if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
-
+// ── 图片上传处理 ──
 function save_cover_image($file, $conn) {
     if ($file['error'] !== UPLOAD_ERR_OK) return null;
     $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
@@ -47,9 +30,10 @@ function save_cover_image($file, $conn) {
     return null;
 }
 
+// ── 删除 ──
 if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     $del_id = (int)$_GET['delete'];
-    
+    // 删除封面图文件
     $row = $conn->query("SELECT cover_image FROM categories WHERE id=$del_id")->fetch_assoc();
     if (!empty($row['cover_image'])) {
         $path = __DIR__ . '/../' . $row['cover_image'];
@@ -60,6 +44,7 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     header("Location: admin_categories.php?msg=delete_ok"); exit;
 }
 
+// ── 编辑保存 ──
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_id'])) {
     $edit_id = (int)$_POST['edit_id'];
     $name    = $conn->real_escape_string(trim($_POST['name'] ?? ''));
@@ -73,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_id'])) {
         if (!empty($_FILES['cover_image']['name'])) {
             $new_cover = save_cover_image($_FILES['cover_image'], $conn);
             if ($new_cover) {
-                
+                // 删旧图
                 $old = $conn->query("SELECT cover_image FROM categories WHERE id=$edit_id")->fetch_assoc();
                 if (!empty($old['cover_image'])) {
                     $old_path = __DIR__ . '/../' . $old['cover_image'];
@@ -88,6 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_id'])) {
     header("Location: admin_categories.php?msg=edit_ok"); exit;
 }
 
+// ── 新建 ──
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'create') {
     $name  = $conn->real_escape_string(trim($_POST['name'] ?? ''));
     $desc  = $conn->real_escape_string(trim($_POST['description'] ?? ''));
@@ -105,12 +91,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
             $form_err = '图片上传失败（格式须为 jpg/png/webp，≤5MB）';
         } else {
             $safe_cover = $conn->real_escape_string($cover);
-            $ok = $conn->query("INSERT INTO categories (name, description, color, icon, sort_order, cover_image) VALUES ('$name','$desc','$color','$icon',$sort,'$safe_cover')");
-            if ($ok) {
-                header("Location: admin_categories.php?msg=create_ok"); exit;
-            } else {
-                $form_err = '数据库写入失败：' . $conn->error;
-            }
+            $conn->query("INSERT INTO categories (name, description, color, icon, sort_order, cover_image) VALUES ('$name','$desc','$color','$icon',$sort,'$safe_cover')");
+            header("Location: admin_categories.php?msg=create_ok"); exit;
         }
     }
 }
@@ -170,30 +152,28 @@ if ($cr) while ($c = $cr->fetch_assoc()) $cats[] = $c;
         .form-group.xs   { width: 64px; }
 
         /* 封面上传区 */
-        .cover-wrap { display: flex; flex-direction: column; gap: 8px; width: 240px; flex-shrink: 0; }
-        .cover-preview-box {
-            width: 240px; height: 150px; border-radius: 6px;
-            background: #0d1117; border: 1px solid #30363d;
-            overflow: hidden; position: relative;
-            display: flex; align-items: center; justify-content: center;
+        .cover-upload-area {
+            border: 2px dashed #30363d; border-radius: 6px;
+            padding: 0; cursor: pointer; transition: border-color .2s;
+            position: relative; overflow: hidden;
+            width: 240px; aspect-ratio: 16/10;
+            flex-shrink: 0;
+        }
+        .cover-upload-area:hover { border-color: #3fb950; }
+        .cover-upload-area input[type=file] {
+            position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
         }
         .cover-preview {
-            width: 100%; height: 100%; object-fit: cover; display: none;
+            width: 100%; height: 100%; object-fit: cover;
+            display: none; border-radius: 4px;
         }
-        .cover-empty {
-            display: flex; flex-direction: column; align-items: center; gap: 5px;
-            color: #484f58; font-size: 12px; font-family: "Courier New", monospace; text-align: center;
+        .cover-placeholder {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100%; gap: 6px; color: #6e7681; font-size: 12px;
+            font-family: "Courier New", monospace; text-align: center; padding: 12px;
         }
-        .cover-empty span:first-child { font-size: 28px; }
-        .cover-btn {
-            display: flex; align-items: center; justify-content: center; gap: 6px;
-            background: #1c2128; border: 1px solid #30363d; border-radius: 4px;
-            color: #8b949e; font-size: 13px; padding: 7px 14px; cursor: pointer;
-            transition: .15s; font-family: inherit; width: 100%;
-        }
-        .cover-btn:hover { border-color: #3fb950; color: #3fb950; }
-        .cover-btn input[type=file] { display: none; }
-        .cover-required { font-size: 11px; color: #f85149; font-family: "Courier New", monospace; }
+        .cover-placeholder .icon { font-size: 26px; opacity: .5; }
+        .cover-required { font-size: 10px; color: #f85149; margin-top: 4px; }
 
         .btn { padding: 7px 18px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; border: none; font-family: inherit; transition: .15s; }
         .btn-green { background: #3fb950; color: #fff; }
@@ -266,29 +246,28 @@ if ($cr) while ($c = $cr->fetch_assoc()) $cats[] = $c;
 
                 <div class="form-row" style="align-items:flex-start;">
                     <!-- 封面上传 -->
-                    <div class="cover-wrap">
-                        <label style="font-size:12px;color:#6e7681;font-family:'Courier New',monospace;">
-                            封面图<?= $edit_cat ? '（留空保持不变）' : ' <span class="cover-required">*必填</span>' ?>
-                        </label>
-                        <!-- 预览框 -->
-                        <div class="cover-preview-box">
-                            <img class="cover-preview" id="cover-preview"
-                                 <?php if ($edit_cat && !empty($edit_cat['cover_image'])): ?>
-                                 src="../<?= htmlspecialchars($edit_cat['cover_image']) ?>" style="display:block;"
-                                 <?php endif; ?>>
-                            <div class="cover-empty" id="cover-empty"
-                                 <?= ($edit_cat && !empty($edit_cat['cover_image'])) ? 'style="display:none;"' : '' ?>>
-                                <span>🖼️</span>
-                                <span>暂无封面</span>
-                            </div>
+                    <div>
+                        <div class="form-group" style="margin-bottom:4px;">
+                            <label>封面图<?= $edit_cat ? '（留空保持不变）' : ' *' ?></label>
                         </div>
-                        <!-- 上传按钮 -->
-                        <label class="cover-btn">
+                        <div class="cover-upload-area" id="cover-area">
                             <input type="file" name="cover_image" accept="image/*" onchange="previewCover(this)">
-                            📂 选择封面图片
-                        </label>
-                        <div style="font-size:11px;color:#484f58;font-family:'Courier New',monospace;">
-                            jpg / png / webp · ≤ 5MB
+                            <?php if ($edit_cat && !empty($edit_cat['cover_image'])): ?>
+                            <img class="cover-preview" id="cover-preview"
+                                 src="../<?= htmlspecialchars($edit_cat['cover_image']) ?>"
+                                 style="display:block;">
+                            <div class="cover-placeholder" id="cover-ph" style="display:none;">
+                            <?php else: ?>
+                            <img class="cover-preview" id="cover-preview">
+                            <div class="cover-placeholder" id="cover-ph">
+                            <?php endif; ?>
+                                <span class="icon">🖼️</span>
+                                <span>点击上传封面</span>
+                                <span style="font-size:10px;color:#484f58;">jpg/png/webp · ≤5MB</span>
+                                <?php if (!$edit_cat): ?>
+                                <span class="cover-required">* 必填</span>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
 
@@ -370,13 +349,13 @@ if ($cr) while ($c = $cr->fetch_assoc()) $cats[] = $c;
 <script>
 function previewCover(input) {
     const preview = document.getElementById('cover-preview');
-    const empty   = document.getElementById('cover-empty');
+    const ph      = document.getElementById('cover-ph');
     if (input.files && input.files[0]) {
         const reader = new FileReader();
         reader.onload = e => {
             preview.src = e.target.result;
             preview.style.display = 'block';
-            if (empty) empty.style.display = 'none';
+            ph.style.display = 'none';
         };
         reader.readAsDataURL(input.files[0]);
     }

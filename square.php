@@ -1,5 +1,11 @@
 <?php
-
+/**
+ * square.php — 广场页（全部帖子流）
+ *
+ * 功能：展示全站已发布帖子瀑布流，含侧栏热搜与公告，刷新用户角色
+ * 读写表：posts、users、post_likes（只读）
+ * 权限：公开
+ */
 session_start();
 require_once __DIR__ . '/config.php';
 
@@ -12,6 +18,7 @@ if (isset($_SESSION['user_id'])) {
     }
 }
 
+// 侧栏：热搜帖子
 $hot_posts = $conn->query("
     SELECT p.id, p.title, p.content, COUNT(pl.post_id) as likes
     FROM posts p
@@ -22,6 +29,7 @@ $hot_posts = $conn->query("
     LIMIT 5
 ");
 
+// 侧栏：公告帖子
 $notice_posts = $conn->query("
     SELECT id, title FROM posts
     WHERE is_notice = 1 AND status = '已发布'
@@ -29,17 +37,12 @@ $notice_posts = $conn->query("
     LIMIT 3
 ");
 
-$cats = [];
-$cr = $conn->query("SELECT id, name, icon, color FROM categories ORDER BY sort_order ASC, id ASC");
-if ($cr) while ($c = $cr->fetch_assoc()) $cats[] = $c;
-
-$cur_cat = (int)($_GET['cat'] ?? 0);
-$cat_where = $cur_cat > 0 ? "AND p.category_id = $cur_cat" : '';
-
+// 分页
 $page     = max(1, intval($_GET['page'] ?? 1));
 $per_page = 20;
 $offset   = ($page - 1) * $per_page;
 
+// 可见性 & 黑名单过滤条件
 $my_role_sq = $_SESSION['role'] ?? 'user';
 $bypass_vis  = in_array($my_role_sq, ['admin', 'owner']);
 $uid = intval($_SESSION['user_id'] ?? 0);
@@ -62,7 +65,15 @@ if ($bypass_vis) {
     $vis_where = "AND u.post_visibility = 'public'";
 }
 
-$total_res = $conn->query("SELECT COUNT(*) c FROM posts p JOIN users u ON p.user_id=u.id WHERE p.status='已发布' $cat_where $vis_where");
+// 找最近有帖子的日期
+$latest_date = '';
+$ldr = $conn->query("SELECT DATE(p.created_at) d FROM posts p JOIN users u ON p.user_id=u.id WHERE p.status='已发布' $vis_where ORDER BY p.created_at DESC LIMIT 1");
+if ($ldr && $row_ld = $ldr->fetch_assoc()) $latest_date = $row_ld['d'];
+
+// 每日随机种子，保证同一天分页顺序一致
+$daily_seed = (int)date('Ymd');
+
+$total_res = $conn->query("SELECT COUNT(*) c FROM posts p JOIN users u ON p.user_id=u.id WHERE p.status='已发布' $vis_where");
 $total     = (int)($total_res->fetch_assoc()['c'] ?? 0);
 $total_pages = max(1, ceil($total / $per_page));
 ?>
@@ -216,27 +227,6 @@ $total_pages = max(1, ceil($total / $per_page));
         }
         .back-link:hover { color:#e6edf3; }
 
-        /* ── 分区标签栏 ── */
-        .cat-bar {
-            background: #0d1117;
-            border-bottom: 1px solid #30363d;
-            overflow-x: auto; scrollbar-width: none;
-        }
-        .cat-bar::-webkit-scrollbar { display: none; }
-        .cat-bar-inner {
-            max-width: 1100px; margin: 0 auto; padding: 0 16px;
-            display: flex; gap: 0; align-items: stretch;
-        }
-        .cat-tab {
-            display: inline-flex; align-items: center; gap: 6px;
-            padding: 12px 18px; text-decoration: none;
-            font-size: 13px; color: #6e7681; white-space: nowrap;
-            border-bottom: 2px solid transparent;
-            transition: color .15s, border-color .15s;
-        }
-        .cat-tab:hover { color: #e6edf3; }
-        .cat-tab.active { color: #e6edf3; border-bottom-color: var(--tc, #3fb950); font-weight: 600; }
-        .cat-tab .cat-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--tc, #3fb950); flex-shrink: 0; }
     </style>
 </head>
 <body>
@@ -245,40 +235,27 @@ $total_pages = max(1, ceil($total / $per_page));
 
 <div class="square-hero">
     <h1>// <span>广场</span></h1>
-    <p>全部帖子 · 共 <?= $total ?> 篇</p>
+    <p>发现帖子 · 共 <?= $total ?> 篇</p>
 </div>
 
-<?php if (!empty($cats)): ?>
-<div class="cat-bar">
-    <div class="cat-bar-inner">
-        <a href="square.php" class="cat-tab<?= $cur_cat === 0 ? ' active' : '' ?>" style="--tc:#3fb950">全部</a>
-        <?php foreach ($cats as $c): ?>
-        <a href="square.php?cat=<?= $c['id'] ?>"
-           class="cat-tab<?= $cur_cat === (int)$c['id'] ? ' active' : '' ?>"
-           style="--tc:<?= htmlspecialchars($c['color']) ?>">
-            <span class="cat-dot"></span>
-            <?= htmlspecialchars($c['icon']) ?> <?= htmlspecialchars($c['name']) ?>
-        </a>
-        <?php endforeach; ?>
-    </div>
-</div>
-<?php endif; ?>
 
 <div class="page-layout">
 
     <div class="main-feed">
         <a href="index.php" class="back-link">← 返回首页</a>
-        <div class="section-title">全部帖子</div>
+        <div class="section-title">发现</div>
 
         <?php
+        $safe_latest = $conn->real_escape_string($latest_date);
         $sql = "SELECT p.id, p.title, p.content, p.created_at, p.is_notice, p.is_recommend,
                        u.username,
+                       (DATE(p.created_at) = '$safe_latest') as is_latest_day,
                        (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) as likes_count,
                        (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count
                 FROM posts p
                 JOIN users u ON p.user_id = u.id
-                WHERE p.status = '已发布' $cat_where $vis_where
-                ORDER BY p.id DESC
+                WHERE p.status = '已发布' $vis_where
+                ORDER BY is_latest_day DESC, RAND($daily_seed)
                 LIMIT $per_page OFFSET $offset";
         $result = $conn->query($sql);
 
@@ -312,22 +289,20 @@ $total_pages = max(1, ceil($total / $per_page));
         ?>
 
         <!-- 分页 -->
-        <?php if ($total_pages > 1):
-            $cat_qs = $cur_cat > 0 ? "&cat=$cur_cat" : '';
-        ?>
+        <?php if ($total_pages > 1): ?>
         <div class="pagination">
             <?php if ($page > 1): ?>
-                <a href="square.php?page=<?= $page-1 ?><?= $cat_qs ?>" class="page-btn">← 上一页</a>
+                <a href="square.php?page=<?= $page-1 ?>" class="page-btn">← 上一页</a>
             <?php endif; ?>
             <?php
             $start = max(1, $page - 2);
             $end   = min($total_pages, $page + 2);
             for ($i = $start; $i <= $end; $i++):
             ?>
-                <a href="square.php?page=<?= $i ?><?= $cat_qs ?>" class="page-btn<?= $i === $page ? ' active' : '' ?>"><?= $i ?></a>
+                <a href="square.php?page=<?= $i ?>" class="page-btn<?= $i === $page ? ' active' : '' ?>"><?= $i ?></a>
             <?php endfor; ?>
             <?php if ($page < $total_pages): ?>
-                <a href="square.php?page=<?= $page+1 ?><?= $cat_qs ?>" class="page-btn">下一页 →</a>
+                <a href="square.php?page=<?= $page+1 ?>" class="page-btn">下一页 →</a>
             <?php endif; ?>
         </div>
         <?php endif; ?>

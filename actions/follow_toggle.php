@@ -1,5 +1,12 @@
 <?php
-
+/**
+ * follow_toggle.php — 关注 / 取消关注用户
+ *
+ * 功能：切换当前用户对目标用户的关注状态，并返回目标用户最新粉丝数；
+ *       关注时向对方发送通知
+ * 读写表：follows、notifications
+ * 权限：需登录
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 

@@ -1,5 +1,12 @@
 <?php
-
+/**
+ * user_search.php — 用户名前缀搜索（@mention 联想）
+ *
+ * 功能：根据 GET 参数 q 按用户名前缀匹配，最多返回 8 条结果，
+ *       用于编辑器 @mention 联想下拉
+ * 读写表：users（只读）
+ * 权限：需登录
+ */
 ob_start();
 error_reporting(0);
 session_start();

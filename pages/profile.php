@@ -1,10 +1,17 @@
 <?php
-
+/**
+ * profile.php — 用户主页（个人资料页）
+ *
+ * 功能：展示指定用户的基本信息、帖子列表、背包物品、粉丝/关注数，支持关注/取消关注操作
+ * 读写表：users、posts、user_inventory、follows
+ * 权限：公开（查看他人）/ 需登录（查看自己或执行关注操作）
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/exp_helper.php';
 ensure_user_columns($conn);
 
+// --- 核心修复：动态获取要查看的用户 ID ---
 if (isset($_GET['id']) && intval($_GET['id']) > 0) {
     $view_uid = intval($_GET['id']);
 } elseif (isset($_SESSION['user_id'])) {
@@ -14,6 +21,7 @@ if (isset($_GET['id']) && intval($_GET['id']) > 0) {
     exit;
 }
 
+// 使用 $view_uid 获取资料
 $user_res = $conn->query("SELECT * FROM users WHERE id = $view_uid");
 $user = $user_res->fetch_assoc();
 $user_posts_res = $conn->query("SELECT id, title, content, created_at FROM posts WHERE user_id = $view_uid ORDER BY created_at DESC LIMIT 10");
@@ -22,8 +30,10 @@ if (!$user) {
     die("该用户不存在或已被注销。 <a href='../index.php'>返回首页</a>");
 }
 
+// 2. 获取该用户的背包物品数据
 $inventory = $conn->query("SELECT * FROM user_inventory WHERE user_id = $view_uid");
 
+// 3. 统计该用户的帖子数量
 $post_count_res = $conn->query("SELECT count(*) as total FROM posts WHERE user_id = $view_uid");
 $post_count = $post_count_res ? $post_count_res->fetch_assoc()['total'] : 0;
 $follow_count_res = $conn->query("SELECT count(*) as total FROM follows WHERE follower_id = $view_uid");
@@ -31,8 +41,10 @@ $follow_count = $follow_count_res ? $follow_count_res->fetch_assoc()['total'] : 
 $fans_count_res = $conn->query("SELECT count(*) as total FROM follows WHERE followed_id = $view_uid");
 $fans_count = $fans_count_res ? $fans_count_res->fetch_assoc()['total'] : 0;
 
+// 当前访问者是否为页面主人
 $is_mine = (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $view_uid);
 
+// 拉黑状态（双向）
 $i_blocked_them = false;
 $they_blocked_me = false;
 if ($my_id > 0 && !$is_mine) {
@@ -42,6 +54,7 @@ if ($my_id > 0 && !$is_mine) {
     $they_blocked_me = $r2 && $r2->num_rows > 0;
 }
 
+// 收藏夹 & 点赞夹（仅自己可见）
 $favs_list  = [];
 $likes_list = [];
 if ($is_mine) {
@@ -60,6 +73,7 @@ if ($is_mine) {
     if ($r) $likes_list = $r->fetch_all(MYSQLI_ASSOC);
 }
 
+// --- 检查当前登录用户是否关注了正在查看的用户 ---
 $is_following = false;
 $my_id = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : 0;
 
@@ -94,6 +108,9 @@ if ($my_id > 0 && $my_id != $view_uid) {
         .user-meta-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
         .user-meta-item { font-size: 12px; color: #6e7681; font-family: "Courier New", monospace; }
         .user-meta-item span { color: #8b949e; }
+        .mid-copy { cursor: pointer; color: #3fb950 !important; letter-spacing: 1px; border-bottom: 1px dashed rgba(63,185,80,.4); transition: opacity .15s; }
+        .mid-copy:hover { opacity: .75; }
+        .mid-copied { color: #58a6ff !important; border-bottom-color: rgba(88,166,255,.4) !important; }
         .btn-edit { font-size: 12px; color: #3fb950; text-decoration: none; border: 1px solid rgba(63,185,80,.4); padding: 5px 14px; border-radius: 4px; transition: .2s; font-weight: 600; display: inline-flex; align-items: center; }
         .btn-edit:hover { background: rgba(63,185,80,.1); color: #3fb950; }
         .btn-edit.following { color: #6e7681 !important; border-color: #30363d !important; }
@@ -134,7 +151,7 @@ if ($my_id > 0 && $my_id != $view_uid) {
             style="cursor: pointer;"
             onclick="showFullImage(this.src)"
             title="查看大图"
-            onerror="this.src='../uploads/avatars/default.png'">
+            onerror=\"this.onerror=null;this.src='../uploads/avatars/default.png'\">
 
         <div class="user-info">
             <h2>
@@ -149,13 +166,14 @@ if ($my_id > 0 && $my_id != $view_uid) {
             </h2>
             <p><?php echo htmlspecialchars($user['signature'] ?: "// 这个人很懒，什么都没留下"); ?></p>
             <div class="user-meta-row">
+                <span class="user-meta-item">MID <span class="mid-copy" id="mid-val" onclick="copyMid()" title="点击复制"><?= htmlspecialchars($user['mid'] ?? '—') ?></span></span>
                 <span class="user-meta-item">生日 <span><?php echo $user['birthday'] ?: "未设置"; ?></span></span>
                 <span class="user-meta-item">积分 <span style="color:#3fb950;"><?php echo $user['points']; ?></span></span>
                 <span class="user-meta-item">性别 <span><?php echo $user['gender'] ?: "未设置"; ?></span></span>
             </div>
 
             <?php
-            
+            // 经验条
             $u_exp    = (int)($user['exp'] ?? 0);
             $u_level  = get_level_by_exp($u_exp);
             $u_color  = get_level_color($u_level);
@@ -209,11 +227,20 @@ if ($my_id > 0 && $my_id != $view_uid) {
                                font-size:12px;padding:5px 12px;border-radius:4px;font-family:inherit;transition:.2s;">
                     <?= $i_blocked_them ? '已拉黑' : '拉黑' ?>
                 </button>
+                <?php if (!$is_mine): ?>
+                <button onclick="openReportModal('user',<?= $user['id'] ?>)"
+                        style="cursor:pointer;border:1px solid #30363d;background:none;color:#6e7681;
+                               font-size:12px;padding:5px 12px;border-radius:4px;font-family:inherit;transition:.2s;"
+                        onmouseover="this.style.borderColor='#f85149';this.style.color='#f85149';"
+                        onmouseout="this.style.borderColor='#30363d';this.style.color='#6e7681';">
+                    举报
+                </button>
+                <?php endif; ?>
                 <?php endif; ?>
             <?php endif; ?>
 
             <?php
-            
+            // 封禁按钮：admin/owner 可见，但不能操作同级或更高级
             $my_role     = $_SESSION['role'] ?? '';
             $target_role = $user['role'] ?? 'user';
             $can_ban = false;
@@ -304,7 +331,7 @@ if ($my_id > 0 && $my_id != $view_uid) {
                 const lv = getLevelByExp(parseInt(u.exp)||0);
                 const lc = _levelColors[lv], ln = _levelNames[lv];
                 return `<a href="profile.php?id=${u.id}" style="display:flex;align-items:center;gap:12px;padding:9px 18px;text-decoration:none;transition:.15s;" onmouseover="this.style.background='#21262d'" onmouseout="this.style.background='transparent'">
-                    <img src="../uploads/avatars/${u.avatar||'default.png'}" onerror="this.src='../uploads/avatars/default.png'"
+                    <img src="../uploads/avatars/${u.avatar||'default.png'}" onerror=\"this.onerror=null;this.src='../uploads/avatars/default.png'\"
                          style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid #30363d;flex-shrink:0;">
                     <div style="min-width:0;">
                         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
@@ -464,7 +491,7 @@ function toggleBlock(uid) {
     });
 }
 </script>
-<?php endif; 
+<?php endif; // they_blocked_me ?>
 
 <script>
 function toggleFollow(authorId) {
@@ -511,15 +538,35 @@ document.addEventListener('keydown', function(e) {
 });
 </script>
 
+<?php if ($my_id && !$is_mine): include __DIR__ . '/report_modal.php'; endif; ?>
+
 <!-- 封禁弹窗 -->
 <div id="ban-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;align-items:center;justify-content:center;">
-    <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:28px 28px 24px;width:360px;max-width:90vw;font-family:'Courier New',monospace;">
+    <div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:28px 28px 24px;width:380px;max-width:92vw;font-family:'Courier New',monospace;">
         <p id="ban-modal-title" style="color:#f85149;font-size:15px;margin:0 0 16px;font-weight:700;"></p>
         <div id="ban-reason-wrap">
-            <label style="font-size:12px;color:#8b949e;display:block;margin-bottom:6px;">封禁原因</label>
+            <label style="font-size:12px;color:#8b949e;display:block;margin-bottom:6px;">封禁原因 <span style="color:#f85149;">*</span></label>
             <input id="ban-reason-input" type="text" placeholder="请输入封禁原因（必填）" maxlength="200"
                    style="width:100%;box-sizing:border-box;background:#0d1117;border:1px solid #30363d;color:#e6edf3;
-                          padding:8px 10px;border-radius:4px;font-size:13px;font-family:inherit;outline:none;">
+                          padding:8px 10px;border-radius:4px;font-size:13px;font-family:inherit;outline:none;margin-bottom:14px;">
+
+            <label style="font-size:12px;color:#8b949e;display:block;margin-bottom:6px;">封禁时长</label>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:#c9d1d9;cursor:pointer;">
+                    <input type="radio" name="ban_type" id="ban-type-timed" value="timed" checked
+                           style="accent-color:#f85149;" onchange="toggleBanDate()"> 到期解封
+                </label>
+                <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:#c9d1d9;cursor:pointer;">
+                    <input type="radio" name="ban_type" id="ban-type-perm" value="perm"
+                           style="accent-color:#f85149;" onchange="toggleBanDate()"> 永久封禁
+                </label>
+            </div>
+            <div id="ban-date-wrap" style="margin-top:10px;">
+                <input id="ban-until-input" type="date"
+                       style="background:#0d1117;border:1px solid #30363d;color:#e6edf3;
+                              padding:7px 10px;border-radius:4px;font-size:13px;font-family:inherit;outline:none;width:100%;box-sizing:border-box;"
+                       min="<?= date('Y-m-d', strtotime('+1 day')) ?>">
+            </div>
         </div>
         <div style="display:flex;gap:10px;margin-top:18px;">
             <button id="ban-confirm-btn"
@@ -547,29 +594,41 @@ function openBanModal(uid, isBanned, curReason) {
         confirmBtn.textContent = '确认解封';
         confirmBtn.style.cssText = 'flex:1;padding:9px;border-radius:4px;border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;background:#3fb950;color:#fff;';
     } else {
-        title.textContent = '封禁该账号？封禁后用户将无法登录。';
+        title.textContent = '封禁该账号？';
         title.style.color = '#f85149';
         reasonWrap.style.display = 'block';
         input.value = '';
+        document.getElementById('ban-type-timed').checked = true;
+        document.getElementById('ban-until-input').value = '';
+        document.getElementById('ban-date-wrap').style.display = 'block';
         confirmBtn.textContent = '确认封禁';
         confirmBtn.style.cssText = 'flex:1;padding:9px;border-radius:4px;border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;background:#f85149;color:#fff;';
     }
     confirmBtn.onclick = submitBan;
     modal.style.display = 'flex';
 }
+function toggleBanDate() {
+    const isPerm = document.getElementById('ban-type-perm').checked;
+    document.getElementById('ban-date-wrap').style.display = isPerm ? 'none' : 'block';
+}
 function closeBanModal() {
     document.getElementById('ban-modal').style.display = 'none';
 }
 function submitBan() {
     const reason = document.getElementById('ban-reason-input').value.trim();
-    if (!_banIsCurrentlyBanned && !reason) {
-        alert('请填写封禁原因');
-        return;
-    }
+    if (!_banIsCurrentlyBanned && !reason) { alert('请填写封禁原因'); return; }
     const fd = new FormData();
     fd.append('user_id', _banTargetId);
     fd.append('action', _banIsCurrentlyBanned ? 'unban' : 'ban');
     fd.append('reason', reason);
+    if (!_banIsCurrentlyBanned) {
+        const isPerm = document.getElementById('ban-type-perm').checked;
+        if (!isPerm) {
+            const until = document.getElementById('ban-until-input').value;
+            if (!until) { alert('请选择截止日期，或选择永久封禁'); return; }
+            fd.append('ban_until', until);
+        }
+    }
     fetch('../actions/ban_user.php', { method: 'POST', body: fd })
         .then(r => r.json())
         .then(d => {
@@ -580,6 +639,18 @@ function submitBan() {
 document.getElementById('ban-modal').addEventListener('click', function(e) {
     if (e.target === this) closeBanModal();
 });
+
+function copyMid() {
+    const el = document.getElementById('mid-val');
+    const mid = el.textContent.trim();
+    if (!mid || mid === '—') return;
+    navigator.clipboard.writeText(mid).then(function() {
+        el.classList.add('mid-copied');
+        const orig = el.textContent;
+        el.textContent = '已复制!';
+        setTimeout(function() { el.textContent = orig; el.classList.remove('mid-copied'); }, 1500);
+    });
+}
 </script>
 </body>
 </html>

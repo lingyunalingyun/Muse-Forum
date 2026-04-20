@@ -1,4 +1,12 @@
 <?php
+/**
+ * cs_action.php — 客服工单系统操作接口
+ *
+ * 功能：提供工单的创建、消息收发、接管、解决及客服坐席管理等全部操作；
+ *       用户长时间未得到回复时自动发放等待补偿经验
+ * 读写表：cs_tickets、cs_messages、users
+ * 权限：需登录；部分操作（接管/解决/坐席管理）需 admin/owner
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/exp_helper.php';

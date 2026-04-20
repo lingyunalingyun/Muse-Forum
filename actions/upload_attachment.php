@@ -1,5 +1,12 @@
 <?php
-
+/**
+ * upload_attachment.php — 帖子附件上传
+ *
+ * 功能：接收文件上传，过滤危险扩展名，限制大小 20MB，保存至 uploads/attachments/
+ *       并返回文件名、原始名称、大小、类型及访问 URL
+ * 读写表：无（仅写磁盘）
+ * 权限：需登录
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 header('Content-Type: application/json');
@@ -18,6 +25,7 @@ if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
     exit;
 }
 
+// 禁止危险扩展
 $blocked = ['php','php3','php4','php5','phtml','phar','exe','sh','bat','cmd','msi','vbs','ps1'];
 $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 if (in_array($ext, $blocked)) {

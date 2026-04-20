@@ -1,5 +1,11 @@
 <?php
-
+/**
+ * index.php — 论坛首页
+ *
+ * 功能：展示最新/热门帖子列表、公告、侧栏热搜，刷新用户角色信息
+ * 读写表：posts、users、post_likes
+ * 权限：公开
+ */
 session_start();
 require_once __DIR__ . '/config.php';
 
@@ -12,6 +18,7 @@ if (isset($_SESSION['user_id'])) {
     }
 }
 
+// 侧栏：热搜帖子
 $hot_posts = $conn->query("
     SELECT p.id, p.title, p.content, COUNT(pl.post_id) as likes
     FROM posts p
@@ -22,6 +29,7 @@ $hot_posts = $conn->query("
     LIMIT 5
 ");
 
+// 侧栏：公告帖子（只取最新3条）
 $notice_posts = $conn->query("
     SELECT id, title FROM posts
     WHERE is_notice = 1 AND status = '已发布'
@@ -29,6 +37,7 @@ $notice_posts = $conn->query("
     LIMIT 3
 ");
 
+// 侧栏：活跃用户
 $active_users = $conn->query("
     SELECT u.id, u.username, u.avatar, COUNT(p.id) as post_count
     FROM users u
@@ -375,7 +384,7 @@ $active_users = $conn->query("
         <div class="featured-grid">
         <?php while ($row = $result->fetch_assoc()):
             $display_title = !empty($row['title']) ? $row['title'] : $row['username'] . ' 的分享';
-            
+            // 提取内容中的第一张图片
             preg_match('/<img[^>]+src=["\']([^"\']+)["\']/', $row['content'], $img_match);
             $thumb = $img_match[1] ?? null;
         ?>

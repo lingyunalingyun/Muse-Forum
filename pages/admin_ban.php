@@ -1,5 +1,9 @@
 <?php
-
+/**
+ * 封禁管理后台
+ * 权限：admin、owner
+ * 功能：查看所有被封禁用户、快速解封、查看封禁详情
+ */
 session_start();
 
 $my_role = $_SESSION['role'] ?? '';
@@ -17,6 +21,7 @@ $my_id   = intval($_SESSION['user_id']);
 $my_name = htmlspecialchars($_SESSION['username'] ?? '');
 $now     = date('Y-m-d H:i:s');
 
+// ── 快速解封（POST）──
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'unban') {
     header('Content-Type: application/json');
     $tid = intval($_POST['user_id'] ?? 0);
@@ -33,10 +38,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'unban
     exit;
 }
 
+// ── 自动到期解封 ──
 $conn->query("UPDATE users SET is_banned=0, ban_reason=NULL, ban_until=NULL, banned_by=NULL
               WHERE is_banned=1 AND ban_until IS NOT NULL AND ban_until <= '$now'");
 
-$filter = $_GET['filter'] ?? 'all';  
+// ── 查询封禁列表 ──
+$filter = $_GET['filter'] ?? 'all';  // all | timed | perm
 $where  = "WHERE u.is_banned = 1";
 if ($filter === 'timed') $where .= " AND u.ban_until IS NOT NULL";
 if ($filter === 'perm')  $where .= " AND u.ban_until IS NULL";
@@ -65,60 +72,60 @@ function ban_label(array $r): string {
     <title>封禁管理 — 后台</title>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
-        body { background: #0d1117; }
+        body { background: #0d1117; color: #c9d1d9; font-family: "Microsoft YaHei", sans-serif; margin: 0; }
 
         .wrap { max-width: 1000px; margin: 28px auto; padding: 0 16px; }
 
         .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; flex-wrap: wrap; gap: 8px; }
-        .page-title { margin: 0; font-size: 13px; font-weight: 700; color: #e6edf3; }
+        .page-title { margin: 0; font-size: 13px; font-weight: 700; color: #f85149; letter-spacing: 1.5px; text-transform: uppercase; font-family: "Courier New", monospace; }
         .page-title::before { content: '// '; opacity: .5; }
-        .page-meta { font-size: 12px; color: #8b949e; }
-        .page-meta a { color: #58a6ff; }
+        .page-meta { font-size: 12px; color: #6e7681; font-family: "Courier New", monospace; }
+        .page-meta a { color: #3fb950; text-decoration: none; }
 
-        
+        /* 统计 */
         .stats { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
         .stat-pill { padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 700;
                      font-family: "Courier New", monospace; border: 1px solid; cursor: pointer; text-decoration: none; transition: .15s; }
-        .stat-pill.all    { color: #8b949e; }
-        .stat-pill.timed  { color: #f0883e; }
-        .stat-pill.perm   { color: #f85149; }
+        .stat-pill.all    { color: #c9d1d9; border-color: #30363d; background: #161b22; }
+        .stat-pill.timed  { color: #f0883e; border-color: rgba(240,136,62,.35); background: rgba(240,136,62,.08); }
+        .stat-pill.perm   { color: #f85149; border-color: rgba(248,81,73,.35); background: rgba(248,81,73,.08); }
         .stat-pill.active, .stat-pill:hover { filter: brightness(1.2); }
         .stat-pill.active { outline: 1px solid currentColor; }
 
-        
+        /* 列表 */
         .ban-list { display: flex; flex-direction: column; gap: 8px; }
         .ban-card {
-            background: #161b22;
+            background: #161b22; border: 1px solid #30363d; border-radius: 7px;
             padding: 14px 16px; display: flex; align-items: center; gap: 14px;
             transition: border-color .15s;
         }
         .ban-card:hover { border-color: rgba(248,81,73,.4); }
-        .ban-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 1px solid #30363d; }
+        .ban-avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 1px solid #30363d; flex-shrink: 0; }
         .ban-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-        .ban-name { font-size: 14px; font-weight: 700; color: #e6edf3; }
-        .ban-mid  { font-size: 11px; color: #6e7681; }
-        .ban-reason { font-size: 12px; color: #8b949e; }
+        .ban-name { font-size: 14px; font-weight: 700; color: #e6edf3; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+        .ban-mid  { font-size: 11px; color: #6e7681; font-family: "Courier New", monospace; }
+        .ban-reason { font-size: 12px; color: #8b949e; margin-top: 2px; }
         .ban-reason strong { color: #c9d1d9; }
         .ban-footer { display: flex; align-items: center; gap: 12px; font-size: 11px; color: #6e7681;
                       font-family: "Courier New", monospace; flex-wrap: wrap; margin-top: 3px; }
 
         .until-tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 3px;
                      font-size: 11px; font-weight: 700; font-family: "Courier New", monospace; }
-        .until-perm  { background: rgba(248,81,73,.1); color: #f85149; }
-        .until-timed { background: rgba(240,136,62,.1); color: #f0883e; }
+        .until-perm  { background: rgba(248,81,73,.1); color: #f85149; border: 1px solid rgba(248,81,73,.3); }
+        .until-timed { background: rgba(240,136,62,.1); color: #f0883e; border: 1px solid rgba(240,136,62,.3); }
 
         .btn-unban {
             padding: 6px 16px; border-radius: 4px; border: 1px solid rgba(63,185,80,.4);
-            background: rgba(63,185,80,.08); color: #3fb950;
+            background: rgba(63,185,80,.08); color: #3fb950; font-size: 12px; font-weight: 700;
             cursor: pointer; font-family: inherit; white-space: nowrap; transition: .15s; flex-shrink: 0;
         }
         .btn-unban:hover { background: rgba(63,185,80,.18); }
 
-        .profile-link { color: #58a6ff; }
+        .profile-link { color: #58a6ff; text-decoration: none; font-size: 12px; }
         .profile-link:hover { text-decoration: underline; }
 
-        .empty-state { text-align: center; padding: 60px 20px; background: #161b22;
-                       border-radius: 8px; color: #6e7681;
+        .empty-state { text-align: center; padding: 60px 20px; background: #161b22; border: 1px solid #30363d;
+                       border-radius: 8px; color: #6e7681; font-size: 13px; }
     </style>
 </head>
 <body>

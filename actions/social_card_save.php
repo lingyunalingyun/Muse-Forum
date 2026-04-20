@@ -1,14 +1,18 @@
 <?php
+/**
+ * social_card_save.php — 社交名片的发布、撤回与管理员删除
+ *
+ * 功能：保存或更新当前用户的社交名片（性别、年龄段、自我介绍、标签）；
+ *       支持用户主动撤回，以及管理员强制删除他人名片
+ * 读写表：social_cards
+ * 权限：需登录；admin_delete 操作需 admin / owner
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['user_id'])) {
     echo json_encode(['status' => 'error', 'msg' => '请先登录']);
-    exit;
-}
-if (!empty($_SESSION['is_banned'])) {
-    echo json_encode(['status' => 'error', 'msg' => '账号已被限制']);
     exit;
 }
 
@@ -40,7 +44,7 @@ if ($action === 'save') {
         echo json_encode(['status' => 'error', 'msg' => '请填写年龄段']);
         exit;
     }
-    
+    // 检查最小年龄 >= 18
     $min_age = (int)preg_replace('/[^0-9].*/', '', $age_range);
     if ($min_age > 0 && $min_age < 18) {
         echo json_encode(['status' => 'error', 'msg' => '最小年龄不能低于 18 岁']);

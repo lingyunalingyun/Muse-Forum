@@ -1,8 +1,18 @@
-<?php http_response_code(429); ?>
+<?php
+/**
+ * 429.php — HTTP 429 错误页
+ *
+ * 功能：设置响应码 429 并展示"请求过多/触发频率限制"提示页面
+ * 读写表：无
+ * 权限：公开
+ */
+http_response_code(429); ?>
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+<link rel="shortcut icon" href="assets/logo.svg">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>429 - 请求过多 · 缪斯 MUSE</title>
 <style>

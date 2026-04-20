@@ -1,5 +1,11 @@
 <?php
-
+/**
+ * post_edit.php — 编辑帖子标题与内容
+ *
+ * 功能：验证权限与 10 分钟编辑冷却后，更新帖子标题和正文，并记录编辑时间
+ * 读写表：posts
+ * 权限：需登录；仅帖子作者可编辑
+ */
 ob_start();
 error_reporting(0);
 session_start();
@@ -22,8 +28,10 @@ if (!$pid || empty($title) || empty(trim(strip_tags($content)))) {
     exit;
 }
 
+// 确保 edited_at 列存在
 $conn->query("ALTER TABLE posts ADD COLUMN edited_at DATETIME DEFAULT NULL");
 
+// 检查权限
 $res  = $conn->query("SELECT user_id, edited_at FROM posts WHERE id = $pid");
 $post = $res ? $res->fetch_assoc() : null;
 
@@ -36,6 +44,7 @@ if ((int)$post['user_id'] !== $my_id) {
     exit;
 }
 
+// 冷却检查（10 分钟）
 if (!empty($post['edited_at'])) {
     $remaining = 600 - (time() - strtotime($post['edited_at']));
     if ($remaining > 0) {

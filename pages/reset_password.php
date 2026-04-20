@@ -1,5 +1,11 @@
 <?php
-
+/**
+ * reset_password.php — 重置密码页面
+ *
+ * 功能：通过邮件中的 token 验证身份，允许用户设置新密码
+ * 读写表：users（验证 reset_token，更新 password）
+ * 权限：公开（需持有有效的重置 token）
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/exp_helper.php';
@@ -20,6 +26,8 @@ if (!empty($token)) {
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
+    <link rel="shortcut icon" href="../assets/logo.svg">
     <title>重置密码 - <?= SITE_NAME ?></title>
     <style>
         @keyframes blink  { 0%,100%{opacity:1} 50%{opacity:0} }

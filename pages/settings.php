@@ -1,4 +1,11 @@
 <?php
+/**
+ * settings.php — 账号设置页面
+ *
+ * 功能：修改密码、帖子可见性偏好、账号注销等账号安全与隐私设置
+ * 读写表：users、post_favs、post_likes（账号注销时清理）
+ * 权限：需登录（封号用户不可访问）
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/exp_helper.php';
@@ -7,11 +14,16 @@ if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
 }
+if (!empty($_SESSION['is_banned'])) {
+    header("Location: ../index.php");
+    exit;
+}
 
 $my_id = intval($_SESSION['user_id']);
 
 ensure_user_columns($conn);
 
+// 自动建表（兼容旧库没有这两张表的情况）
 $conn->query("CREATE TABLE IF NOT EXISTS post_favs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     post_id INT NOT NULL,
@@ -27,6 +39,7 @@ $conn->query("CREATE TABLE IF NOT EXISTS post_likes (
     UNIQUE KEY uq_like (post_id, user_id)
 )");
 
+// 处理隐私设置 POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'privacy') {
     $sf  = isset($_POST['show_followers']) ? 1 : 0;
     $sfw = isset($_POST['show_following']) ? 1 : 0;
@@ -37,11 +50,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit;
 }
 
+// 获取当前用户数据
 $user_res = $conn->query("SELECT * FROM users WHERE id = $my_id");
 if (!$user_res) { die("数据库错误: " . $conn->error); }
 $user = $user_res->fetch_assoc();
 if (!$user) { header("Location: login.php"); exit; }
 
+// 黑名单列表
 $block_res = $conn->query("SELECT u.id, u.username, u.avatar, u.role
     FROM user_blocks b JOIN users u ON u.id = b.blocked_id
     WHERE b.blocker_id = $my_id ORDER BY b.id DESC");
@@ -221,7 +236,7 @@ $saved = isset($_GET['saved']);
         <div class="section-body">
             <div class="profile-entry">
                 <img src="../uploads/avatars/<?php echo htmlspecialchars($user['avatar'] ?: 'default.png'); ?>"
-                     onerror="this.src='../uploads/avatars/default.png'"
+                     onerror="this.onerror=null;this.src='../uploads/avatars/default.png'"
                      alt="avatar">
                 <div class="info">
                     <strong><?php echo htmlspecialchars($user['username']); ?></strong>
@@ -304,7 +319,7 @@ $saved = isset($_GET['saved']);
                 <?php foreach ($block_list as $bu): ?>
                 <div class="block-item" id="bi-<?= $bu['id'] ?>">
                     <img src="../uploads/avatars/<?= htmlspecialchars($bu['avatar'] ?: 'default.png') ?>"
-                         onerror="this.src='../uploads/avatars/default.png'">
+                         onerror="this.onerror=null;this.src='../uploads/avatars/default.png'">
                     <span class="bi-name"><?= htmlspecialchars($bu['username']) ?></span>
                     <button class="btn-unblock" onclick="unblock(<?= $bu['id'] ?>, this)">解除拉黑</button>
                 </div>

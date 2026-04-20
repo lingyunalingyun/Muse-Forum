@@ -1,5 +1,11 @@
 <?php
-
+/**
+ * cs_chat.php — 用户客服聊天页面
+ *
+ * 功能：用户提交客服工单、与客服实时聊天、查看历史工单及消息记录
+ * 读写表：cs_tickets、cs_messages、users
+ * 权限：需登录
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 
@@ -111,15 +117,15 @@ $issue_types = [
         .chat-messages::-webkit-scrollbar-thumb { background:#30363d; border-radius:2px; }
         .msg-row { display:flex; align-items:flex-end; gap:8px; }
         .msg-row.mine { flex-direction:row-reverse; }
+        .msg-col { display:flex; flex-direction:column; max-width:70%; }
         .msg-bubble {
-            max-width:70%; padding:9px 13px; border-radius:6px;
+            max-width:100%; padding:9px 13px; border-radius:6px;
             font-size:13px; line-height:1.6; word-break:break-word;
         }
         .msg-row.mine  .msg-bubble { background:rgba(63,185,80,.15); border:1px solid rgba(63,185,80,.25); color:#e6edf3; border-radius:6px 6px 0 6px; }
         .msg-row.theirs .msg-bubble { background:#161b22; border:1px solid #30363d; color:#c9d1d9; border-radius:6px 6px 6px 0; }
         .msg-label { font-size:10px; color:#6e7681; margin-bottom:4px; font-family:"Courier New",monospace; }
         .msg-row.mine .msg-label { text-align:right; }
-        .msg-col { display:flex; flex-direction:column; }
         .msg-time { font-size:10px; color:#6e7681; margin-top:3px; font-family:"Courier New",monospace; }
         .msg-row.mine .msg-time { text-align:right; }
 

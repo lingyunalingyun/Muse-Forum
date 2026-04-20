@@ -1,5 +1,9 @@
 <?php
-
+/**
+ * 私信查询后台
+ * 权限：owner（站长）、reviewer（特别审核员）
+ * 功能：输入两个用户的 MID，查看双方之间的完整私信记录
+ */
 session_start();
 
 $role = $_SESSION['role'] ?? '';
@@ -84,32 +88,32 @@ function fmt_time(string $t): string {
     <title>私信查询 — 后台</title>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
-        body { background: #0d1117; color: #e6edf3; font-family: "Courier New", monospace; margin: 0; }
+        body { background: #0d1117; color: #c9d1d9; font-family: "Courier New", monospace; margin: 0; }
 
         .wrap { max-width: 960px; margin: 28px auto; padding: 0 16px; }
 
         .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 8px; }
-        .page-title { margin: 0; font-size: 13px; font-weight: 700; color: #e6edf3; }
+        .page-title { margin: 0; font-size: 13px; font-weight: 700; color: #e3b341; letter-spacing: 1.5px; text-transform: uppercase; }
         .page-title::before { content: '// '; opacity: .5; }
-        .page-meta { font-size: 12px; color: #8b949e; }
-        .page-meta a { color: #58a6ff; }
+        .page-meta { font-size: 12px; color: #6e7681; }
+        .page-meta a { color: #3fb950; text-decoration: none; }
 
-        .search-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+        .search-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px 22px; margin-bottom: 20px; }
         .search-card h3 { margin: 0 0 14px; font-size: 12px; color: #8b949e; }
         .search-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
 
         .search-field { flex: 1; min-width: 180px; }
-        .search-field label { display: block; font-size: 11px; color: #8b949e; margin-bottom: 5px; }
+        .search-field label { display: block; font-size: 11px; color: #6e7681; margin-bottom: 5px; letter-spacing: .3px; }
         .mid-input {
             width: 100%; padding: 9px 12px; background: #0d1117; border: 1px solid #30363d;
-            border-radius: 5px; color: #e6edf3;
+            border-radius: 5px; color: #e3b341; font-size: 14px; font-family: "Courier New", monospace;
             outline: none; letter-spacing: 1px; text-transform: uppercase;
         }
-        .mid-input:focus { border-color: #58a6ff; }
-        .mid-input::placeholder { color: #6e7681; }
+        .mid-input:focus { border-color: #e3b341; }
+        .mid-input::placeholder { color: #484f58; text-transform: none; letter-spacing: 0; }
 
         .btn-query {
-            padding: 9px 22px; background: #3fb950; color: #0d1117; border: none; border-radius: 5px;
+            padding: 9px 22px; background: #e3b341; color: #0d1117; border: none; border-radius: 5px;
             font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; transition: opacity .15s;
         }
         .btn-query:hover { opacity: .85; }
@@ -117,26 +121,26 @@ function fmt_time(string $t): string {
         .alert { border-radius: 6px; padding: 10px 16px; font-size: 13px; margin-bottom: 14px; }
         .alert-error { background: rgba(248,81,73,.1); border: 1px solid rgba(248,81,73,.3); color: #f85149; }
 
-
+        /* 用户对比卡 */
         .user-pair { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
         .user-card {
             display: flex; align-items: center; gap: 10px; flex: 1; min-width: 200px;
-            background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 12px;
+            background: #161b22; border: 1px solid #30363d; border-radius: 7px; padding: 10px 14px;
         }
         .user-card img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 1px solid #30363d; }
         .user-card-info { display: flex; flex-direction: column; gap: 3px; }
         .user-card-name { font-size: 14px; font-weight: 700; color: #e6edf3; }
-        .user-card-mid { font-size: 11px; color: #8b949e; }
-        .pair-sep { font-size: 18px; color: #6e7681; }
+        .user-card-mid { font-size: 11px; color: #6e7681; }
+        .pair-sep { font-size: 18px; color: #30363d; flex-shrink: 0; }
 
-
+        /* 结果区 */
         .result-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 6px; }
-        .result-meta span { font-size: 12px; color: #8b949e; }
-        .result-meta strong { color: #e6edf3; }
+        .result-meta span { font-size: 12px; color: #6e7681; }
+        .result-meta strong { color: #e3b341; }
 
-        .chat-log { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+        .chat-log { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
 
-        .date-sep { display: flex; align-items: center; gap: 10px; font-size: 11px; color: #6e7681; margin: 4px 0; }
+        .date-sep { display: flex; align-items: center; gap: 10px; font-size: 11px; color: #484f58; margin: 2px 0; }
         .date-sep::before, .date-sep::after { content: ''; flex: 1; height: 1px; background: #21262d; }
 
         .msg-row { display: flex; gap: 10px; max-width: 85%; }
@@ -145,17 +149,17 @@ function fmt_time(string $t): string {
         .msg-body { display: flex; flex-direction: column; gap: 3px; }
         .msg-row.right .msg-body { align-items: flex-end; }
         .msg-meta { font-size: 10px; color: #6e7681; }
-        .msg-meta .sender { color: #8b949e; font-weight: 700; }
+        .msg-meta .sender { color: #8b949e; font-weight: 600; margin-right: 5px; }
         .msg-bubble { padding: 7px 12px; border-radius: 6px; font-size: 13px; line-height: 1.55; word-break: break-word; font-family: "Microsoft YaHei", sans-serif; }
-        .msg-row.left  .msg-bubble { background: #21262d; border: 1px solid #30363d; border-top-left-radius: 2px; color: #e6edf3; }
-        .msg-row.right .msg-bubble { background: rgba(227,179,65,.1); border: 1px solid rgba(227,179,65,.2); border-top-right-radius: 2px; color: #e6edf3; }
+        .msg-row.left  .msg-bubble { background: #21262d; border: 1px solid #30363d; border-top-left-radius: 2px; }
+        .msg-row.right .msg-bubble { background: rgba(227,179,65,.1); border: 1px solid rgba(227,179,65,.2); border-top-right-radius: 2px; }
 
-        .empty-state { text-align: center; padding: 50px 20px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; color: #8b949e; }
+        .empty-state { text-align: center; padding: 50px 20px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; color: #6e7681; font-size: 13px; }
 
         .pagination { display: flex; gap: 6px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
-        .pag-btn { padding: 5px 13px; border-radius: 4px; font-size: 12px; text-decoration: none; border: 1px solid #30363d; color: #c9d1d9; background: transparent; }
-        .pag-btn:hover { border-color: #58a6ff; color: #e6edf3; }
-        .pag-btn.active { background: #3fb950; border-color: #3fb950; color: #0d1117; font-weight: 700; }
+        .pag-btn { padding: 5px 13px; border-radius: 4px; font-size: 12px; text-decoration: none; border: 1px solid #30363d; background: #161b22; color: #8b949e; transition: .15s; }
+        .pag-btn:hover { border-color: #e3b341; color: #e3b341; }
+        .pag-btn.active { background: #e3b341; color: #0d1117; border-color: #e3b341; font-weight: 700; }
         .pag-btn.disabled { opacity: .35; pointer-events: none; }
     </style>
 </head>

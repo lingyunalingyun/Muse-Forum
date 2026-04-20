@@ -1,5 +1,9 @@
 <?php
-
+/**
+ * 举报提交
+ * POST: type(post|user), target_id, reason, detail
+ * 同一用户 24h 内对同一目标只能举报一次
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/exp_helper.php';
@@ -27,6 +31,7 @@ if ($type === 'user' && $target_id === $reporter_id) {
     exit;
 }
 
+// 验证目标存在
 if ($type === 'post') {
     $chk = $conn->query("SELECT id FROM posts WHERE id=$target_id");
 } else {
@@ -37,6 +42,7 @@ if (!$chk || $chk->num_rows === 0) {
     exit;
 }
 
+// 24h 内重复举报检查
 $dup = $conn->query(
     "SELECT id FROM reports
      WHERE reporter_id=$reporter_id AND type='$type' AND target_id=$target_id

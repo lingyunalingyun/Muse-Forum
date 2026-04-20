@@ -1,5 +1,11 @@
 <?php
-
+/**
+ * admin_categories.php — 分区（版块）管理后台
+ *
+ * 功能：新增、编辑、删除帖子分区，支持设置名称、描述、颜色、图标、封面图和排序
+ * 读写表：categories、posts（补列 category_id）
+ * 权限：admin / owner
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 
@@ -7,6 +13,7 @@ if (!in_array($_SESSION['role'] ?? '', ['admin', 'owner'])) {
     header("Location: ../index.php"); exit;
 }
 
+// ── 自动建表 + 补列 + 建目录 ──
 $conn->query("CREATE TABLE IF NOT EXISTS categories (
     id          INT AUTO_INCREMENT PRIMARY KEY,
     name        VARCHAR(50)  NOT NULL,
@@ -18,11 +25,13 @@ $conn->query("CREATE TABLE IF NOT EXISTS categories (
     created_at  DATETIME     DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+// 补 posts.category_id（兼容 MySQL 5.x）
 $col2 = $conn->query("SHOW COLUMNS FROM posts LIKE 'category_id'");
 if ($col2 && $col2->num_rows === 0) {
     $conn->query("ALTER TABLE posts ADD COLUMN category_id INT NULL DEFAULT NULL");
 }
 
+// 补 cover_image 列（兼容旧表）
 $col_check = $conn->query("SHOW COLUMNS FROM categories LIKE 'cover_image'");
 if ($col_check && $col_check->num_rows === 0) {
     $conn->query("ALTER TABLE categories ADD COLUMN cover_image VARCHAR(255) DEFAULT '' AFTER icon");
@@ -31,6 +40,7 @@ if ($col_check && $col_check->num_rows === 0) {
 $upload_dir = __DIR__ . '/../uploads/categories/';
 if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
 
+// ── 图片上传处理 ──
 function save_cover_image($file, $conn) {
     if ($file['error'] !== UPLOAD_ERR_OK) return null;
     $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
@@ -47,9 +57,10 @@ function save_cover_image($file, $conn) {
     return null;
 }
 
+// ── 删除 ──
 if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     $del_id = (int)$_GET['delete'];
-    
+    // 删除封面图文件
     $row = $conn->query("SELECT cover_image FROM categories WHERE id=$del_id")->fetch_assoc();
     if (!empty($row['cover_image'])) {
         $path = __DIR__ . '/../' . $row['cover_image'];
@@ -60,6 +71,7 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     header("Location: admin_categories.php?msg=delete_ok"); exit;
 }
 
+// ── 编辑保存 ──
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_id'])) {
     $edit_id = (int)$_POST['edit_id'];
     $name    = $conn->real_escape_string(trim($_POST['name'] ?? ''));
@@ -73,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_id'])) {
         if (!empty($_FILES['cover_image']['name'])) {
             $new_cover = save_cover_image($_FILES['cover_image'], $conn);
             if ($new_cover) {
-                
+                // 删旧图
                 $old = $conn->query("SELECT cover_image FROM categories WHERE id=$edit_id")->fetch_assoc();
                 if (!empty($old['cover_image'])) {
                     $old_path = __DIR__ . '/../' . $old['cover_image'];
@@ -88,6 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_id'])) {
     header("Location: admin_categories.php?msg=edit_ok"); exit;
 }
 
+// ── 新建 ──
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'create') {
     $name  = $conn->real_escape_string(trim($_POST['name'] ?? ''));
     $desc  = $conn->real_escape_string(trim($_POST['description'] ?? ''));

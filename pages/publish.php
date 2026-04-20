@@ -1,5 +1,11 @@
 <?php
-
+/**
+ * publish.php — 发帖 / 编辑草稿页面
+ *
+ * 功能：富文本发帖编辑器，支持选择分区、图片上传、保存草稿、提交发布，管理员可发公告
+ * 读写表：posts、categories
+ * 权限：需登录（封号用户不可访问）
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 
@@ -7,10 +13,15 @@ if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
 }
+if (!empty($_SESSION['is_banned'])) {
+    header("Location: ../index.php");
+    exit;
+}
 
 $uid      = (int)$_SESSION['user_id'];
 $is_admin = in_array($_SESSION['role'] ?? '', ['admin', 'owner']);
 
+// 加载指定草稿
 $draft_id = (int)($_GET['draft_id'] ?? 0);
 $draft    = null;
 if ($draft_id > 0) {
@@ -18,10 +29,12 @@ if ($draft_id > 0) {
     $draft = ($dr && $dr->num_rows > 0) ? $dr->fetch_assoc() : null;
 }
 
+// 分区列表
 $cats_res = $conn->query("SELECT id, name, icon, color FROM categories ORDER BY sort_order ASC, id ASC");
 $categories = [];
 if ($cats_res) while ($c = $cats_res->fetch_assoc()) $categories[] = $c;
 
+// 其他草稿列表（排除当前打开的）
 $drafts_res = $conn->query("
     SELECT id, title, created_at FROM posts
     WHERE user_id = $uid AND status = '草稿'" .
@@ -229,17 +242,25 @@ if ($drafts_res) {
         </div>
 
         <?php if (!empty($categories)): ?>
-        <!-- 分区选择 -->
+        <!-- 分区选择（多选） -->
         <div class="cat-select-card">
-            <div class="cat-select-title">选择分区</div>
+            <div class="cat-select-title">选择分区 <span style="font-weight:400;color:#484f58;font-size:10px;">可多选</span></div>
             <div class="cat-options">
-                <input type="radio" class="cat-option" name="category_id" id="cat_0" value="0" checked>
+                <input type="checkbox" class="cat-option" id="cat_0" value="0" checked onchange="onCatChange(this)">
                 <label for="cat_0">不限分区</label>
-                <?php foreach ($categories as $c): ?>
-                <input type="radio" class="cat-option" name="category_id"
-                       id="cat_<?= $c['id'] ?>" value="<?= $c['id'] ?>"
+                <?php
+                // 草稿已选分区
+                $draft_cats = [];
+                if ($draft) {
+                    $dc_r = $conn->query("SELECT category_id FROM post_categories WHERE post_id=" . (int)$draft['id']);
+                    if ($dc_r) while ($dc = $dc_r->fetch_assoc()) $draft_cats[] = (int)$dc['category_id'];
+                }
+                foreach ($categories as $c):
+                    $is_checked = in_array((int)$c['id'], $draft_cats) ? 'checked' : '';
+                ?>
+                <input type="checkbox" class="cat-option cat-real" id="cat_<?= $c['id'] ?>" value="<?= $c['id'] ?>"
                        style="--cat-color:<?= htmlspecialchars($c['color']) ?>"
-                       <?= ($draft && (int)$draft['category_id'] === (int)$c['id']) ? 'checked' : '' ?>>
+                       onchange="onCatChange(this)" <?= $is_checked ?>>
                 <label for="cat_<?= $c['id'] ?>" style="--cat-color:<?= htmlspecialchars($c['color']) ?>">
                     <?= htmlspecialchars($c['icon']) ?> <?= htmlspecialchars($c['name']) ?>
                 </label>
@@ -427,8 +448,10 @@ async function submitPost(isDraft) {
     const noticeEl = document.getElementById('is-notice');
     if (noticeEl) fd.append('is_notice', noticeEl.checked ? '1' : '0');
 
-    const catEl = document.querySelector('input[name="category_id"]:checked');
-    if (catEl) fd.append('category_id', catEl.value);
+    const realChecked = [...document.querySelectorAll('.cat-real:checked')];
+    if (realChecked.length > 0) {
+        realChecked.forEach(el => fd.append('category_ids[]', el.value));
+    }
 
     try {
         const res  = await fetch('../actions/save.php', { method: 'POST', body: fd });
@@ -478,6 +501,21 @@ function setAutosaveTip(txt) {
 
 document.getElementById('post-title').addEventListener('input', scheduleAutosave);
 editor.on('change', scheduleAutosave);
+
+function onCatChange(el) {
+    const none = document.getElementById('cat_0');
+    const reals = [...document.querySelectorAll('.cat-real')];
+    if (el.value === '0') {
+        // 选了"不限分区"→ 取消所有具体分区
+        if (el.checked) reals.forEach(r => r.checked = false);
+        else el.checked = true; // 不允许取消"不限分区"（除非选了其他）
+    } else {
+        // 选了具体分区→ 取消"不限分区"
+        if (el.checked) none.checked = false;
+        // 如果所有具体分区都取消了，自动回到"不限分区"
+        if (reals.every(r => !r.checked)) none.checked = true;
+    }
+}
 </script>
 </body>
 </html>

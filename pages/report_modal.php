@@ -1,5 +1,9 @@
 <?php
-
+/**
+ * 举报弹窗组件（被 post.php 和 profile.php include）
+ * 通过 openReportModal(type, targetId) 触发
+ * type: 'post' | 'user'
+ */
 ?>
 <!-- 举报弹窗 -->
 <div id="report-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9500;align-items:center;justify-content:center;">

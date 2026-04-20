@@ -1,16 +1,24 @@
 <?php
-
+/**
+ * post.php — 帖子详情页
+ *
+ * 功能：展示帖子正文、作者信息、评论列表，支持点赞、收藏、评论、转发，管理员可删帖/置顶
+ * 读写表：posts、users、comments、post_likes、post_favs、follows、notifications
+ * 权限：公开（部分操作需登录）
+ */
 session_start();
-
+// --- 1. 数据库连接与配置 ---
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/text_format.php';
 require_once __DIR__ . '/../includes/exp_helper.php';
 
+// --- 2. 获取参数与身份 ---
 $my_id = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : 0;
 $pid = isset($_GET['id']) ? intval($_GET['id']) : 0;
 $my_role = $_SESSION['role'] ?? 'user';
 $sort = $_GET['sort'] ?? 'new';
 
+// --- 3. 获取帖子主体及作者详细信息 ---
 $post_query = "SELECT p.*,
                 u.id as author_id, u.username, u.avatar, u.role, u.level, u.is_banned, u.post_visibility,
                 (SELECT COUNT(*) FROM posts WHERE user_id = u.id) as post_count,
@@ -33,9 +41,10 @@ if (!$post) {
     die("帖子不存在或已被删除。 <a href='../index.php'>返回首页</a>");
 }
 
+// 拉黑检查
 $author_id = (int)$post['author_id'];
 if ($my_id && $my_id !== $author_id) {
-    
+    // 作者拉黑了我
     $blk = $conn->query("SELECT id FROM user_blocks WHERE blocker_id=$author_id AND blocked_id=$my_id");
     if ($blk && $blk->num_rows > 0) {
         $conn->close();
@@ -43,6 +52,7 @@ if ($my_id && $my_id !== $author_id) {
     }
 }
 
+// 可见性检查
 require_once __DIR__ . '/../includes/exp_helper.php';
 $author_vis = $post['post_visibility'] ?? 'public';
 if (!can_see_posts($conn, $author_vis, $author_id, $my_id, $my_role)) {
@@ -52,6 +62,23 @@ if (!can_see_posts($conn, $author_vis, $author_id, $my_id, $my_role)) {
     die("<!DOCTYPE html><html lang='zh-CN'><head><meta charset='UTF-8'><title>无权访问</title></head><body style='font-family:monospace;background:#0d1117;color:#e6edf3;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;'><div style='text-align:center;padding:32px;background:#161b22;border:1px solid #30363d;border-radius:6px;max-width:360px;'><p style='color:#8b949e;font-size:13px;margin:0 0 6px;'>// 权限不足</p><p style='color:#e6edf3;margin:0 0 12px;'>该帖子仅对「{$hint}」可见</p><a href='../index.php' style='color:#3fb950;font-size:13px;'>返回首页</a></div></body></html>");
 }
 
+// --- 3.5 阅读量（同一访客 10 分钟内只计一次）---
+ensure_user_columns($conn);
+$viewer_key = $my_id ? 'u_' . $my_id : 'ip_' . md5($_SERVER['REMOTE_ADDR'] ?? '');
+$vk_safe    = $conn->real_escape_string($viewer_key);
+$ten_ago    = date('Y-m-d H:i:s', time() - 600);
+$vr = $conn->query("SELECT viewed_at FROM post_view_logs WHERE post_id=$pid AND viewer_key='$vk_safe'");
+$vrow = $vr ? $vr->fetch_assoc() : null;
+if (!$vrow || strtotime($vrow['viewed_at']) < time() - 600) {
+    $now_str = date('Y-m-d H:i:s');
+    $conn->query("INSERT INTO post_view_logs (post_id, viewer_key, viewed_at)
+                  VALUES ($pid, '$vk_safe', '$now_str')
+                  ON DUPLICATE KEY UPDATE viewed_at='$now_str'");
+    $conn->query("UPDATE posts SET views = views + 1 WHERE id=$pid");
+    $post['views'] = ($post['views'] ?? 0) + 1;
+}
+
+// --- 4. 楼层逻辑准备 ---
 $floor_map = [];
 $floor_res = $conn->query("SELECT id FROM comments WHERE post_id = $pid ORDER BY id ASC");
 $f_idx = 1;
@@ -61,6 +88,7 @@ if ($floor_res) {
     }
 }
 
+// --- 5. 获取评论列表 ---
 $order_sql = ($sort === 'hot') ? "c.likes DESC, c.id DESC" : "c.id DESC";
 $comment_sql = "SELECT c.*, u.username as author_name, u.avatar,
                 u2.username as target_name,
@@ -230,6 +258,7 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
                     <div class="post-meta-line">
                         <a href="profile.php?id=<?php echo $post['author_id']; ?>"><?php echo htmlspecialchars($post['username']); ?></a>
                         · <?php echo date('Y-m-d H:i', strtotime($post['created_at'])); ?>
+                        · <span style="color:#484f58;">👁 <?= number_format((int)($post['views'] ?? 0)) ?></span>
                     </div>
                 <?php else: ?>
                     <h2 style="margin:0;"><?php echo htmlspecialchars($post['username']); ?> 的动态</h2>
@@ -240,7 +269,7 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
                 <?php endif; ?>
             </div>
             <div class="admin-actions">
-                <?php if($my_role == 'admin'): ?>
+                <?php if($my_role == 'admin' || $my_role == 'owner'): ?>
                     <button id="rec-btn"
                             class="btn-recommend <?= $post['is_recommend'] ? 'active' : '' ?>"
                             onclick="toggleRecommend(<?= $pid ?>)">
@@ -250,8 +279,17 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
                 <?php if($post['user_id'] == $my_id): ?>
                     <button id="edit-btn" class="btn-edit-post" onclick="toggleEditMode()">✏️ 编辑</button>
                 <?php endif; ?>
-                <?php if($post['user_id'] == $my_id || $my_role == 'admin'): ?>
+                <?php if($post['user_id'] == $my_id || $my_role == 'admin' || $my_role == 'owner'): ?>
                     <button class="btn-post-del" onclick="deletePost(<?php echo $pid; ?>)">删除帖子</button>
+                <?php endif; ?>
+                <?php if($my_id && $post['user_id'] != $my_id): ?>
+                    <button onclick="openReportModal('post',<?= $pid ?>)"
+                            style="padding:4px 10px;border-radius:4px;border:1px solid #30363d;background:transparent;
+                                   color:#6e7681;font-size:12px;cursor:pointer;font-family:inherit;transition:.15s;"
+                            onmouseover="this.style.borderColor='#f85149';this.style.color='#f85149';"
+                            onmouseout="this.style.borderColor='#30363d';this.style.color='#6e7681';">
+                        举报
+                    </button>
                 <?php endif; ?>
             </div>
         </div>
@@ -260,8 +298,9 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
             <?php echo format_post_content($post['content'], $conn); ?>
         </div>
 
+
         <?php
-        
+        // 附件展示
         $att_data = [];
         if (!empty($post['attachments'])) {
             $att_data = json_decode($post['attachments'], true) ?: [];
@@ -304,6 +343,12 @@ $total_comments = $c_res ? $c_res->num_rows : 0;
                 onclick="togglePostAction('fav')" style="cursor:pointer;">
                 <span id="fav-icon"><?php echo $post['my_fav'] ? '⭐' : '☆'; ?></span> 收藏 (<span id="fav-count"><?php echo $post['favs_count']; ?></span>)
             </div>
+
+            <?php if ($my_id && empty($_SESSION['is_banned'])): ?>
+            <div class="action-item" onclick="openRepostModal()" style="cursor:pointer;">
+                ↻ 转发
+            </div>
+            <?php endif; ?>
         </div>
 
         <div class="comment-section">
@@ -743,6 +788,171 @@ async function saveEdit() {
         </div>
     </div>
 </div>
+<?php endif; ?>
+
+<?php if ($my_id && $post['user_id'] != $my_id): ?>
+<?php include __DIR__ . '/report_modal.php'; ?>
+<?php endif; ?>
+
+<?php if ($my_id && empty($_SESSION['is_banned'])): ?>
+<?php
+require_once __DIR__ . '/../includes/repost_card.php';
+$_rc_preview = render_repost_card($conn, $pid, '../');
+$_post_title_safe = htmlspecialchars(addslashes($post['title'] ?: ($post['username'] . ' 的分享')), ENT_QUOTES);
+// 关注列表（私信只能发给关注的人）
+$_dm_following = [];
+$_fq = $conn->query("SELECT u.id, u.username, u.avatar FROM follows f JOIN users u ON u.id=f.followed_id WHERE f.follower_id=$my_id ORDER BY u.username ASC");
+if ($_fq) while ($_fr = $_fq->fetch_assoc()) $_dm_following[] = $_fr;
+?>
+<!-- 转发弹窗 -->
+<div id="repost-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9400;align-items:center;justify-content:center;">
+<div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:22px 24px;width:460px;max-width:95vw;font-family:'Microsoft YaHei',sans-serif;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <span style="font-size:14px;font-weight:700;color:#c9d1d9;">↻ 转发帖子</span>
+        <button onclick="closeRepostModal()" style="background:none;border:none;color:#6e7681;font-size:18px;cursor:pointer;">✕</button>
+    </div>
+
+    <!-- Tab -->
+    <div style="display:flex;gap:0;border-bottom:1px solid #30363d;margin-bottom:16px;">
+        <button id="rt-tab-moments" onclick="switchRepostTab('moments')"
+                style="flex:1;padding:8px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:700;color:#3fb950;border-bottom:2px solid #3fb950;font-family:inherit;">
+            发到动态
+        </button>
+        <button id="rt-tab-dm" onclick="switchRepostTab('dm')"
+                style="flex:1;padding:8px;border:none;background:none;cursor:pointer;font-size:13px;color:#6e7681;border-bottom:2px solid transparent;font-family:inherit;">
+            发私信
+        </button>
+    </div>
+
+    <!-- 发到动态 -->
+    <div id="rt-panel-moments">
+        <textarea id="rt-moments-text" placeholder="说点什么…（选填）" maxlength="500"
+                  style="width:100%;box-sizing:border-box;background:#0d1117;border:1px solid #30363d;color:#c9d1d9;
+                         padding:9px 12px;border-radius:5px;font-size:13px;font-family:inherit;resize:vertical;
+                         min-height:72px;outline:none;margin-bottom:10px;"></textarea>
+        <div style="font-size:11px;color:#6e7681;font-family:'Courier New',monospace;margin-bottom:6px;">// 转发内容预览</div>
+        <?= $_rc_preview ?>
+        <div id="rt-moments-msg" style="font-size:12px;margin-top:8px;min-height:14px;"></div>
+        <button onclick="submitRepostMoments()"
+                style="width:100%;margin-top:12px;padding:9px;border:none;border-radius:5px;
+                       background:#3fb950;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">
+            发布到动态
+        </button>
+    </div>
+
+    <!-- 发私信 -->
+    <div id="rt-panel-dm" style="display:none;">
+        <div style="font-size:12px;color:#8b949e;margin-bottom:7px;">选择收件人（我的关注）</div>
+        <?php if (empty($_dm_following)): ?>
+        <div style="font-size:12px;color:#6e7681;padding:10px 0;">你还没有关注任何人，私信只能发给关注的用户。</div>
+        <?php else: ?>
+        <div id="rt-dm-list" style="max-height:160px;overflow-y:auto;border:1px solid #30363d;border-radius:5px;margin-bottom:2px;">
+            <?php foreach ($_dm_following as $_dmf):
+                $dmfAv = htmlspecialchars($_dmf['avatar'] ?: 'default.png');
+                $dmfName = htmlspecialchars($_dmf['username']);
+                $dmfNameJs = htmlspecialchars(addslashes($_dmf['username']), ENT_QUOTES);
+                $dmfAvJs = htmlspecialchars($_dmf['avatar'] ?: 'default.png', ENT_QUOTES);
+            ?>
+            <div onclick="selectDmUser(<?= (int)$_dmf['id'] ?>,'<?= $dmfNameJs ?>','<?= $dmfAvJs ?>')"
+                 style="display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;transition:.12s;"
+                 onmouseover="this.style.background='#21262d'" onmouseout="this.style.background='transparent'">
+                <img src="../uploads/avatars/<?= $dmfAv ?>" style="width:28px;height:28px;border-radius:50%;object-fit:cover;"
+                     onerror="this.onerror=null;this.src='../uploads/avatars/default.png'">
+                <span style="font-size:13px;color:#c9d1d9;"><?= $dmfName ?></span>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+        <div id="rt-dm-selected" style="display:none;align-items:center;gap:8px;margin-top:8px;
+             background:#0f1e12;border:1px solid rgba(63,185,80,.3);border-radius:5px;padding:7px 10px;">
+            <img id="rt-dm-sel-av" style="width:24px;height:24px;border-radius:50%;object-fit:cover;">
+            <span id="rt-dm-sel-name" style="font-size:13px;color:#3fb950;"></span>
+            <span onclick="clearDmUser()" style="margin-left:auto;font-size:11px;color:#6e7681;cursor:pointer;">✕</span>
+        </div>
+        <textarea id="rt-dm-text" placeholder="附言…（选填）" maxlength="300"
+                  style="width:100%;box-sizing:border-box;background:#0d1117;border:1px solid #30363d;color:#c9d1d9;
+                         padding:9px 12px;border-radius:5px;font-size:13px;font-family:inherit;resize:vertical;
+                         min-height:58px;outline:none;margin-top:10px;margin-bottom:10px;"></textarea>
+        <div style="font-size:11px;color:#6e7681;font-family:'Courier New',monospace;margin-bottom:6px;">// 将发送此帖子卡片</div>
+        <?= $_rc_preview ?>
+        <div id="rt-dm-msg" style="font-size:12px;margin-top:8px;min-height:14px;"></div>
+        <button onclick="submitRepostDm()"
+                style="width:100%;margin-top:12px;padding:9px;border:none;border-radius:5px;
+                       background:#58a6ff;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">
+            发送私信
+        </button>
+    </div>
+</div>
+</div>
+<script>
+const _REPOST_PID = <?= $pid ?>;
+
+function openRepostModal() { document.getElementById('repost-modal').style.display='flex'; }
+function closeRepostModal() { document.getElementById('repost-modal').style.display='none'; }
+document.getElementById('repost-modal').addEventListener('click', e => { if(e.target===document.getElementById('repost-modal')) closeRepostModal(); });
+
+function switchRepostTab(tab) {
+    const isMoments = tab === 'moments';
+    document.getElementById('rt-panel-moments').style.display = isMoments ? 'block' : 'none';
+    document.getElementById('rt-panel-dm').style.display      = isMoments ? 'none'  : 'block';
+    const btnM = document.getElementById('rt-tab-moments');
+    const btnD = document.getElementById('rt-tab-dm');
+    btnM.style.color = isMoments ? '#3fb950' : '#6e7681';
+    btnM.style.borderBottomColor = isMoments ? '#3fb950' : 'transparent';
+    btnD.style.color = isMoments ? '#6e7681' : '#58a6ff';
+    btnD.style.borderBottomColor = isMoments ? 'transparent' : '#58a6ff';
+}
+
+function submitRepostMoments() {
+    const text = document.getElementById('rt-moments-text').value.trim();
+    const fd = new FormData();
+    fd.append('title', '');
+    fd.append('content', text);
+    fd.append('repost_id', _REPOST_PID);
+    fetch('../actions/save.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(d => {
+            const msg = document.getElementById('rt-moments-msg');
+            if (d.status === 'ok' || d.status === 'draft') {
+                msg.textContent = '已发布到动态！'; msg.style.color = '#3fb950';
+                setTimeout(closeRepostModal, 1000);
+            } else {
+                msg.textContent = d.msg || '发布失败'; msg.style.color = '#f85149';
+            }
+        });
+}
+
+// 私信关注列表
+let _dmUid = 0;
+function selectDmUser(id, name, av) {
+    _dmUid = id;
+    const list = document.getElementById('rt-dm-list');
+    if (list) list.querySelectorAll('div').forEach(el => el.style.background = 'transparent');
+    const sel = document.getElementById('rt-dm-selected');
+    sel.style.display = 'flex';
+    document.getElementById('rt-dm-sel-av').src = '../uploads/avatars/' + av;
+    document.getElementById('rt-dm-sel-name').textContent = name;
+}
+function clearDmUser() {
+    _dmUid = 0;
+    document.getElementById('rt-dm-selected').style.display = 'none';
+}
+function submitRepostDm() {
+    if (!_dmUid) { const m=document.getElementById('rt-dm-msg'); m.textContent='请选择收件人'; m.style.color='#f85149'; return; }
+    const text = document.getElementById('rt-dm-text').value.trim();
+    const fd = new FormData();
+    fd.append('to_id', _dmUid);
+    fd.append('content', text);
+    fd.append('ref_post_id', _REPOST_PID);
+    fetch('../actions/message_send.php', { method: 'POST', body: fd })
+        .then(r => r.json()).then(d => {
+            const msg = document.getElementById('rt-dm-msg');
+            if (d.status === 'success') { msg.textContent='已发送！'; msg.style.color='#3fb950'; setTimeout(closeRepostModal,1000); }
+            else { msg.textContent = d.msg||'发送失败'; msg.style.color='#f85149'; }
+        });
+}
+function escH(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+</script>
 <?php endif; ?>
 
 </body>

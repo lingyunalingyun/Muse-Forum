@@ -1,17 +1,29 @@
 <?php
-
+/**
+ * edit_profile.php — 编辑个人资料页面
+ *
+ * 功能：修改用户名、性别、手机号、生日、个性签名及头像上传
+ * 读写表：users
+ * 权限：需登录（封号用户不可访问）
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 
 if (!isset($_SESSION['user_id'])) {
     die("请先登录。");
 }
+if (!empty($_SESSION['is_banned'])) {
+    header("Location: ../index.php");
+    exit;
+}
 
 $my_id = intval($_SESSION['user_id']);
 
+// 获取当前最新数据
 $res = $conn->query("SELECT * FROM users WHERE id = $my_id");
 $user = $res->fetch_assoc();
 
+// 处理表单提交
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $conn->real_escape_string($_POST['username']);
     $gender = $conn->real_escape_string($_POST['gender']);
@@ -19,15 +31,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $birthday = $conn->real_escape_string($_POST['birthday']);
     $signature = $conn->real_escape_string($_POST['signature']);
 
-    
+    // 头像处理
     $avatar_name = $user['avatar'];
     if (!empty($_FILES['avatar']['name'])) {
         $target_dir = __DIR__ . "/../uploads/avatars/";
-        
+        // 大小限制 5MB
         if ($_FILES['avatar']['size'] > 5 * 1024 * 1024) {
             die("图片大小不能超过 5MB。");
         }
-        
+        // MIME 类型验证（防止伪装扩展名）
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $mime  = finfo_file($finfo, $_FILES['avatar']['tmp_name']);
         finfo_close($finfo);
@@ -35,17 +47,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!in_array($mime, $allowed_mime)) {
             die("不支持的文件格式，仅允许上传 jpg/png/gif/webp 格式的图片。");
         }
-        
+        // 确认是合法图片
         if (!getimagesize($_FILES['avatar']['tmp_name'])) {
             die("无效的图片文件。");
         }
         $ext_map = ['image/jpeg'=>'jpg','image/png'=>'png','image/gif'=>'gif','image/webp'=>'webp'];
         $file_ext  = $ext_map[$mime];
-        $avatar_name = "u_" . $my_id . "_" . time() . "." . $file_ext;
+        $avatar_name = ($user['mid'] ?? ('u'.$my_id)) . "." . $file_ext;
+        // 删除旧头像（避免不同扩展名残留）
+        if (!empty($user['avatar']) && $user['avatar'] !== $avatar_name && $user['avatar'] !== 'default.png') {
+            $old = $target_dir . $user['avatar'];
+            if (file_exists($old)) unlink($old);
+        }
         move_uploaded_file($_FILES["avatar"]["tmp_name"], $target_dir . $avatar_name);
     }
 
-    
+    // 更新数据库
     $update_sql = "UPDATE users SET
                     username = '$username',
                     gender = '$gender',
@@ -56,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   WHERE id = $my_id";
 
     if ($conn->query($update_sql)) {
-        
+        // 同步更新常用 Session
         $_SESSION['username'] = $username;
         $_SESSION['avatar'] = $avatar_name;
         echo "<script>alert('资料更新成功！'); location.href='profile.php?id=$my_id';</script>";

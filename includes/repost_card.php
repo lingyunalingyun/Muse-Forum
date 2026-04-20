@@ -1,4 +1,8 @@
 <?php
+/**
+ * 转发卡片渲染函数
+ * render_repost_card($conn, $post_id, $base) — 返回 HTML 字符串
+ */
 
 function render_repost_card($conn, int $post_id, string $base = '../'): string {
     $r = $conn->query(

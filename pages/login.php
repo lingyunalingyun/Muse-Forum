@@ -1,5 +1,11 @@
 <?php
-
+/**
+ * login.php — 用户登录页面
+ *
+ * 功能：用户名/邮箱 + 密码登录，登录成功后写入 Session 并跳转
+ * 读写表：users（读取账号信息）
+ * 权限：公开
+ */
 session_start();
 $flash_msg = htmlspecialchars($_GET['msg'] ?? '');
 ?>
@@ -7,6 +13,8 @@ $flash_msg = htmlspecialchars($_GET['msg'] ?? '');
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
+    <link rel="shortcut icon" href="../assets/logo.svg">
     <title>欢迎回来 - 登录</title>
     <style>
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }

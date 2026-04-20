@@ -1,5 +1,9 @@
 <?php
-
+/**
+ * 举报查看后台
+ * 权限：admin、owner
+ * 功能：查看举报列表，快速处理（删帖/封号/驳回/标记已处理）
+ */
 session_start();
 
 $my_role = $_SESSION['role'] ?? '';
@@ -17,6 +21,7 @@ ensure_user_columns($conn);
 $my_id   = intval($_SESSION['user_id']);
 $my_name = htmlspecialchars($_SESSION['username'] ?? '');
 
+// ── POST 操作（AJAX）──
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
     $action = $_POST['action'] ?? '';
@@ -39,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'ban_user') {
         $uid    = intval($_POST['target_id'] ?? 0);
         $reason = $conn->real_escape_string(trim($_POST['ban_reason'] ?? '违规内容'));
-        
+        // 权限检查
         $tr = $conn->query("SELECT role FROM users WHERE id=$uid");
         $t  = $tr ? $tr->fetch_assoc() : null;
         if ($t && !($my_role === 'admin' && !in_array($t['role'], ['user','sponsor']))) {
@@ -53,6 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
+// ── 列表查询 ──
 $filter = $_GET['filter'] ?? 'pending';
 $type_f = $_GET['type']   ?? 'all';
 
@@ -75,6 +81,7 @@ $res = $conn->query(
 $reports = [];
 if ($res) while ($row = $res->fetch_assoc()) $reports[] = $row;
 
+// 统计
 $cnt = [];
 foreach (['pending','handled','dismissed'] as $s) {
     $c = $conn->query("SELECT COUNT(*) c FROM reports WHERE status='$s'");
@@ -89,28 +96,28 @@ $cnt['all'] = array_sum($cnt);
     <title>举报管理 — 后台</title>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
-        body { background: #0d1117; color: #e6edf3; font-family: "Courier New", monospace; margin: 0; }
+        body { background: #0d1117; color: #c9d1d9; font-family: "Microsoft YaHei", sans-serif; margin: 0; }
         .wrap { max-width: 1080px; margin: 28px auto; padding: 0 16px; }
 
         .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 8px; }
-        .page-title { margin: 0; font-size: 13px; font-weight: 700; color: #e6edf3; }
+        .page-title { margin: 0; font-size: 13px; font-weight: 700; color: #f0883e; letter-spacing: 1.5px; text-transform: uppercase; font-family: "Courier New", monospace; }
         .page-title::before { content: '// '; opacity: .5; }
-        .page-meta { font-size: 12px; color: #8b949e; }
-        .page-meta a { color: #58a6ff; }
+        .page-meta { font-size: 12px; color: #6e7681; font-family: "Courier New", monospace; }
+        .page-meta a { color: #3fb950; text-decoration: none; }
 
-
+        /* 筛选栏 */
         .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
         .ftab { padding: 5px 14px; border-radius: 20px; font-size: 12px; text-decoration: none; border: 1px solid #30363d;
-                background: transparent; color: #8b949e; }
-        .ftab:hover { border-color: #58a6ff; color: #e6edf3; }
+                background: #161b22; color: #8b949e; transition: .15s; font-weight: 600; white-space: nowrap; }
+        .ftab:hover { border-color: #f0883e; color: #f0883e; }
         .ftab.active { background: rgba(240,136,62,.15); color: #f0883e; border-color: rgba(240,136,62,.4); }
-        .ftab .n { display: inline-block; background: #21262d;
-                   font-size: 10px; margin-left: 4px; color: #8b949e; padding: 0 5px; border-radius: 10px; }
+        .ftab .n { display: inline-block; background: #21262d; border-radius: 9px; padding: 0 6px;
+                   font-size: 10px; margin-left: 4px; color: #6e7681; }
         .ftab.active .n { background: rgba(240,136,62,.2); color: #f0883e; }
         .filter-sep { width: 1px; height: 20px; background: #30363d; }
 
-
-        .report-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 14px 16px;
+        /* 举报卡片 */
+        .report-card { background: #161b22; border: 1px solid #30363d; border-radius: 7px; padding: 14px 16px;
                        margin-bottom: 8px; transition: border-color .15s; }
         .report-card:hover { border-color: rgba(240,136,62,.3); }
         .report-card.handled  { opacity: .65; }
@@ -119,15 +126,15 @@ $cnt['all'] = array_sum($cnt);
         .rc-top { display: flex; align-items: flex-start; gap: 12px; }
         .rc-badge { padding: 2px 9px; border-radius: 3px; font-size: 11px; font-weight: 700; white-space: nowrap;
                     font-family: "Courier New", monospace; flex-shrink: 0; margin-top: 2px; }
-        .badge-post { background: rgba(88,166,255,.12); color: #58a6ff; }
-        .badge-user { background: rgba(167,139,250,.12); color: #c084fc; }
+        .badge-post { background: rgba(88,166,255,.12); color: #58a6ff; border: 1px solid rgba(88,166,255,.3); }
+        .badge-user { background: rgba(167,139,250,.12); color: #a78bfa; border: 1px solid rgba(167,139,250,.3); }
 
         .rc-body { flex: 1; min-width: 0; }
-        .rc-reason { font-size: 14px; font-weight: 700; color: #e6edf3; }
-        .rc-detail { font-size: 12px; color: #8b949e; margin-top: 4px; }
-        .rc-meta { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11px; color: #6e7681; margin-top: 6px;
+        .rc-reason { font-size: 14px; font-weight: 700; color: #e6edf3; margin: 0 0 5px; }
+        .rc-detail { font-size: 12px; color: #8b949e; margin: 0 0 8px; line-height: 1.5; }
+        .rc-meta { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11px; color: #6e7681;
                    font-family: "Courier New", monospace; }
-        .rc-meta a { color: #58a6ff; }
+        .rc-meta a { color: #58a6ff; text-decoration: none; }
         .rc-meta a:hover { text-decoration: underline; }
 
         .rc-actions { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 12px; }
@@ -135,22 +142,22 @@ $cnt['all'] = array_sum($cnt);
                    border: 1px solid; font-family: inherit; transition: opacity .15s; white-space: nowrap; }
         .act-btn:hover { opacity: .8; }
         .btn-del-post { background: rgba(248,81,73,.1); color: #f85149; border-color: rgba(248,81,73,.3); }
-        .btn-ban      { background: rgba(248,81,73,.08); color: #f85149; border-color: rgba(248,81,73,.25); }
-        .btn-view     { background: #21262d; color: #c9d1d9; border-color: #30363d; }
+        .btn-ban      { background: rgba(248,81,73,.08); color: #f0883e; border-color: rgba(248,81,73,.25); }
+        .btn-view     { background: #21262d; color: #8b949e; border-color: #30363d; }
         .btn-handled  { background: rgba(63,185,80,.08); color: #3fb950; border-color: rgba(63,185,80,.3); }
         .btn-dismiss  { background: transparent; color: #6e7681; border-color: #30363d; }
 
         .status-tag { padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 700;
                       font-family: "Courier New", monospace; }
-        .st-pending   { background: rgba(240,136,62,.12); color: #f0883e; }
-        .st-handled   { background: rgba(63,185,80,.1);  color: #3fb950; }
-        .st-dismissed { background: rgba(110,118,129,.1); color: #6e7681; }
+        .st-pending   { background: rgba(240,136,62,.12); color: #f0883e; border: 1px solid rgba(240,136,62,.3); }
+        .st-handled   { background: rgba(63,185,80,.1);  color: #3fb950; border: 1px solid rgba(63,185,80,.3); }
+        .st-dismissed { background: rgba(110,118,129,.1); color: #6e7681; border: 1px solid rgba(110,118,129,.3); }
 
         .empty-state { text-align: center; padding: 60px 20px; background: #161b22; border: 1px solid #30363d;
-                       border-radius: 8px; color: #8b949e; }
+                       border-radius: 8px; color: #6e7681; font-size: 13px; }
 
-        
-        
+        /* 快速封禁弹窗 */
+        #quick-ban-modal { display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center; }
     </style>
 </head>
 <body>
@@ -207,7 +214,7 @@ $cnt['all'] = array_sum($cnt);
                     <span>举报人：<strong style="color:#c9d1d9;"><?= htmlspecialchars($r['reporter_name'] ?? '—') ?></strong></span>
                     <span>目标 ID：
                         <?php if ($is_post): ?>
-                        <a href="post.php?id=<?= $r['target_id'] ?>" target="_blank">
+                        <a href="post.php?id=<?= $r['target_id'] ?>" target="_blank">#<?= $r['target_id'] ?></a>
                         <?php else: ?>
                         <a href="profile.php?id=<?= $r['target_id'] ?>" target="_blank">UID <?= $r['target_id'] ?></a>
                         <?php endif; ?>

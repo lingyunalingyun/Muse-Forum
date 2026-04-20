@@ -1,4 +1,12 @@
 <?php
+/**
+ * exp_helper.php — 经验与等级辅助函数库
+ *
+ * 功能：提供经验值与等级互算、等级颜色、等级名称、经验奖励等纯函数
+ * 读写表：无（纯函数，不直接操作数据库）
+ * 权限：内部引用
+ */
+// 经验 & 等级辅助函数
 
 function get_level_by_exp(int $exp): int {
     if ($exp >= 50000) return 6;
@@ -33,6 +41,7 @@ function calc_login_exp(int $streak): int {
     return min($streak * 10, 100);
 }
 
+// 增加经验并自动更新等级
 function add_exp($conn, int $user_id, int $amount): array {
     $conn->query("UPDATE users SET exp = exp + $amount WHERE id = $user_id");
     $r = $conn->query("SELECT exp FROM users WHERE id = $user_id");
@@ -42,6 +51,9 @@ function add_exp($conn, int $user_id, int $amount): array {
     return ['exp' => $exp, 'level' => $new_level];
 }
 
+// ─── 角色信息 ───────────────────────────────────────────
+// role 取值：'owner' | 'admin' | 'reviewer' | 'sponsor' | 'user'
+// is_banned 为 true 时无论 role 是什么都显示封禁样式
 function get_role_info(string $role, bool $is_banned = false): array {
     if ($is_banned) return [
         'label'  => '已封禁',
@@ -50,21 +62,24 @@ function get_role_info(string $role, bool $is_banned = false): array {
         'border' => 'rgba(110,118,129,.35)',
     ];
     $map = [
-        'owner'   => ['label'=>'★ 站长', 'color'=>'#f85149','bg'=>'rgba(248,81,73,.15)',  'border'=>'rgba(248,81,73,.4)'],
-        'admin'   => ['label'=>'管理员', 'color'=>'#a78bfa','bg'=>'rgba(167,139,250,.15)','border'=>'rgba(167,139,250,.4)'],
-        'sponsor' => ['label'=>'赞助者', 'color'=>'#3fb950','bg'=>'rgba(63,185,80,.15)',  'border'=>'rgba(63,185,80,.4)'],
-        'user'    => ['label'=>'成员',   'color'=>'#58a6ff','bg'=>'rgba(88,166,255,.15)', 'border'=>'rgba(88,166,255,.4)'],
+        'owner'    => ['label'=>'★ 站长',   'color'=>'#f85149','bg'=>'rgba(248,81,73,.15)',  'border'=>'rgba(248,81,73,.4)'],
+        'admin'    => ['label'=>'管理员',   'color'=>'#a78bfa','bg'=>'rgba(167,139,250,.15)','border'=>'rgba(167,139,250,.4)'],
+        'reviewer' => ['label'=>'◈ 审核员', 'color'=>'#e3b341','bg'=>'rgba(227,179,65,.15)', 'border'=>'rgba(227,179,65,.4)'],
+        'sponsor'  => ['label'=>'赞助者',   'color'=>'#c084fc','bg'=>'rgba(192,132,252,.15)','border'=>'rgba(192,132,252,.4)'],
+        'user'     => ['label'=>'成员',     'color'=>'#58a6ff','bg'=>'rgba(88,166,255,.15)', 'border'=>'rgba(88,166,255,.4)'],
     ];
     return $map[$role] ?? $map['user'];
 }
 
 function get_role_badge(string $role, bool $is_banned = false, string $extra = ''): string {
     $i = get_role_info($role, $is_banned);
-    return "<span style=\"font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;"
+    $class = (!$is_banned && $role === 'sponsor') ? ' class="sponsor-badge"' : '';
+    return "<span{$class} style=\"font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;"
          . "letter-spacing:.3px;background:{$i['bg']};color:{$i['color']};border:1px solid {$i['border']};{$extra}\">"
          . $i['label'] . "</span>";
 }
 
+// ─── 检查并补全 users 表所需字段 ─────────────────────────
 function ensure_user_columns($conn): void {
     $cols = [
         'email_verified'       => 'TINYINT(1) NOT NULL DEFAULT 0',
@@ -78,6 +93,8 @@ function ensure_user_columns($conn): void {
         'last_login_date'      => 'DATE DEFAULT NULL',
         'is_banned'            => 'TINYINT(1) NOT NULL DEFAULT 0',
         'ban_reason'           => 'VARCHAR(255) DEFAULT NULL',
+        'ban_until'            => 'DATETIME DEFAULT NULL',
+        'banned_by'            => 'INT DEFAULT NULL',
         'show_followers'       => 'TINYINT(1) NOT NULL DEFAULT 1',
         'show_following'       => 'TINYINT(1) NOT NULL DEFAULT 1',
         'post_visibility'      => "VARCHAR(20) NOT NULL DEFAULT 'public'",
@@ -103,7 +120,7 @@ function ensure_user_columns($conn): void {
         }
     }
 
-    
+    // 黑名单表
     $conn->query("CREATE TABLE IF NOT EXISTS user_blocks (
         id INT AUTO_INCREMENT PRIMARY KEY,
         blocker_id INT NOT NULL,
@@ -111,27 +128,73 @@ function ensure_user_columns($conn): void {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         UNIQUE KEY uq_block (blocker_id, blocked_id)
     )");
+
+    // 帖子阅读量日志（10分钟去重）
+    $conn->query("CREATE TABLE IF NOT EXISTS post_view_logs (
+        post_id INT NOT NULL,
+        viewer_key VARCHAR(64) NOT NULL,
+        viewed_at DATETIME NOT NULL,
+        PRIMARY KEY (post_id, viewer_key)
+    )");
+
+    // posts 表扩展列
+    foreach ([
+        'views'     => 'INT NOT NULL DEFAULT 0',
+        'repost_id' => 'INT DEFAULT NULL',
+    ] as $_col => $_def) {
+        $r = $conn->query("SHOW COLUMNS FROM posts LIKE '$_col'");
+        if ($r && $r->num_rows === 0) $conn->query("ALTER TABLE posts ADD COLUMN $_col $_def");
+    }
+
+    // messages 表 ref_post_id 列
+    $r = $conn->query("SHOW TABLES LIKE 'messages'");
+    if ($r && $r->num_rows > 0) {
+        $r2 = $conn->query("SHOW COLUMNS FROM messages LIKE 'ref_post_id'");
+        if ($r2 && $r2->num_rows === 0)
+            $conn->query("ALTER TABLE messages ADD COLUMN ref_post_id INT DEFAULT NULL");
+    }
+
+    // 举报表
+    $conn->query("CREATE TABLE IF NOT EXISTS reports (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        reporter_id INT NOT NULL,
+        type VARCHAR(10) NOT NULL COMMENT 'post|user',
+        target_id INT NOT NULL,
+        reason VARCHAR(100) NOT NULL,
+        detail VARCHAR(500) DEFAULT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'pending' COMMENT 'pending|handled|dismissed',
+        handler_id INT DEFAULT NULL,
+        handled_at DATETIME DEFAULT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_type_target (type, target_id),
+        INDEX idx_status (status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    // 修复已存在的 reports 表 charset
+    $conn->query("ALTER TABLE reports CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 }
 
+// 可见性检查：当前访问者能否看到 $author_id 的帖子
+// 返回 true = 可以看，false = 不能看
 function can_see_posts($conn, string $visibility, int $author_id, int $viewer_id, string $viewer_role = 'user'): bool {
     if ($viewer_id === $author_id) return true;
     if (in_array($viewer_role, ['admin', 'owner'])) return true;
     if ($visibility === 'public') return true;
     if ($visibility === 'private') return false;
-    if ($viewer_id === 0) return false; 
+    if ($viewer_id === 0) return false; // 未登录
 
     if ($visibility === 'followers') {
-        
+        // 访问者需关注作者
         $r = $conn->query("SELECT id FROM follows WHERE follower_id=$viewer_id AND followed_id=$author_id");
         return $r && $r->num_rows > 0;
     }
     if ($visibility === 'following') {
-        
+        // 作者需关注访问者
         $r = $conn->query("SELECT id FROM follows WHERE follower_id=$author_id AND followed_id=$viewer_id");
         return $r && $r->num_rows > 0;
     }
     if ($visibility === 'mutual') {
-        
+        // 互相关注
         $r1 = $conn->query("SELECT id FROM follows WHERE follower_id=$viewer_id AND followed_id=$author_id");
         $r2 = $conn->query("SELECT id FROM follows WHERE follower_id=$author_id AND followed_id=$viewer_id");
         return ($r1 && $r1->num_rows > 0) && ($r2 && $r2->num_rows > 0);
@@ -139,12 +202,14 @@ function can_see_posts($conn, string $visibility, int $author_id, int $viewer_id
     return true;
 }
 
+// 检查是否被拉黑（blocker 拉黑了 blocked）
 function is_blocked($conn, int $blocker_id, int $blocked_id): bool {
     if ($blocker_id === 0 || $blocked_id === 0) return false;
     $r = $conn->query("SELECT id FROM user_blocks WHERE blocker_id=$blocker_id AND blocked_id=$blocked_id");
     return $r && $r->num_rows > 0;
 }
 
+// ─── 内部：构建 HTML 邮件模板 ───────────────────────────
 function _build_email_html(string $title, string $greeting, string $body_html, string $btn_text, string $btn_link): string {
     $site = SITE_NAME;
     return '<!DOCTYPE html><html><head><meta charset="UTF-8"></head>'
@@ -173,6 +238,7 @@ function _build_email_html(string $title, string $greeting, string $body_html, s
         . '</table></td></tr></table></body></html>';
 }
 
+// ─── 内部：发送 HTML 邮件 ───────────────────────────────
 function _send_html_mail(string $to, string $subject, string $html): bool {
     $encoded_subject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
     $headers = "From: " . SITE_NAME . " <" . MAIL_FROM . ">\r\n"
@@ -182,6 +248,7 @@ function _send_html_mail(string $to, string $subject, string $html): bool {
     return mail($to, $encoded_subject, $html, $headers);
 }
 
+// 发送邮箱验证邮件
 function send_verify_email(string $to_addr, string $username, string $token): bool {
     $link    = SITE_URL . '/pages/verify.php?token=' . rawurlencode($token);
     $subject = '【' . SITE_NAME . '】请验证您的邮箱';
@@ -191,6 +258,7 @@ function send_verify_email(string $to_addr, string $username, string $token): bo
     return _send_html_mail($to_addr, $subject, $html);
 }
 
+// 发送密码重置邮件
 function send_reset_email(string $to_addr, string $username, string $token): bool {
     $link    = SITE_URL . '/pages/reset_password.php?token=' . rawurlencode($token);
     $subject = '【' . SITE_NAME . '】密码重置请求';

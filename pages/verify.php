@@ -1,5 +1,11 @@
 <?php
-
+/**
+ * verify.php — 邮箱验证页面
+ *
+ * 功能：通过 URL 中的 token 验证用户邮箱，激活账号，展示验证成功/失败/已验证等状态
+ * 读写表：users（更新 email_verified、清除 verify_token）
+ * 权限：公开（需持有有效的邮箱验证 token）
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/exp_helper.php';
@@ -40,6 +46,8 @@ if (empty($token)) {
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="../assets/logo.svg">
+    <link rel="shortcut icon" href="../assets/logo.svg">
     <title>邮箱验证 - <?= SITE_NAME ?></title>
     <style>
         @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }

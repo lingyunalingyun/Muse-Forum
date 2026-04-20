@@ -1,5 +1,11 @@
 <?php
-
+/**
+ * comment_delete.php — 删除评论及其子回复
+ *
+ * 功能：根据评论 ID 删除指定评论及所有子回复（parent_id 匹配）
+ * 读写表：comments
+ * 权限：需登录；仅评论作者或 admin 可删
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 

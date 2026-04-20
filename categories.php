@@ -1,25 +1,29 @@
 <?php
-
+/**
+ * categories.php — 论坛分区列表页
+ *
+ * 功能：展示所有分区及各分区下已发布帖子数量
+ * 读写表：categories、post_categories、posts
+ * 权限：公开
+ */
 session_start();
 require_once __DIR__ . '/config.php';
 
+$conn->query("CREATE TABLE IF NOT EXISTS post_categories (
+    post_id INT NOT NULL,
+    category_id INT NOT NULL,
+    PRIMARY KEY (post_id, category_id)
+) DEFAULT CHARSET=utf8mb4");
+
 $cats = [];
-
-$has_cat_col = false;
-$cc = $conn->query("SHOW COLUMNS FROM posts LIKE 'category_id'");
-if ($cc && $cc->num_rows > 0) $has_cat_col = true;
-
-if ($has_cat_col) {
-    $cr = $conn->query("
-        SELECT c.*, COUNT(p.id) as post_count
-        FROM categories c
-        LEFT JOIN posts p ON p.category_id = c.id AND p.status = '已发布'
-        GROUP BY c.id
-        ORDER BY c.sort_order ASC, c.id ASC
-    ");
-} else {
-    $cr = $conn->query("SELECT *, 0 as post_count FROM categories ORDER BY sort_order ASC, id ASC");
-}
+$cr = $conn->query("
+    SELECT c.*, COUNT(pc.post_id) as post_count
+    FROM categories c
+    LEFT JOIN post_categories pc ON pc.category_id = c.id
+    LEFT JOIN posts p ON p.id = pc.post_id AND p.status = '已发布'
+    GROUP BY c.id
+    ORDER BY c.sort_order ASC, c.id ASC
+");
 if ($cr) while ($c = $cr->fetch_assoc()) $cats[] = $c;
 $db_err = !$cr ? $conn->error : '';
 ?>

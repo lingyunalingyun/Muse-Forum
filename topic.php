@@ -1,5 +1,11 @@
 <?php
-
+/**
+ * topic.php — 话题标签聚合页
+ *
+ * 功能：展示指定话题下的所有已发布帖子，显示话题热度
+ * 读写表：topics、post_topics、posts、users、post_likes、comments（只读）
+ * 权限：公开
+ */
 session_start();
 require_once __DIR__ . '/config.php';
 
@@ -11,9 +17,11 @@ if ($tag === '') {
 
 $safe_tag = $conn->real_escape_string($tag);
 
+// 话题信息
 $topic_res = $conn->query("SELECT id, name, use_count FROM topics WHERE name='$safe_tag'");
 $topic = ($topic_res && $topic_res->num_rows > 0) ? $topic_res->fetch_assoc() : null;
 
+// 该话题下的帖子
 $posts = [];
 if ($topic) {
     $tid = (int)$topic['id'];

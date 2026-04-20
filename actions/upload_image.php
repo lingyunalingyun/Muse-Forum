@@ -1,5 +1,14 @@
 <?php
-
+/**
+ * upload_image.php — WangEditor 富文本编辑器图片上传接口
+ *
+ * 功能：接收图片上传（JPG/PNG/GIF/WEBP），验证 MIME 类型，限制大小 5MB，
+ *       保存至 uploads/posts/ 并按 WangEditor 格式返回图片 URL
+ * 读写表：无（仅写磁盘）
+ * 权限：需登录
+ */
+// WangEditor 图片上传接口
+// 返回格式: {"errno":0,"data":{"url":"..."}}
 ob_start();
 error_reporting(0);
 session_start();
@@ -15,6 +24,7 @@ if (!isset($_SESSION['user_id'])) {
 $upload_dir = __DIR__ . '/../uploads/posts/';
 if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
 
+// WangEditor 默认字段名为 wangeditor-uploaded-image，也兼容 image
 $file = $_FILES['wangeditor-uploaded-image'] ?? $_FILES['image'] ?? null;
 
 if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
@@ -22,6 +32,7 @@ if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
     exit;
 }
 
+// 验证是图片
 $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 $finfo = finfo_open(FILEINFO_MIME_TYPE);
 $mime  = finfo_file($finfo, $file['tmp_name']);

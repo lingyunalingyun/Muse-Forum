@@ -1,8 +1,18 @@
-<?php http_response_code(404); ?>
+<?php
+/**
+ * 404.php — HTTP 404 错误页
+ *
+ * 功能：设置响应码 404 并展示"页面不存在"提示页面
+ * 读写表：无
+ * 权限：公开
+ */
+http_response_code(404); ?>
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+<link rel="shortcut icon" href="assets/logo.svg">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>404 - 页面不存在 · 缪斯 MUSE</title>
 <style>

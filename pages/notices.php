@@ -1,5 +1,11 @@
 <?php
-
+/**
+ * notices.php — 社区公告列表页
+ *
+ * 功能：展示所有已发布的公告帖子，按发布时间倒序排列
+ * 读写表：posts、users（只读）
+ * 权限：公开
+ */
 session_start();
 require_once __DIR__ . '/../config.php';
 

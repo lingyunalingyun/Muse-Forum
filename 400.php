@@ -1,8 +1,18 @@
-<?php http_response_code(400); ?>
+<?php
+/**
+ * 400.php — HTTP 400 错误页
+ *
+ * 功能：设置响应码 400 并展示"请求错误"提示页面
+ * 读写表：无
+ * 权限：公开
+ */
+http_response_code(400); ?>
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+<link rel="shortcut icon" href="assets/logo.svg">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>400 - 请求错误 · 缪斯 MUSE</title>
 <style>
